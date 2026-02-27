@@ -1,0 +1,185 @@
+/* ============================================================
+   GLOBAL.CSS — ESTILOS UNIVERSALES COMPARTIDOS EN TODA LA APP
+   ============================================================ */
+
+@charset "UTF-8";
+
+/* ------------------------------------------------------------
+   TIPOGRAFÍA / BASE GENERAL
+------------------------------------------------------------ */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  background: #ffffff;
+  color: #111;
+  line-height: 1.4;
+}
+
+/* Contenedores universales */
+.container,
+.container-fluid {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Títulos globales */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------
+   IMÁGENES Y LOGO (GLOBAL)
+------------------------------------------------------------ */
+.logoimg {
+  max-width: 12rem;
+  max-height: 12rem;
+  transition: max-width 0.3s ease, transform 0.3s ease;
+}
+
+/* Iconos del footer */
+.img-footer-size {
+  max-height: 32px;
+  transition: transform 0.3s ease;
+}
+.img-footer-size:hover {
+  transform: scale(1.1) rotate(6deg);
+}
+.img-footer-size:active {
+  transform: scale(0.95) rotate(2deg);
+}
+
+/* Iconos menú principal */
+.img-menu-size {
+  max-height: 32px;
+}
+
+/* ------------------------------------------------------------
+   BOTONES BASE (GENÉRICOS)
+------------------------------------------------------------ */
+button {
+  transition: 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+/* Eliminar efectos raros en móviles */
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ------------------------------------------------------------
+   UTILIDADES GLOBALES
+------------------------------------------------------------ */
+.rounded {
+  border-radius: 8px !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.shadow-md {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
+}
+
+.text-muted {
+  opacity: 0.7;
+}
+
+/* Margenes globales reducidos */
+.mt-2 {
+  margin-top: 0.5rem !important;
+}
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+.my-2 {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* ------------------------------------------------------------
+   BADGES GLOBALES
+------------------------------------------------------------ */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
+   INPUTS / FORMULARIOS (BASE)
+------------------------------------------------------------ */
+input[type='text'],
+input[type='number'],
+input[type='email'],
+input[type='password'],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #dcdcdc;
+  background: #ffffff;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #14a8e2;
+  outline: none;
+  box-shadow: 0 0 0 2px #14a8e233;
+}
+
+/* ------------------------------------------------------------
+   ANCLAS (LINKS)
+------------------------------------------------------------ */
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.7;
+}
+
+/* ------------------------------------------------------------
+   SCROLL (GLOBAL)
+------------------------------------------------------------ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #efefef;
+}
+
+/* ------------------------------------------------------------
+   RESPONSIVE GLOBAL
+------------------------------------------------------------ */
+@media (max-width: 480px) {
+  .logoimg {
+    max-width: 9rem;
+  }
+}

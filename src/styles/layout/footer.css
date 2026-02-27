@@ -1,0 +1,19 @@
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.footer {
+  text-align: center;
+  padding: 16px;
+  background: #111;
+  color: #ffffff;
+}
+
+.footer img {
+  max-height: 32px;
+  transition: 0.25s;
+}
+
+.footer img:hover {
+  transform: scale(1.1) rotate(6deg);
+}

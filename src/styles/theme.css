@@ -1,0 +1,56 @@
+/* =====================================================
+   THEME GLOBAL – COLORES
+===================================================== */
+
+:root {
+  /* 🎯 COLORES PRINCIPALES */
+  --color-primary: #212529;
+  --color-secondary: #e1306c;
+  --color-bg: #f9fafb;
+  --color-card: #ffffff;
+
+  /* 📝 TEXTO */
+  --text-main: #212529;
+  --text-muted: #6b7280;
+
+  /* 🧊 BORDES */
+  --border-soft: #e9ecef;
+
+  /* 🌫 SOMBRAS */
+  --shadow-soft: 0 4px 12px rgba(0,0,0,.08),
+                 0 1px 2px rgba(0,0,0,.06);
+}
+
+/* ===================================================
+   HOVER GLOBAL POR BRIGHTNESS
+=================================================== */
+
+/* Elementos interactivos principales */
+.btn,
+.swal-btn-confirm,
+.swal-btn-cancel,
+.method-btn,
+.lote-select-mini,
+.full-btn,
+button {
+  transition: filter 0.18s ease, transform 0.1s ease, box-shadow 0.18s ease;
+}
+
+/* Hover universal */
+.btn:hover,
+.swal-btn-confirm:hover,
+.swal-btn-cancel:hover,
+.method-btn:hover,
+.lote-select-mini:hover,
+.full-btn:hover,
+button:hover {
+  filter: brightness(0.92);
+}
+
+/* Click (feedback táctil) */
+.btn:active,
+.swal-btn-confirm:active,
+.method-btn:active,
+.lote-select-mini:active {
+  transform: scale(0.98);
+}

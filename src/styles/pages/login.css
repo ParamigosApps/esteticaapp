@@ -1,0 +1,167 @@
+/* ============================================================
+   LOGIN — GOOGLE / FACEBOOK / TELÉFONO (PÁGINA DE ACCESO)
+   ============================================================ */
+
+@charset "UTF-8";
+
+/* ------------------------------------------------------------
+   CONTENEDOR PRINCIPAL DEL LOGIN
+------------------------------------------------------------ */
+.login-wrapper {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.login-title {
+  font-weight: 700;
+  margin-bottom: 30px;
+  font-size: 1.6rem;
+}
+
+.login-form input {
+  height: 46px;
+}
+
+/* Link “Volver” */
+.login-back {
+  margin-top: 14px;
+  color: #ff000090;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-back:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   BOTÓN GOOGLE — ESTILO OFICIAL (FIX COMPLETO)
+============================================================ */
+
+.google-btn {
+  width: 100%;
+  max-width: 340px;
+
+  padding: 12px 16px;
+  border-radius: 8px;
+
+  background: #ffffff;
+  border: 1px solid #dadce0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  font-weight: 600;
+  font-size: 1rem;
+  color: #3c4043;
+
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover Google */
+.google-btn:hover {
+  background: #f7f8f8;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+}
+
+/* Icono Google real */
+.google-btn img {
+  width: 32px !important;
+  height: 32px !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  margin-right: 6px;
+}
+
+/* ============================================================
+   BOTÓN FACEBOOK — ESTILO OFICIAL
+============================================================ */
+
+.facebook-btn-small {
+  width: 100%;
+  max-width: 340px;
+
+  padding: 12px 16px;
+  border-radius: 8px;
+
+  background: #1c6fdc;
+  color: #ffffff;
+
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  font-weight: 600;
+  font-size: 1rem;
+
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.facebook-btn-small:hover {
+  background: #0f5ed7;
+}
+
+/* Icono */
+.facebook-btn-small img {
+  margin-right: 6px;
+  width: 32px !important;
+  height: 32px !important;
+  object-fit: contain;
+}
+
+/* ------------------------------------------------------------
+   LOGIN POR TELÉFONO (acordeón interno)
+------------------------------------------------------------ */
+.auth-telefono-container {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+
+  width: 100%;
+  min-width: 310px;
+  max-width: 310px !important;
+
+  padding: 10px;
+  border-radius: 10px;
+
+  background: #ffffff;
+  border: 1px solid #ddd;
+}
+
+.auth-telefono-container input {
+  font-size: 0.9rem;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #d4d4d4;
+}
+
+/* ------------------------------------------------------------
+   RESPONSIVE
+------------------------------------------------------------ */
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding-top: 20px;
+  }
+
+  .btn-google {
+    padding: 10px;
+  }
+
+  .icon-google {
+    width: 26px;
+    height: 26px;
+  }
+
+  .login-title {
+    font-size: 1.4rem;
+  }
+}

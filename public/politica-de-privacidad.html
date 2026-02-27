@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Condiciones de Servicio – AppBar</title>
+  <meta name="description" content="Condiciones de Servicio de AppBar para compra de entradas, validación QR y gestión de consumos en eventos." />
+
+  <style>
+    :root{
+      --bg: #0b0c10;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.08);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --border: rgba(255,255,255,.10);
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --accent: #f4f4f5;
+      --accent2: rgba(255,255,255,.14);
+      --radius: 16px;
+      --radius2: 12px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f6f7fb;
+        --card: rgba(0,0,0,.03);
+        --card2: rgba(0,0,0,.05);
+        --text: rgba(0,0,0,.88);
+        --muted: rgba(0,0,0,.62);
+        --border: rgba(0,0,0,.10);
+        --shadow: 0 18px 50px rgba(0,0,0,.10);
+        --accent: #111827;
+        --accent2: rgba(0,0,0,.06);
+      }
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      line-height: 1.65;
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, rgba(255,255,255,.08), transparent 55%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    a{ color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    a:hover{ opacity: .9; }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+
+    header{
+      padding: 26px 20px 18px;
+      background: linear-gradient(180deg, var(--card2), transparent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand{
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(0,0,0,.10);
+    }
+
+    @media (prefers-color-scheme: light) {
+      .brand{ background: rgba(255,255,255,.65); }
+    }
+
+    .dot{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: var(--accent);
+      opacity: .9;
+      box-shadow: 0 0 0 6px var(--accent2);
+    }
+
+    h1{
+      margin: 14px 0 6px;
+      font-size: clamp(24px, 3.2vw, 34px);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .sub{
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid{
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .card{
+      padding: 18px 18px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: 0 8px 30px rgba(0,0,0,.12);
+      backdrop-filter: blur(10px);
+    }
+
+    h2{
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    p{ margin: 10px 0; color: var(--text); }
+    .muted{ color: var(--muted); }
+
+    ul{
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    li{ margin: 6px 0; }
+
+    .pillrow{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .pill{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.10);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    @media (prefers-color-scheme: light) {
+      .pill{ background: rgba(255,255,255,.65); }
+    }
+
+    .kbd{
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.16);
+      color: var(--text);
+    }
+    @media (prefers-color-scheme: light) {
+      .kbd{ background: rgba(0,0,0,.04); }
+    }
+
+    .toc a{ text-decoration: none; }
+    .toc a:hover{ text-decoration: underline; }
+
+    footer{
+      margin-top: 18px;
+      padding: 14px 18px;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, transparent, var(--card));
+    }
+
+    .hr{
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand" aria-label="AppBar">
+        <span class="dot" aria-hidden="true"></span>
+        <strong>AppBar</strong>
+      </div>
+
+      <h1>Condiciones de Servicio</h1>
+      <p class="sub">
+        Última actualización: <span class="kbd">16/02/2026</span> · Aplicable a usuarios y eventos en <strong>Argentina</strong>.
+      </p>
+
+      <div class="pillrow" aria-label="Resumen">
+        <span class="pill">Entradas digitales</span>
+        <span class="pill">Validación QR</span>
+        <span class="pill">Pagos por MercadoPago</span>
+        <span class="pill">Antifraude</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card toc" aria-label="Índice">
+        <h2>Índice</h2>
+        <ul>
+          <li><a href="#uso">1. Uso de la plataforma</a></li>
+          <li><a href="#cuentas">2. Cuentas, identidad y acceso</a></li>
+          <li><a href="#entradas">3. Entradas y validación por QR</a></li>
+          <li><a href="#pagos">4. Pagos y confirmaciones</a></li>
+          <li><a href="#prohibiciones">5. Conductas prohibidas</a></li>
+          <li><a href="#eventos">6. Responsabilidad del evento</a></li>
+          <li><a href="#soporte">7. Soporte y contacto</a></li>
+          <li><a href="#cambios">8. Cambios en estas condiciones</a></li>
+        </ul>
+      </article>
+
+      <article class="card" id="uso">
+        <h2>1. Uso de la plataforma</h2>
+        <p>
+          AppBar provee un sistema digital para <strong>adquirir entradas</strong> y, cuando corresponda, gestionar
+          <strong>consumos</strong> asociados a un evento. Al utilizar la plataforma, aceptás estas condiciones.
+        </p>
+        <p class="muted">
+          AppBar funciona como plataforma tecnológica. Los organizadores del evento definen precios, cupos, horarios, condiciones de ingreso y políticas particulares.
+        </p>
+      </article>
+
+      <article class="card" id="cuentas">
+        <h2>2. Cuentas, identidad y acceso</h2>
+        <p>
+          Podés acceder mediante proveedores de autenticación (por ejemplo: Google, Facebook o teléfono). Sos responsable por:
+        </p>
+        <ul>
+          <li>mantener el control de tu cuenta y dispositivo,</li>
+          <li>la veracidad de los datos provistos,</li>
+          <li>las acciones realizadas desde tu cuenta.</li>
+        </ul>
+      </article>
+
+      <article class="card" id="entradas">
+        <h2>3. Entradas y validación por QR</h2>
+        <p>
+          Las entradas emitidas por AppBar son <strong>digitales</strong> y se validan mediante un <strong>código QR</strong>.
+          Una entrada puede quedar invalidada si el sistema detecta uso duplicado, intento de reutilización o manipulación.
+        </p>
+        <ul>
+          <li>El QR es único por entrada/operación.</li>
+          <li>La validación puede registrarse con fecha/hora y operador (empleado) que la realizó.</li>
+          <li>Una vez validada, la entrada queda marcada como utilizada y no puede volver a usarse.</li>
+        </ul>
+        <p class="muted">
+          Recomendación: no compartas capturas del QR. Si alguien lo usa antes que vos, tu ingreso puede ser rechazado.
+        </p>
+      </article>
+
+      <article class="card" id="pagos">
+        <h2>4. Pagos y confirmaciones</h2>
+        <p>
+          Los pagos online se procesan mediante <strong>MercadoPago</strong>. AppBar no almacena datos de tarjetas.
+          La disponibilidad final de entradas/consumos puede depender de la confirmación del pago (aprobado/rechazado/pendiente).
+        </p>
+        <ul>
+          <li>Si el pago queda <strong>pendiente</strong>, la emisión/confirmación puede demorarse.</li>
+          <li>Si el pago es <strong>rechazado</strong>, la operación no se completa.</li>
+          <li>Si el pago es <strong>aprobado</strong>, se emite/confirmará la entrada según reglas del evento.</li>
+        </ul>
+        <p class="muted">
+          Los precios, cargos y condiciones del medio de pago pueden incluir comisiones propias del procesador.
+        </p>
+      </article>
+
+      <article class="card" id="prohibiciones">
+        <h2>5. Conductas prohibidas</h2>
+        <p>Está prohibido (sin excepción):</p>
+        <ul>
+          <li>duplicar o revender códigos QR sin autorización del organizador,</li>
+          <li>intentar evadir cupos, límites por usuario o controles antifraude,</li>
+          <li>manipular el sistema, automatizar compras o explotar vulnerabilidades,</li>
+          <li>realizar operaciones con datos falsos o de terceros sin permiso.</li>
+        </ul>
+        <p class="muted">
+          Ante indicios razonables de fraude, AppBar puede limitar funcionalidades, bloquear operaciones o invalidar accesos para proteger a usuarios y organizadores.
+        </p>
+      </article>
+
+      <article class="card" id="eventos">
+        <h2>6. Responsabilidad del evento</h2>
+        <p>
+          Cada evento es organizado por un tercero (el “Organizador”). El Organizador es responsable por:
+        </p>
+        <ul>
+          <li>condiciones de ingreso, seguridad y admisión,</li>
+          <li>capacidad, horarios y reprogramaciones,</li>
+          <li>calidad de servicios ofrecidos en el evento,</li>
+          <li>cumplimiento normativo aplicable.</li>
+        </ul>
+        <p class="muted">
+          AppBar no controla la logística ni la seguridad física del evento. AppBar provee la infraestructura digital de compra/validación.
+        </p>
+      </article>
+
+      <article class="card" id="soporte">
+        <h2>7. Soporte y contacto</h2>
+        <p>
+          Para consultas, soporte o reclamos relacionados a la plataforma, contactanos en:
+          <strong>[email soporte]</strong>.
+        </p>
+        <div class="hr"></div>
+        <p class="muted">
+          Para reclamos propios del evento (admisión, seguridad, reprogramación), es posible que debas contactar al Organizador.
+        </p>
+      </article>
+
+      <article class="card" id="cambios">
+        <h2>8. Cambios en estas condiciones</h2>
+        <p>
+          AppBar puede actualizar estas condiciones para reflejar cambios operativos o legales.
+          La versión vigente estará publicada en este sitio con su fecha de actualización.
+        </p>
+      </article>
+    </section>
+
+    <footer>
+      <strong>Nota legal (Argentina):</strong> estas condiciones se interpretan conforme legislación aplicable en la República Argentina.
+      Si alguna disposición resultara inválida, el resto mantiene su vigencia.
+    </footer>
+  </main>
+</body>
+</html>

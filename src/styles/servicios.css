@@ -1,0 +1,164 @@
+/* =======================================================
+   SCHEDULE BADGES — VERSIÓN PREMIUM
+======================================================= */
+
+.schedule-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+/* Pill principal */
+.schedule-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 14px;
+  border-radius: 999px;
+
+  background: linear-gradient(145deg, #f3f6fb, #e6ebf5);
+  border: 1px solid #dfe5f0;
+
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c3e50;
+
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* Hover elegante */
+.schedule-pill:hover {
+  background: linear-gradient(145deg, #eaf0fb, #dde6f5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Botón eliminar */
+.pill-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+
+  cursor: pointer;
+
+  font-size: 12px;
+  font-weight: bold;
+  color: #666;
+
+  transition: all 0.2s ease;
+}
+
+/* Hover eliminar */
+.pill-delete:hover {
+  background: #ff4d4f;
+  color: white;
+  transform: scale(1.1);
+}
+
+
+/* ===========================
+   SERVICE EDITOR
+=========================== */
+
+.service-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.field-group label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #2c3e50;
+}
+
+/* Precio */
+.price-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-input span {
+  font-weight: 600;
+  color: #555;
+}
+
+/* Seña */
+.service-sena-row {
+  align-items: center;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sena-percentage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.small-input {
+  max-width: 90px;
+}
+
+/* Gabinetes */
+.service-gabinetes {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gabinete-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Botones */
+.service-editor-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Animación suave cuando aparecen */
+.schedule-pill {
+  animation: pillFadeIn 0.25s ease;
+}
+
+@keyframes pillFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

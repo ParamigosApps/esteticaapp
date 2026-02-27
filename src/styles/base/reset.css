@@ -1,0 +1,67 @@
+/* ============================================================
+   RESET GLOBAL — SISTEMA BASE 2025 (NO MODIFICAR)
+   ============================================================ */
+
+@charset "UTF-8";
+
+/* Box sizing universal */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Eliminar comportamientos inconsistentes */
+html,
+body {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+/* Layout base para toda la app */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Los elementos principales pueden crecer */
+main {
+  flex-grow: 1;
+}
+
+/* Eliminar decoraciones por defecto */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Imágenes responsivas */
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Inputs consistentes */
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Listas sin estilo */
+ul,
+ol {
+  list-style: none;
+  padding-left: 0;
+}

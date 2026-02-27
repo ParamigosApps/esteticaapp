@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Política de Privacidad – AppBar</title>
+  <meta name="description" content="Política de Privacidad de AppBar conforme a la Ley 25.326 de Protección de Datos Personales (Argentina)." />
+
+  <style>
+    :root{
+      --bg: #0b0c10;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.08);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --border: rgba(255,255,255,.10);
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --accent2: rgba(255,255,255,.14);
+      --radius: 16px;
+      --radius2: 12px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f6f7fb;
+        --card: rgba(0,0,0,.03);
+        --card2: rgba(0,0,0,.05);
+        --text: rgba(0,0,0,.88);
+        --muted: rgba(0,0,0,.62);
+        --border: rgba(0,0,0,.10);
+        --shadow: 0 18px 50px rgba(0,0,0,.10);
+        --accent2: rgba(0,0,0,.06);
+      }
+    }
+
+    *{ box-sizing: border-box; }
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height: 1.65;
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, rgba(255,255,255,.08), transparent 55%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+
+    header{
+      padding: 26px 20px 18px;
+      background: linear-gradient(180deg, var(--card2), transparent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3.2vw, 34px);
+      letter-spacing: -0.02em;
+    }
+
+    .sub{
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid{
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .card{
+      padding: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: 0 8px 30px rgba(0,0,0,.12);
+      backdrop-filter: blur(10px);
+    }
+
+    h2{
+      margin-top: 0;
+      font-size: 16px;
+    }
+
+    ul{
+      padding-left: 18px;
+    }
+
+    footer{
+      margin-top: 20px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, transparent, var(--card));
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+
+    <header>
+      <h1>Política de Privacidad</h1>
+      <p class="sub">
+        Última actualización: 16/02/2026 · Conforme a Ley 25.326 (República Argentina)
+      </p>
+    </header>
+
+    <section class="grid">
+
+      <article class="card">
+        <h2>1. Responsable del tratamiento</h2>
+        <p>
+          AppBar es responsable del tratamiento de los datos personales recopilados a través de la plataforma.
+          Los datos se gestionan conforme a la Ley 25.326 de Protección de Datos Personales.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>2. Información recopilada</h2>
+        <ul>
+          <li>Nombre y apellido</li>
+          <li>Correo electrónico y teléfono</li>
+          <li>Datos de autenticación (Google, Facebook o teléfono)</li>
+          <li>Historial de compras y entradas</li>
+          <li>Registros de validación QR</li>
+          <li>Información técnica (IP, dispositivo, navegador)</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>3. Finalidad del tratamiento</h2>
+        <p>Los datos se utilizan exclusivamente para:</p>
+        <ul>
+          <li>Emitir y validar entradas digitales</li>
+          <li>Procesar pagos</li>
+          <li>Prevenir fraude</li>
+          <li>Brindar soporte al usuario</li>
+          <li>Mejorar la experiencia del servicio</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>4. Pagos</h2>
+        <p>
+          Los pagos son procesados por MercadoPago. AppBar no almacena datos de tarjetas de crédito o débito.
+          MercadoPago aplica sus propias políticas de privacidad y seguridad.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>5. Almacenamiento y seguridad</h2>
+        <p>
+          Los datos se almacenan en infraestructura segura (Google Firebase) con controles de acceso,
+          autenticación y monitoreo de seguridad.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>6. Acceso por personal autorizado</h2>
+        <p>
+          Empleados o administradores de eventos podrán acceder únicamente a información necesaria
+          para validar entradas o gestionar operaciones del evento.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>7. Derechos del titular de los datos</h2>
+        <p>
+          El titular podrá ejercer los derechos de acceso, rectificación y supresión conforme al Art. 14 y 16 de la Ley 25.326,
+          contactando a: <strong>[email soporte]</strong>.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>8. Conservación de datos</h2>
+        <p>
+          Los datos serán conservados mientras exista relación con la plataforma o por el tiempo necesario
+          para cumplir obligaciones legales o prevenir fraude.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>9. Modificaciones</h2>
+        <p>
+          Esta política puede actualizarse para reflejar cambios legales o técnicos.
+          La versión vigente estará disponible en este sitio.
+        </p>
+      </article>
+
+    </section>
+
+    <footer>
+      La Agencia de Acceso a la Información Pública, en su carácter de órgano de control de la Ley 25.326,
+      tiene la atribución de atender denuncias y reclamos vinculados al incumplimiento de normas sobre protección de datos personales.
+    </footer>
+
+  </main>
+</body>
+</html>

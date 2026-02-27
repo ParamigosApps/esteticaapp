@@ -1,0 +1,36 @@
+/* ============================================================
+   REDES SOCIALES — ACORDEÓN
+   ============================================================ */
+
+.redes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.redes-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px;
+  border-radius: 12px;
+
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: 0.25s ease;
+}
+
+.redes-item:hover {
+  background: #f7f7f7;
+  transform: translateY(-2px);
+}
+
+.redes-item img {
+  width: 26px;
+  height: 26px;
+}

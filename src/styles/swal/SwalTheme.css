@@ -1,0 +1,1779 @@
+/* ===================================================================
+   SWEETALERT2 — TEMA PASSLINE (CLARO, CARDS MINIMALISTAS)
+   Es el ÚNICO CSS de SweetAlert2 en el proyecto.
+   =================================================================== */
+
+/* ----------------------------------------------
+   POPUP GENERAL
+   ---------------------------------------------- */
+
+/* Usar con: customClass: { popup: 'swal-popup-custom' } */
+.swal-popup-custom {
+  border-radius: 14px !important;
+  padding: 18px 20px 20px !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  animation: popup-fade 0.25s ease;
+  box-sizing: border-box !important;
+}
+
+@keyframes popup-fade {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Título principal arriba */
+.swal-title-main {
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 8px !important;
+  text-align: left !important;
+  color: #111827;
+}
+.swal-title-mb {
+  margin-bottom: 0.6rem; /* equivalente a mb-2 */
+}
+/* Subtítulo / texto bajo título */
+.swal-subtitle {
+  font-size: 0.95rem;
+  opacity: 0.75;
+  margin-bottom: 14px;
+  text-align: left;
+  color: #4b5563;
+}
+
+/* Contenedor general del contenido para que no haga scroll horizontal */
+.swal-content-wrapper {
+  width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ----------------------------------------------
+   BOTONES (CONFIRMAR / CANCELAR / ALT)
+   ---------------------------------------------- */
+
+/* Confirmar = botón principal AMARILLO PASSLINE */
+.swal-btn-confirm,
+.swal2-confirm.swal-btn-confirm {
+  background: #ffc400 !important;
+  color: #111827 !important;
+  border-radius: 10px !important;
+  padding: 10px 18px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  font-size: 0.98rem !important;
+  min-width: 130px;
+  cursor: pointer !important;
+  transition:
+    background 0.18s ease,
+    transform 0.1s ease,
+    box-shadow 0.18s ease !important;
+  box-shadow: 0 2px 8px rgba(250, 204, 21, 0.45) !important;
+}
+
+.swal-btn-confirm:hover,
+.swal2-confirm.swal-btn-confirm:hover {
+  background: #e0ac00 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 10px rgba(161, 98, 7, 0.4) !important;
+}
+
+.swal-btn-confirm:active,
+.swal2-confirm.swal-btn-confirm:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Cancelar / botón neutro gris */
+.swal-btn-cancel,
+.swal-btn-alt {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+  border-radius: 10px !important;
+  padding: 10px 18px !important;
+  font-weight: 600 !important;
+  border: 1px solid #e5e7eb !important;
+  font-size: 0.95rem !important;
+  min-width: 130px;
+  cursor: pointer !important;
+  transition:
+    background 0.18s ease,
+    transform 0.1s ease !important;
+}
+
+#btn-verTicket {
+  width: 80px;
+  min-width: 40px !important;
+  font-size: 0.8rem !important;
+  padding: 6px 0px !important;
+}
+/* ============================================================
+   CARDS DE LOTES — ESTILO PASSLINE (OPCIÓN B)
+   ============================================================ */
+
+/* Contenedor de todas las cards de lote */
+.lotes-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+
+  grid-template-columns: 1fr;
+  gap: 4px;
+  width: 100% !important;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+
+/* ---- Card ---- */
+
+/* Header: nombre del ticket + precio */
+.lote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Nombre del ticket (Palco VIP, Preferencial, etc.) */
+.lote-nombre {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-left: 6px;
+  font-weight: 500;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Precio tipo Passline */
+.lote-precio {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+/* Línea secundaria: “Tipo de ticket / info corta” */
+.lote-extra,
+.lote-desc {
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  color: #6b7280;
+}
+
+/* Tag pequeño (Ej: “Anticipada”, “Ultimos cupos”) */
+.lote-tag {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Barra de capacidad */
+.lote-bar {
+  width: 100%;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.lote-bar-fill {
+  height: 100%;
+  background: #22c55e; /* verde cupos disponibles */
+  transition: width 0.25s ease;
+}
+
+/* Texto de restantes */
+.lote-restantes {
+  font-size: 0.78rem;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+/* Si querés remarcar pocos lugares, podés usar esta clase en JS */
+.lote-pocos-cupos .lote-bar-fill {
+  background: #f97316; /* naranja */
+}
+.lote-sin-cupos .lote-bar-fill {
+  background: #ef4444; /* rojo */
+}
+
+/* ============================================================
+   CANTIDAD + MÉTODO DE PAGO (ABAJO DE LOS LOTES)
+   ============================================================ */
+
+/* Caja resumen del lote seleccionado + precio */
+.pago-lote-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.pago-lote-nombre {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.pago-precio {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Selector de cantidad (similar a Passline) */
+.cant-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+/* Botones + y - (si los usás) */
+.cant-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.15s ease;
+  color: #111827;
+}
+
+/* Input número de cantidad (#cant) */
+#cant {
+  width: 64px;
+  text-align: center;
+  font-size: 0.98rem;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Métodos de pago: columnas de botones */
+.metodos-wrapper {
+  display: flex;
+  flex-direction: row !important;
+  justify-content: center;
+  gap: 8px;
+}
+
+.method-btn {
+  width: 80%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: none;
+}
+
+/* Si necesitás marcar un método secundario como “volver atrás” */
+.swal-btn-alt {
+  background: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+/* ============================================================
+   SCROLLERS ESPECÍFICOS (SI HAY MUCHOS LOTES)
+   ============================================================ */
+
+.lotes-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.lotes-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lotes-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 8px;
+}
+
+/* ============================================================
+   SWEETALERT — ESTILO ORIGINAL COMPLETO
+============================================================ */
+
+.swal2-popup {
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.swal2-actions {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+  padding-bottom: 8px !important;
+}
+
+.swal2-cancel {
+  background: #444 !important;
+  color: #fff !important;
+  padding: 10px 22px !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+/* Caja general */
+.transfer-box {
+  padding: 6px 2rem;
+  text-align: left;
+}
+
+#transfer {
+  font-size: 1.25rem !important;
+  font-weight: 700;
+  padding-bottom: 2px;
+  min-width: 160px;
+  max-width: 180px;
+}
+/* Monto */
+.transfer-monto {
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+}
+
+.transfer-precio {
+  color: #0a84ff;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* Datos */
+.transfer-datos {
+  background: #f4f9ff;
+  border: 1px solid #d7e6ff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+
+.transfer-item {
+  margin-bottom: 10px;
+}
+
+.transfer-item label {
+  font-size: 0.8rem;
+  color: #6b6b6b;
+}
+
+.transfer-value {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.full-btn {
+  width: 80%;
+  display: block; /* 🔑 CLAVE */
+  margin: 10px auto 0; /* 🔑 CLAVE */
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.full-btn.celeste {
+  background: #e6f2ff;
+  color: #0a84ff;
+  border: 1px solid #bcdcff;
+}
+
+.full-btn.azul {
+  background: #0a84ff;
+  color: white;
+}
+
+.full-btn.gris {
+  background: #ececec;
+  color: #444;
+}
+
+.transfer-datos-dark {
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  width: 100%;
+  height: 260px;
+}
+.copiado-ok {
+  margin: 8px auto 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #16a34a; /* verde */
+  text-align: center;
+}
+
+.dato-line {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.dato-line:last-child {
+  border-bottom: none;
+}
+
+.dato-line .label {
+  font-size: 0.8rem;
+  color: #9aa0a6;
+  margin-bottom: 2px;
+}
+
+.dato-line .value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  word-break: break-all;
+}
+
+.info-limites-box {
+  background: #f7f8fc;
+  border: 1px solid #dfe3f0;
+  padding: 10px 6px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  max-width: 420px;
+  max-height: 130;
+  margin: 0 auto;
+  text-align: left;
+}
+.limite-row.entrada,
+.limite-row.paga {
+  margin: 0 8px;
+  font-weight: 700;
+}
+.limite-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #e7e7e7;
+}
+.limite-row span.value {
+  white-space: nowrap;
+  min-width: 65px;
+  text-align: right;
+}
+
+.limite-row:last-child {
+  border-bottom: none;
+}
+
+.limite-row .label {
+  color: #555;
+}
+
+.limite-row .value {
+  font-weight: 700;
+  color: #222;
+}
+
+.limite-row.total .label {
+  font-weight: 700;
+}
+
+.limite-row.total .value {
+  font-size: 1.05rem;
+}
+
+/* Barra cupos */
+.barra-cupos {
+  width: 100%;
+  height: 10px;
+  background: #e8f1ff;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.barra-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0a84ff, #4ab0ff);
+  transition: width 0.4s ease;
+}
+
+.barra-fill.alerta {
+  background: linear-gradient(90deg, #ff3b3b, #ff8b8b);
+}
+
+.barra-text {
+  font-size: 0.85rem;
+  text-align: right;
+  color: #0a84ff;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.barra-text.alerta-text {
+  color: #ff3b3b;
+}
+
+.infoCantEntradas {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  opacity: 0.85;
+}
+
+.infoMaximoEntradas,
+.infoCantPendientes {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  opacity: 0.5;
+}
+
+.highlight {
+  color: #3d3d39f1 !important;
+  font-size: 1.3rem !important;
+  margin: 3px 0 0 0;
+  font-weight: 800 !important;
+}
+
+.infoDisponiblesEntradas {
+  margin: 6px 0 0 0;
+  font-size: 1rem !important;
+}
+
+/* =====================================================
+   SWAL PRODUCTO DETALLE
+===================================================== */
+
+.swal-producto .swal-producto-detalle {
+  text-align: center;
+}
+
+.swal-producto .producto-img {
+  display: block;
+  margin: 10px auto 12px auto;
+  width: 150px;
+  border-radius: 8px;
+}
+
+.swal-producto .producto-desc {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+.swal-producto .producto-precio {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.swal-producto .cantidad-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+.swal2-html-container {
+  padding: 0px !important;
+  width: 100%;
+  max-width: 450px;
+  margin: auto;
+}
+
+.swal-lotes {
+  text-align: left;
+}
+
+.swal-lotes .swal2-title,
+.swal-lotes .swal2-html-container {
+  text-align: left;
+}
+
+/* ===========================
+   MERCADO PAGO BUTTON (FINAL)
+=========================== */
+.method-mp.only-logo {
+  box-shadow:
+    0 6px 16px rgba(16, 126, 189, 0.14),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: #009ee3;
+  height: 52px; /* 🔹 más aire visual */
+  width: 46%; /* 🔹 ancho consistente */
+  border-radius: 14px;
+  max-width: 160px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    filter 0.2s ease,
+    transform 0.1s ease;
+}
+
+.method-mp.only-logo:hover {
+  filter: brightness(1.08); /* 🔹 hover limpio y pro */
+}
+
+.method-mp.only-logo:active {
+  transform: scale(0.98);
+}
+.method-btn:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.method-btn:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.16),
+    inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+.method-mp,
+.transfer {
+  width: 280px !important;
+}
+.method-mp img {
+  height: 4.5rem;
+  width: auto;
+}
+.btn-pagar-context {
+  width: 100%;
+  max-width: 220px;
+  height: 56px;
+  padding: 4px 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  border-radius: 12px;
+  border: none;
+
+  background-color: #ffc400;
+  color: #2b2b2bc4;
+
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+
+.btn-pagar-context:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.btn-pagar-context:active {
+  transform: translateY(0);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-pagar-context .label {
+  font-weight: 700;
+}
+
+.btn-pagar-context .amount {
+  font-size: 1.2rem;
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+.method-transfer {
+  background: var(--color-primary);
+  color: #3e3d3d;
+
+  height: 52px;
+  width: 46%;
+  max-width: 160px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  padding: 0 14px; /* 🔑 evita “peso abajo” */
+
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.14),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition:
+    filter 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
+}
+.method-transfer span,
+.method-transfer {
+  transform: translateY(-0.5px);
+}
+
+.method-transfer:hover {
+  filter: brightness(0.95);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.method-transfer:active {
+  transform: scale(0.98);
+}
+
+.metodos-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center; /* ⬅️ CLAVE */
+}
+
+/* ===============================
+   LOTE – CONTENEDOR
+================================ */
+.swal-lote {
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.swal-lote-header {
+  background: #f1f5f9;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.swal-lote-header.danger {
+  background: #fef2f2;
+}
+
+.swal-lote-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.swal-lote-sub {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* ===============================
+   GRID
+================================ */
+.swal-lote-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+/* ===============================
+   CARDS
+================================ */
+.swal-card {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.swal-card span {
+  font-size: 12px;
+  display: block;
+  opacity: 0.8;
+}
+
+.swal-card strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ===============================
+   ALERTAS
+================================ */
+.swal-alert {
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.swal-alert-bot {
+  margin-bottom: 16px !important;
+}
+.swal-alert strong {
+  display: block;
+  font-weight: 700;
+}
+
+.swal-alert span {
+  font-size: 13px;
+}
+
+/* Warning */
+.swal-alert.warning {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #dd0d0d;
+}
+
+/* Danger */
+.swal-alert.danger {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #7f1d1d;
+}
+
+/* ===============================
+   BOTONES SWAL – ACCIONES
+================================ */
+
+/* 🔴 Rechazar */
+.swal-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  border: none;
+}
+
+.swal-btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* ⚫ Volver / Cancelar */
+.swal-btn-dark {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+}
+
+.swal-btn-dark:hover {
+  background: #020617;
+}
+
+/* =========================================
+   EVENT HEADER — PASSLINE STYLE
+   ========================================= */
+
+.swal-event-header {
+  padding: 6px 0 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+}
+
+.swal-event-title {
+  font-weight: 800;
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #06080b; /* gris oscuro */
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+.title-opacity {
+  opacity: 0.25 !important;
+  margin-bottom: 0dvh;
+}
+.event-lote-title {
+  font-weight: 800;
+  font-size: 1.4rem;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+.event-descripcion {
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+.swal-event-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  max-width: 440px !important; /* techo */
+  margin: 0 auto;
+  gap: 4px;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  color: #0f0a01cd;
+  line-height: 1.4;
+
+  text-align: center; /* opcional pero suele quedar mejor en swal */
+}
+
+.swal-event-icon {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  padding-bottom: 4px !important;
+}
+
+.lote-multi .lote-footer-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.lote-cantidad-box {
+  position: absolute;
+  top: 112px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  align-items: center !important;
+}
+
+.lote-info-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* FILA COSTO */
+.lote-costo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.lote-genero-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* CONTENEDOR DE BADGES */
+.lote-badges-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* BADGE BASE (precio + consumición) */
+.precio-valor,
+.lote-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 24px;
+  padding: 0 10px;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.lote-hora {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1f2937;
+  align-items: center !important; /* 🔑 centra vertical real */
+}
+
+/* ============================= */
+/* 🔄 LOADING SWEETALERT PRO */
+/* ============================= */
+
+.swal-loading-popup {
+  border-radius: 14px;
+  padding: 28px 24px 32px;
+}
+
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.loading-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #6c757d;
+  text-align: center;
+}
+
+/* Spinner limpio */
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #0d6efd; /* o tu color primario */
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #393939;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* ⏰ BADGE INGRESO */
+.lote-horario-row {
+  border-radius: 999px;
+  display: flex;
+  gap: 2px;
+}
+
+/*  BADGE COLORES */
+.badge-pago {
+  background: #027fd3;
+}
+.badge-gratis {
+  background: #059668d8;
+}
+.badge-generadas {
+  background: #059668d8;
+}
+.badge-hora {
+  background: #041927a1;
+  color: #f7f2f2;
+  border: 1px solid #cac7c7;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.badge-ingreso-early {
+  background: rgba(255, 32, 51, 0.824);
+  color: #f7f2f2;
+  border: 1px solid #f8b1b8;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.badge-ingreso-ok {
+  background: #e5f7ed;
+  color: #0f5132;
+  border: 1px solid #b7ebc6;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+#badge-ingreso {
+  font-size: 11px !important;
+}
+#swal-content-resumencompra {
+  font-size: clamp(0.61rem, 1.5vw, 0.72rem);
+}
+
+#swal-email-login{
+  width: 95% !important;
+  margin: 0px !important;
+}
+
+.metodos-compra-box {
+  margin: 16px auto 0 auto;
+  max-width: 420px;
+  padding: 24px 0px 24px 0 !important;
+  max-height: 120px;
+  border-radius: 12px;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+}
+
+.metodos-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: center;
+  color: #333;
+
+  font-size: 1.1rem;
+}
+
+/* Más columnas en pantallas grandes */
+@media (min-width: 600px) {
+  .lotes-wrapper {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.swal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #1f1f1f;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.swal-row-value {
+  font-weight: 700;
+}
+
+.swal-row-sub {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.swal-row-hint {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #ffb74d;
+}
+
+/* =====================================================
+   RESULTADO ENTRADAS — SCOPE TOTAL
+   ===================================================== */
+
+.swal-resultado-entradas .swal-event-header {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.swal-resultado-entradas .swal-event-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.swal-resultado-entradas .swal-event-header small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: #777;
+}
+
+/* ================== BLOQUES ================== */
+
+.swal-resultado-entradas .swal-block {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.swal-resultado-entradas .swal-block-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.swal-resultado-entradas .swal-block-title.success {
+  color: #1b7f3b;
+}
+
+.swal-resultado-entradas .swal-block-title.error {
+  color: #b02a37;
+}
+
+/* ================== FILAS ================== */
+
+.swal-resultado-entradas .swal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.swal-resultado-entradas .swal-row:last-child {
+  margin-bottom: 0;
+}
+
+/* ================== OK ================== */
+
+.swal-resultado-entradas .swal-row.ok {
+  background: linear-gradient(90deg, #e9f7ef, #f6fffa);
+  border-left: 4px solid #2fbf71;
+}
+
+.swal-resultado-entradas .swal-row.ok .swal-row-title {
+  font-weight: 600;
+  color: #1f7a4d;
+}
+
+.swal-resultado-entradas .swal-row.ok .swal-row-value {
+  font-weight: 700;
+  color: #2fbf71;
+}
+
+/* ================== ERROR ================== */
+
+.swal-resultado-entradas .swal-row.error {
+  background: linear-gradient(90deg, #fdecec, #fff5f5);
+  border-left: 4px solid #dc3545;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.swal-resultado-entradas .swal-row.error .swal-row-title {
+  font-weight: 600;
+  color: #842029;
+}
+
+.swal-resultado-entradas .swal-row-sub {
+  font-size: 13px;
+  color: #842029;
+}
+
+.swal-resultado-entradas .swal-row-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* ================== MOBILE ================== */
+
+@media (max-width: 480px) {
+  .swal-resultado-entradas .swal-row {
+    font-size: 13px;
+  }
+}
+.total-box {
+  padding: 12px 14px;
+  margin: 16px auto 12px auto;
+  max-width: 420px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.total-line span:last-child {
+  font-weight: 600;
+}
+
+.total-label {
+  color: #444;
+  padding: 0px;
+}
+
+.total-value {
+  font-weight: 600;
+}
+
+.total-line.muted {
+  color: #777;
+  font-size: 13px;
+}
+
+.total-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 8px 0;
+}
+
+.total-line.total-final {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.total-line.total-final.solo {
+  font-size: 17px;
+}
+.checkout-box {
+  max-width: 420px;
+  margin: 16px auto 0 auto;
+  padding: 12px 20px;
+  background: #fafafa;
+  border-radius: 14px;
+}
+
+.hint-padding {
+  margin-top: 6px; /* o 8px si querés un poco más de aire */
+}
+
+.swal-lotes .swal2-header {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.swal-lotes .swal2-title {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.swal-lotes .swal2-title:empty {
+  display: none !important;
+}
+/* =========================
+   LOTE PRO / GOLD (VIP)
+========================= */
+.lote-card.lote-pro {
+  position: relative;
+  padding: 1rem 1rem !important;
+  margin: 0 12px 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+  min-height: 120px;
+  max-height: 150px;
+
+  /* 🧼 Base neutral */
+  background: #ffffff;
+
+  /* 🧱 Borde sutil */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  /* ☁️ Sombra suave */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.lote-card.lote-pro:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+/* ✨ Reflejo tipo espejo */
+.lote-card.lote-pro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0)
+  );
+
+  opacity: 0.45;
+}
+.swal-popup-custom.event-card-pro {
+  padding: 0 !important; /* ← ESTE era el problema real */
+  overflow: hidden;
+  background: #fff;
+}
+
+/* =========================
+   ESTADO AGOTADO
+========================= */
+.lote-card.agotado,
+.lote-card.bloqueado {
+  opacity: 0.65;
+  filter: grayscale(0.75) saturate(0.6);
+  cursor: not-allowed;
+}
+
+.lote-card.agotado::after,
+.lote-card.bloqueado::after {
+  opacity: 0.15;
+}
+
+/* Evitar efecto hover */
+.lote-card.agotado:hover,
+.lote-card.bloqueado:hover {
+  transform: none;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.warning-black {
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  width: 80px !important;
+  max-width: 100px !important;
+  color: #1a1a1a;
+}
+.event-resumen {
+  text-align: center;
+}
+
+.event-precio {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0.8;
+  color: #222;
+}
+
+.event-badges {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.badge-gratis {
+  background: #e8f7ee;
+  color: #1e7f4f;
+}
+
+/* =========================
+   TOP: NOMBRE + PRECIO
+========================= */
+.lote-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.lote-title {
+  max-width: 225px;
+  font-size: 1rem !important;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.lote-price {
+  min-width: 75px;
+  font-size: 1rem !important;
+  font-weight: 800;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.lote-price.gratis {
+  color: #2ecc71;
+}
+
+.lote-price.pago {
+  color: var(--accent);
+}
+
+/* =========================
+   BOTTOM: ESTADO + CANTIDAD
+========================= */
+.lote-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.lote-descripcion {
+  font-size: clamp(0.65rem, 2.5vw, 0.9rem) !important;
+  font-weight: 700;
+  width: 100%;
+  min-height: 100px !important;
+  color: #343333;
+  opacity: 0.75;
+  margin: 4px 4px 0 0;
+  text-align: start;
+}
+.status-ok {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.lote-alert.warning {
+  background: rgba(255, 186, 59, 0.915);
+  color: #ffffff;
+}
+
+.lote-alert.critical {
+  background: rgba(255, 29, 29, 0.718);
+  color: #ffffff;
+}
+
+.lote-alert.disponibles {
+  background: rgba(0, 255, 8, 0.2);
+  color: #188954;
+}
+
+/* =========================
+   CANTIDAD
+========================= */
+.lote-qty-stepper {
+  width: 75px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+
+.qty-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lote-select-cant {
+  display: flex;
+  align-items: center;
+
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  overflow: hidden; /* 🔑 evita recalculo */
+  white-space: nowrap;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  align-items: center;
+  justify-content: center;
+
+  background-color: #ffffff;
+  text-align: center;
+  font-size: 1.1rem !important;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+@media (min-width: 767px) {
+  .swal-event-title {
+    font-size: 1.7rem !important;
+  }
+  .event-descripcion {
+    font-size: 1.4rem;
+  }
+  .swal-event-sub {
+    font-size: 1rem;
+  }
+}
+@media (min-width: 490px) {
+  .swal-event-title {
+    font-size: 1.5rem;
+  }
+  .event-descripcion {
+    font-size: 1.2rem;
+  }
+  .swal-event-sub {
+    font-size: 0.85rem !important;
+  }
+}
+@media (max-width: 489px) {
+  .lote-card.lote-pro {
+    padding: 0.7rem !important;
+    margin: 0 14px 8px 16px;
+  }
+
+  .lote-title {
+    font-size: clamp(1rem, 2vw, 1.9rem) !important;
+    font-weight: 700;
+  }
+  .lote-price {
+    font-size: clamp(1rem, 2vw, 1.9rem) !important;
+  }
+
+  /* ALERTAS */
+  .lote-alert {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .swal-event-sub {
+    font-size: 0.7rem !important;
+  }
+}
+@media (max-width: 435px) {
+  .lote-card.lote-pro {
+    padding: 0.7rem !important;
+  }
+
+  .lote-title {
+    font-size: clamp(0.9rem, 2vw, 1.9rem) !important;
+    font-weight: 800;
+  }
+  .lote-price {
+    font-size: clamp(0.9rem, 2vw, 1.9rem) !important;
+  }
+
+  .swal-event-sub {
+    font-size: 0.7rem !important;
+  }
+
+  /* ALERTAS */
+  .lote-alert {
+    font-size: 0.62rem;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 400px) {
+  #transfer {
+    font-size: 1rem !important;
+    font-weight: 700;
+    width: 130px !important;
+    min-width: 130px !important;
+  }
+  .method-mp img {
+    height: 4rem !important;
+  }
+  #mp {
+    width: 130px !important;
+  }
+}
+.resumen-heading {
+  font-weight: 700;
+  opacity: 0.9;
+  font-size: 15px;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.cantidad-entradas {
+  font-weight: 900 !important;
+  font-size: 15px;
+}
+
+.lotes-preview {
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lote-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.lote-precio {
+  font-weight: 700;
+}
+
+.lote-precio.gratis {
+  color: #1e9e5a;
+}
+
+.lote-precio.pago {
+  color: #f59f00;
+}
+
+.lote-gratis {
+  background: rgba(30, 158, 90, 0.08);
+}
+
+.lote-pago {
+  background: rgba(245, 159, 0, 0.08);
+}
+
+.event-img {
+  border-radius: 12px 12px 0 0;
+  max-height: 220px;
+  width: 100%;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
+.event-badges {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.event-descripcion-secundaria {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+  margin: 6px 0 2px;
+  margin-top: -4px;
+  line-height: 1.35;
+}
+.event-descripcion-expandida {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e5e5;
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+}

@@ -1,0 +1,15 @@
+.slot {
+  padding: 10px;
+  margin: 4px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.slot.libre {
+  background: #e8f7ee;
+}
+
+.slot.ocupado {
+  background: #f5d6d6;
+  cursor: not-allowed;
+}

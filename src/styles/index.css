@@ -1,0 +1,44 @@
+/* ============================================================
+   INDEX CSS — IMPORTADOR GLOBAL OFICIAL 2025
+   ============================================================ */
+
+   @import './theme.css';
+   
+ @import './turnos.css';
+   @import './agenda.css';
+   @import './gabinete.css';
+   @import './servicios.css';
+/* -------------------------
+   LAYOUT
+------------------------- */
+@import './layout/header.css';
+@import './layout/footer.css';
+@import './layout/acordeon.css';
+/* -------------------------
+   PÁGINAS
+------------------------- */
+
+@import './pages/login.css';
+@import './pages/usuario.css';
+@import './pages/ubicacion.css';
+@import './pages/redes.css';
+
+
+/* -------------------------
+   ADMIN COMPLETO
+------------------------- */
+@import './admin/admin.css';
+@import './admin/ServiciosPanel.css';
+
+
+/* -------------------------
+   SWEETALERT (tema propio)
+------------------------- */
+@import './swal/SwalTheme.css';
+
+
+
+/* -------------------------
+   Mp resultados Css
+------------------------- */
+@import './pago.css';

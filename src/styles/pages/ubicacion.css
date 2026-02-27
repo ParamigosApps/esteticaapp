@@ -1,0 +1,29 @@
+/* ============================================================
+   UBICACIÓN — CONTENEDOR DEL MAPA (VERSIÓN FINAL)
+============================================================ */
+
+.ubicacion-mapa {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 10px; /* se pega arriba */
+  
+}
+
+.ubicacion-mapa iframe {
+  width: 95%;
+  max-width: 380px;
+  height: 360px;
+
+  border: 0;
+  border-radius: 12px;
+  margin-bottom: 6cqw;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile */
+@media (max-width: 420px) {
+  .ubicacion-mapa iframe {
+    height: 260px;
+  }
+}

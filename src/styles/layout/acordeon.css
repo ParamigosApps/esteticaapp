@@ -1,0 +1,236 @@
+/* ============================================================
+   HOME MENU — ESTÉTICA (LIMPIO)
+============================================================ */
+
+.menu-desplegable {
+  max-width: 540px;
+  margin: 12px auto 0;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+.menu-desplegable .accordion {
+  width: 100%;
+  max-width: 550px;
+  margin: 0 auto;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.menu-desplegable .accordion-item {
+  border: none;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* ------------------------------------------------------------
+   BOTÓN ACORDEÓN
+------------------------------------------------------------ */
+
+.menu-desplegable .accordion-button {
+  background-color: #f9fafb;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #212529;
+  transition: background 0.3s ease;
+}
+
+.menu-desplegable .accordion-button:not(.collapsed) {
+  background-color: #212529;
+  color: #fff;
+}
+
+.menu-desplegable .accordion-button:focus {
+  box-shadow: none;
+}
+
+.accordion-button:not(.collapsed)::after {
+  filter: brightness(0) invert(1);
+}
+
+/* ------------------------------------------------------------
+   CUERPO
+------------------------------------------------------------ */
+
+.menu-desplegable .accordion-body {
+  background: #fff;
+  padding: 0;
+  min-height: 80px;
+}
+
+.accordion-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  margin-right: 8px;
+}
+
+/* ------------------------------------------------------------
+   BOTONES
+------------------------------------------------------------ */
+
+.menu-desplegable .btn {
+  border-radius: 0.6rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.menu-desplegable .btn-outline-dark {
+  border-color: #343a40;
+  color: #343a40;
+}
+
+.menu-desplegable .btn-outline-dark:hover {
+  background-color: #343a40;
+  color: #fff;
+}
+
+.btn-activo {
+  background: #212529 !important;
+  color: #fff !important;
+  border-color: #212529 !important;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------
+   UBICACIÓN
+------------------------------------------------------------ */
+
+.ubicacion-btn {
+  max-width: 300px;
+  height: 40px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ------------------------------------------------------------
+   LOGIN
+------------------------------------------------------------ */
+
+.login-divider {
+  position: relative;
+  width: 100%;
+  text-align: center;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.login-divider::before { left: 0; }
+.login-divider::after { right: 0; }
+
+.login-divider span {
+  background: #fff;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.saludoLogin {
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+/* ------------------------------------------------------------
+   reCAPTCHA
+------------------------------------------------------------ */
+
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
+.recaptcha-legal {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.recaptcha-legal a {
+  color: #6b7280;
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------
+   WHATSAPP FLOAT
+------------------------------------------------------------ */
+
+.whatsappIcon {
+  width: 30px;
+  height: 30px;
+}
+
+#chat {
+  position: fixed;
+  bottom: 56px;
+  right: 24px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(64, 63, 63, 0.95);
+  transition: transform 0.2s, right 0.6s;
+}
+
+#chat:hover {
+  right: 16px;
+  transform: scale(1.24);
+}
+
+/* ------------------------------------------------------------
+   FOOTER LEGAL
+------------------------------------------------------------ */
+
+.page-wrapper {
+  min-height: 75vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.legal-footer {
+  margin-top: auto;
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+}
+
+.legal-footer a {
+  color: #999;
+  text-decoration: none;
+}
+
+.legal-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------
+   MOBILE
+------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .saludoLogin {
+    font-size: 1.2rem;
+  }
+
+  .legal-footer {
+    font-size: 11px;
+    padding-bottom: 18px;
+  }
+
+  .menu-desplegable {
+    padding: 0.2rem;
+  }
+}

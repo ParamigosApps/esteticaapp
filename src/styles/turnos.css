@@ -1,0 +1,10 @@
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.dia-agenda {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 16px;
+}

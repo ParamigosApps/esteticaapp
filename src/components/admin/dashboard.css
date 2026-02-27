@@ -1,0 +1,593 @@
+
+/* ============================================================
+   APPBAR DASHBOARD THEME — CLEAN VERSION
+   ============================================================ */
+
+/* ---------- VARIABLES ---------- */
+
+:root {
+  --accent: #7e8284cf;
+  --success: #198754;
+  --warning: #ffc107;
+  --danger: #dc3545;
+
+  --radius: 14px;
+  --shadow: 0 4px 14px rgba(0,0,0,.08);
+  --transition: .25s ease;
+}
+
+/* ---------- LIGHT ---------- */
+
+body.light .pro-dashboard {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --hover: #f0f3f7;
+  --text: #1b1b1b;
+  --soft: #6c757d;
+  --border: #e5e7eb;
+}
+
+/* ---------- DARK ---------- */
+
+body.dark .pro-dashboard {
+  --bg: #0f0f11;
+  --card: #1a1c1f;
+  --hover: #222529;
+  --text: #f3f4f6;
+  --soft: #aaa;
+  --border: #2a2d31;
+}
+
+/* ============================================================
+   BASE LAYOUT
+   ============================================================ */
+
+.pro-dashboard {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ============================================================
+   INPUTS
+   ============================================================ */
+
+.pro-dashboard input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+
+.pro-dashboard input::placeholder {
+  color: var(--soft);
+}
+
+/* ============================================================
+   GENERIC CARDS
+   ============================================================ */
+
+.evento-card,
+.metric-card,
+.error-card,
+.movimiento-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+/* ============================================================
+   LIQUIDACIÓN HEADER
+   ============================================================ */
+
+.liquidacion-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--hover);
+}
+
+.liquidacion-header:hover {
+  background: rgba(0,0,0,.03);
+}
+
+.lh-evento h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.lh-fechaEvento {
+  font-size: .75rem;
+  color: var(--soft);
+}
+
+/* ============================================================
+   MÉTRICAS
+   ============================================================ */
+
+.lh-metrics {
+  display: flex;
+  gap: 12px;
+}
+
+.lh-metric {
+  text-align: right;
+}
+
+.lh-metric .label {
+  font-size: .65rem;
+  color: var(--soft);
+  text-transform: uppercase;
+  gap: 4px;
+  margin: 0 6px;
+}
+
+.lh-metric .value {
+  font-weight: 700;
+}
+
+.money {
+  color: var(--success);
+}
+
+.comision {
+  color: var(--accent);
+}
+
+/* ============================================================
+   ESTADOS
+   ============================================================ */
+
+.badge {
+  font-size: .75rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.status-success { background:#d1e7dd; color:#0f5132 }
+.status-warning { background:#fff3cd; color:#856404 }
+.status-error   { background:#f8d7da; color:#842029 }
+
+/* ============================================================
+   DETALLE FILAS
+   ============================================================ */
+
+.detalle-item {
+  padding: 8px 12px;
+  margin-top: 6px;
+  border-radius: 10px;
+  font-size: .85rem;
+}
+
+.detalle-item.compra {
+  background: rgba(20,168,226,.08);
+  border-left: 4px solid var(--accent);
+}
+
+.detalle-item.pendiente {
+  background: rgba(255,193,7,.15);
+  border-left: 4px solid var(--warning);
+}
+
+.detalle-item.error {
+  background: rgba(220,53,69,.15);
+  border-left: 4px solid var(--danger);
+}
+
+/* ============================================================
+   PDF LIST
+   ============================================================ */
+
+.lh-pdf-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.lh-pdf-item:hover {
+  background: #eef6ff;
+}
+
+/* ============================================================
+   MOVIMIENTOS CONTABLES
+   ============================================================ */
+
+.mov-header {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.mov-summary {
+  margin: 12px 0;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.mov-item {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.mov-fecha {
+  font-size: .7rem;
+  color: var(--soft);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn-success {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+}
+
+.btn-success:disabled {
+  opacity: .6;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .liquidacion-header {
+    flex-wrap: wrap;
+  }
+
+  .lh-metrics {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+
+/* ============================================================
+   CONTABLE CARDS (DASHBOARD CONTABLE)
+   ============================================================ */
+
+.day-total-card {
+  background: linear-gradient(135deg, #1f2933, #111827);
+  color: white;
+  padding: 22px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.day-total-card .label {
+  font-size: .75rem;
+  opacity: .7;
+}
+
+.day-total-card .value {
+  font-size: 2.3rem;
+  font-weight: 800;
+}
+
+/* Métricas chicas */
+
+.metric-card {
+  background: var(--card);
+  padding: 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform .15s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+}
+
+.metric-label {
+  font-size: .7rem;
+  color: var(--soft);
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* ============================================================
+   EVENT CARD CONTABLE
+   ============================================================ */
+
+.event-card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.money-main {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+/* ============================================================
+   ESTADOS PROFESIONALES
+   ============================================================ */
+
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 600;
+}
+
+.status-badge.success {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-badge.warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.secondary {
+  background: #e2e3e5;
+  color: #41464b;
+}
+
+/* ============================================================
+   ERROR CARD CONTABLE
+   ============================================================ */
+
+.error-card {
+  padding: 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.error-card.no-errors {
+  background: #f1f3f5;
+  color: #495057;
+}
+
+.error-card.has-errors {
+  background: #f8d7da;
+  color: #842029;
+  border-left: 6px solid var(--danger);
+}
+
+/* ============================================================
+   MOVIMIENTOS PANEL COLAPSABLE
+   ============================================================ */
+
+.movimiento-panel {
+  margin-top: 20px;
+  padding: 18px;
+}
+
+.mov-header:hover {
+  opacity: .8;
+}
+
+.mov-toggle {
+  font-size: 1.2rem;
+  opacity: .6;
+}
+
+
+/* ============================================================
+   EVENTO HEADER ADMIN
+   ============================================================ */
+
+.evento-header-admin {
+  display: flex;
+  justify-content: space-between;
+  padding: .9rem 1rem;
+  cursor: pointer;
+}
+
+.evento-header-admin h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.evento-header-admin small {
+  color: var(--soft);
+}
+
+/* ============================================================
+   EVENT STATS
+   ============================================================ */
+
+.evento-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: center;
+  font-size: .85rem;
+}
+
+.evento-stats span {
+  background: var(--hover);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.evento-stats .money {
+  background: rgba(20,168,226,.25);
+  color: var(--accent);
+}
+
+.evento-stats .text-warning {
+  background: rgba(255,193,7,.25);
+  color: var(--warning);
+}
+
+/* ============================================================
+   EVENT BODY
+   ============================================================ */
+
+.evento-body {
+  padding: .75rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.evento-body h5 {
+  font-size: .95rem;
+  font-weight: 600;
+}
+
+.evento-body h6 {
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   DETAILS UX
+   ============================================================ */
+
+details {
+  border-radius: 8px;
+}
+
+details summary {
+  cursor: pointer;
+  padding: .4rem .6rem;
+  border-radius: 6px;
+  list-style: none;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary {
+  background: var(--hover);
+}
+
+/* ============================================================
+   ESTADO OK
+   ============================================================ */
+
+.detalle-item.ok {
+  background: rgba(25,135,84,.12);
+  border-left: 4px solid var(--success);
+}
+
+/* ============================================================
+   SEPARADOR WARNING
+   ============================================================ */
+
+h6.text-warning {
+  border-top: 1px dashed rgba(255,193,7,.4);
+  padding-top: .5rem;
+  margin-top: 1rem;
+}
+
+/* ============================================================
+   CARD INTERACTION
+   ============================================================ */
+
+.evento-card:hover,
+.metric-card:hover,
+.movimiento-panel:hover {
+  transform: translateY(-2px);
+}
+/* ============================================================
+   BUTTON FIX
+   ============================================================ */
+
+.pro-dashboard .btn,
+.pro-dashboard .btn-sm {
+  border-radius: var(--radius) !important;
+}
+
+/* ============================================================
+   PDF UX
+   ============================================================ */
+
+.lh-pdf-item {
+  transition: all .18s ease;
+}
+
+.lh-pdf-item:hover {
+  background: #eef6ff;
+  border-color: #0d6efd;
+  color: #0d6efd;
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   LIQUIDACIÓN HEADER — PRO
+   ============================================================ */
+
+.liquidacion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--hover);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+body.light .liquidacion-header:hover {
+  background: #f3f6fb;
+}
+
+body.dark .liquidacion-header:hover {
+  background: #1f2226;
+}
+
+/* ============================================================
+   DETALLE COMPRA PRO
+   ============================================================ */
+
+.detalle-item.compra {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  background: rgba(20,168,226,.08);
+  border-left: 4px solid var(--accent);
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+/* ============================================================
+   MOVIMIENTO ITEM
+   ============================================================ */
+
+.mov-item {
+  display: flex;
+  justify-content: space-between;
+
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: .85rem;
+}
+
+.mov-item:last-child {
+  border-bottom: none;
+}
+
+.mov-item strong {
+  font-weight: 600;
+}
+
+.buscador-admin {
+  background-color: #cfd0d11e !important;
+}
