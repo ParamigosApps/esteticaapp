@@ -7,7 +7,7 @@ const { getAdmin } = require('../_lib/firebaseAdmin')
 
 exports.getAgendaGabinete = onCall(
   { region: 'us-central1' },
-  async request => {
+  async (request) => {
 
     // 🔐 Auth
     if (!request.auth?.uid)
@@ -35,10 +35,10 @@ exports.getAgendaGabinete = onCall(
     const turnos = []
 
     // --------------------------------------------------
-    // 1️⃣ HORARIOS Y BLOQUEOS (subcolecciones)
+    // 1️⃣ HORARIOS Y BLOQUEOS
     // --------------------------------------------------
     await Promise.all(
-      idsValidos.map(async gabineteId => {
+      idsValidos.map(async (gabineteId) => {
 
         // HORARIOS
         const horariosSnap = await db
@@ -77,7 +77,7 @@ exports.getAgendaGabinete = onCall(
     )
 
     // --------------------------------------------------
-    // 2️⃣ TURNOS (query global optimizada)
+    // 2️⃣ TURNOS
     // --------------------------------------------------
     const turnosSnap = await db
       .collection('turnos')
@@ -87,20 +87,28 @@ exports.getAgendaGabinete = onCall(
     turnosSnap.forEach(d => {
       const t = d.data()
 
-if (!['pendiente_pago','pendiente_aprobacion','señado','confirmado'].includes(t.estado))
-  return
+      if (![
+        'pendiente_pago',
+        'pendiente_aprobacion',
+        'señado',
+        'confirmado'
+      ].includes(t.estado)) {
+        return
+      }
 
-turnos.push({
-  id: d.id,
-  gabineteId: t.gabineteId,
+      turnos.push({
+        id: d.id,
+        gabineteId: t.gabineteId,
 
-  inicioMs: Number(t.inicioMs ?? t.inicio?.toMillis?.() ?? null),
-  finMs: Number(t.finMs ?? t.fin?.toMillis?.() ?? null),
+        inicioMs: Number(t.inicioMs ?? t.inicio?.toMillis?.() ?? null),
+        finMs: Number(t.finMs ?? t.fin?.toMillis?.() ?? null),
 
-  estado: t.estado,
-  servicioId: t.servicioId || null,
-});
+        estado: t.estado,
+        servicioId: t.servicioId || null,
+      })
+    })
 
     return { horarios, bloqueos, turnos }
+
   }
 )

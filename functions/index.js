@@ -53,9 +53,7 @@ exports.crearPagoTurnoTransferencia =
 exports.iniciarPagoTurnoMP =
   require("./turnos/iniciarPagoTurnoMP").iniciarPagoTurnoMP;
 
-  exports.getAgendaGabinete = getAgendaGabinete
-exports.expirarTurnosPendientes =
-  require("./turnos/expirarTurnosPendientes").expirarTurnosPendientes;
+exports.getAgendaGabinete = getAgendaGabinete
 
 // ======================================================
 // ADMIN(CALLABLE)
@@ -121,6 +119,7 @@ exports.processWebhookEvent = onDocumentWritten(
     secrets: [MP_ACCESS_TOKEN, MP_COLLECTOR_ID],
   },
   async (event) => {
+
     const snap = event.data.after
     if (!snap?.exists) return
 
@@ -157,6 +156,7 @@ exports.processWebhookEvent = onDocumentWritten(
     }
 
     try {
+
       const payment = await mpGet(
         `https://api.mercadopago.com/v1/payments/${paymentId}`,
         mpToken
@@ -190,8 +190,11 @@ exports.processWebhookEvent = onDocumentWritten(
       // ================================
       if (payment.status === 'approved') {
 
-        // 🛑 Idempotencia
-       if (pago.mpPaymentId === payment.id && pago.estado === 'aprobado')
+        // Idempotencia fuerte
+        if (
+          pago.mpPaymentId === payment.id &&
+          pago.estado === 'aprobado'
+        ) {
           await snap.ref.update({
             processed: true,
             note: 'already_paid',
@@ -208,7 +211,6 @@ exports.processWebhookEvent = onDocumentWritten(
           updatedAt: now,
         })
 
-        // Confirmar turno
         const turnoRef = db.collection('turnos').doc(pago.turnoId)
         const turnoSnap = await turnoRef.get()
 
@@ -228,23 +230,27 @@ exports.processWebhookEvent = onDocumentWritten(
         payment.status === 'rejected' ||
         payment.status === 'cancelled'
       ) {
+
         await pagoRef.update({
           estado: 'rechazado',
           mpStatus: payment.status,
           mpPaymentId: payment.id,
           updatedAt: now,
         })
+
       }
       // ================================
       // OTHER STATUS
       // ================================
       else {
+
         await pagoRef.update({
           estado: 'pendiente',
           mpStatus: payment.status,
           mpPaymentId: payment.id,
           updatedAt: now,
         })
+
       }
 
       // Marcar webhook procesado
@@ -255,6 +261,7 @@ exports.processWebhookEvent = onDocumentWritten(
       })
 
     } catch (err) {
+
       console.error('❌ webhook error', err)
 
       await snap.ref.update({
@@ -262,7 +269,9 @@ exports.processWebhookEvent = onDocumentWritten(
         error: err.message,
         processedAt: now,
       })
+
     }
+
   }
 )
 

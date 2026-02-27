@@ -1,14 +1,11 @@
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../Firebase.js'
-import { enviarMail } from './mailService'
-import { mailLogin } from './mailTemplates'
 import { swalEditarPerfil } from '../utils/swalUtils'
 import { toastSuccess } from '../utils/toastifyUtils'
 
 export async function editarPerfilUsuario({
   uid,
   nombreActual = '',
-  emailActual = '',
 }) {
   const ref = doc(db, 'usuarios', uid)
   const snap = await getDoc(ref)
@@ -62,14 +59,7 @@ const { value, isConfirmed } = await swalEditarPerfil({
     emailNuevo !== emailAnterior &&
     /^\S+@\S+\.\S+$/.test(emailNuevo)
   ) {
-    await enviarMail({
-      to: emailNuevo,
-      subject: '📩 Email registrado correctamente | AppBar',
-      html: mailLogin({
-        nombre: value.nombre,
-        provider: 'perfil',
-      }),
-    })
+
   }
 
   toastSuccess('Perfil actualizado')
