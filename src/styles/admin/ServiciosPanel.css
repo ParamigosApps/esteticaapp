@@ -17,7 +17,7 @@
 /* ============================= */
 
 .service-card {
-  background: #ffffff;
+  background: var(--color-bg);
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 20px;
@@ -168,6 +168,12 @@
   justify-content: center;
 }
 
+.form-servicio-grid{
+  background-color: var(--color-bg);
+  border: 1px solid var(--border-soft);
+  padding: 12px;
+  border-radius: 10px;
+}
 /* ============================= */
 /* INPUTS */
 /* ============================= */

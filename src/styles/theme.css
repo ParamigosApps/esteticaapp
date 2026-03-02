@@ -15,6 +15,8 @@
   --color-secondary-hover: #f368a6;
 
   --color-accent: #ffd6e8;           /* rosa pastel claro */
+   --color-soft: #ffd6e834; 
+   --color-gray: #cbc5c742; 
 
   --color-success: #4caf7d;
   --color-warning: #f4b740;
@@ -68,14 +70,14 @@
   ====================================== */
 
   --shadow-soft:
-    0 4px 14px rgba(199, 125, 255, 0.08),
+    0 4px 14px rgba(199, 125, 255, 0.10),
     0 1px 2px rgba(0, 0, 0, 0.04);
 
   --shadow-medium:
-    0 8px 24px rgba(199, 125, 255, 0.12);
+    0 8px 24px rgba(199, 125, 255, 0.15);
 
   --shadow-strong:
-    0 14px 36px rgba(199, 125, 255, 0.18);
+    0 14px 36px rgba(199, 125, 255, 0.20);
 
   /* ======================================
      🔵 RADIOS

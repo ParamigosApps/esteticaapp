@@ -41,7 +41,14 @@ export default function MenuAcordeon() {
               {abierto === "turnos" && (
                 <div className="accordion-collapse show">
                   <div className="accordion-body mt-3 mb-3">
-                    {loadingServicios && <p>Cargando servicios...</p>}
+                    {loadingServicios && (
+                      <div
+                        className="d-flex justify-content-center align-items-center"
+                        style={{ minHeight: "70px" }}
+                      >
+                        <p className="text-muted mb-0">Cargando servicios...</p>
+                      </div>
+                    )}
 
                     {!loadingServicios && !servicioSeleccionado && (
                       <div>
@@ -50,17 +57,46 @@ export default function MenuAcordeon() {
                           .map((s) => (
                             <div
                               key={s.id}
+                              className="servicio-card"
                               onClick={() => setServicioSeleccionado(s)}
-                              style={{
-                                padding: "12px",
-                                marginBottom: "10px",
-                                border: "1px solid #eee",
-                                borderRadius: "12px",
-                                cursor: "pointer",
-                              }}
                             >
-                              <h6>{s.nombreServicio}</h6>
-                              <small>{s.duracionMin} min</small>
+                              <div className="servicio-card-header">
+                                <h6 className="servicio-titulo">
+                                  {s.nombreServicio}
+                                </h6>
+                                {s.precio > 0 && (
+                                  <div className="servicio-precio">
+                                    ${s.precio.toLocaleString("es-AR")}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="servicio-meta">
+                                <span className="servicio-profesional">
+                                  con <b>{s.nombreProfesional}</b>
+                                </span>
+                                <span className="servicio-duracion">
+                                  Duración: <b>{s.duracionMin} min</b>
+                                </span>
+                              </div>
+
+                              {s.pedirAnticipo && (
+                                <>
+                                  {" "}
+                                  <span className="servicio-anticipo ">
+                                    Reservas con el {s.porcentajeAnticipo}% del
+                                    total (
+                                    <strong>
+                                      $
+                                      {(
+                                        (s.precio * s.porcentajeAnticipo) /
+                                        100
+                                      ).toLocaleString("es-AR")}
+                                    </strong>
+                                    )
+                                  </span>
+                                </>
+                              )}
                             </div>
                           ))}
                       </div>

@@ -402,6 +402,7 @@ export default function ServiciosPanel() {
     <div className="admin-panel">
       <div className="admin-title">Servicios</div>
 
+      <h6 className="fw-bold">NUEVO SERVICIO</h6>
       <div className="admin-row form-servicio-grid">
         <div className="form-field">
           <label className="admin-label">Servicio</label>
@@ -469,20 +470,20 @@ export default function ServiciosPanel() {
               {pedirAnticipo == true ? "Solicitando seña" : "No pedir seña"}
             </label>
           </div>
-          {pedirAnticipo && (
-            <div className="field-group">
-              <label>Porcentaje seña</label>
-              <input
-                type="number"
-                className="admin-input anticipo"
-                value={porcentajeAnticipo}
-                onChange={(e) => setPorcentajeAnticipo(e.target.value)}
-                placeholder="50"
-                min={5}
-                max={100}
-              />
-            </div>
-          )}
+
+          <div className="field-group">
+            <label>Porcentaje seña</label>
+            <input
+              type="number"
+              className="admin-input anticipo"
+              value={porcentajeAnticipo}
+              onChange={(e) => setPorcentajeAnticipo(e.target.value)}
+              placeholder="50"
+              min={5}
+              max={100}
+              disabled={!pedirAnticipo}
+            />
+          </div>
         </div>
 
         {/* GABINETES */}
@@ -508,6 +509,7 @@ export default function ServiciosPanel() {
         </div>
       </div>
 
+      <h6 className="fw-bold">SERVICIOS CREADOS</h6>
       {servicios.map((s) => (
         <ServicioItem key={s.id} servicio={s} gabinetes={gabinetes} />
       ))}

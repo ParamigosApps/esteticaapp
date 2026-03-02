@@ -56,10 +56,23 @@
 
 /* Contenido principal */
 .admin-main {
-  margin-left: 240px;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
   flex-grow: 1;
   padding: 20px;
   width: 100%;
+}
+
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1400;
+  display: none;
+}
+
+.admin-overlay.active {
+  display: block;
 }
 
 /* ------------------------------------------------------------
@@ -153,7 +166,7 @@
 ------------------------------------------------------------ */
 .admin-content {
   background: #ffffff;
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 10px;
 

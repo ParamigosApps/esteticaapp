@@ -44,9 +44,6 @@ export default function TurnosPanel({ servicio }) {
 
         const result = await getAgendaFn({ gabineteIds });
 
-        console.log("AGENDA BACKEND:", result.data);
-        console.log("TURNOS FRONT:", result.data?.turnos);
-
         if (activo) {
           setAgenda(result.data ?? null);
         }
@@ -216,7 +213,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     );
   if (!agenda) return null;
 
-  const dias = generarProximosDias(10);
+  const dias = generarProximosDias(18);
 
   const slots = generarSlotsDia(agenda, servicio, fechaSeleccionada);
 
@@ -251,12 +248,19 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       : "Pagar y confirmar";
 
   return (
-    <div className="agenda-panel">
-      <h5>
+    <div
+      className="agenda-panel"
+      onClick={(e) => {
+        if (!e.target.closest(".slot")) {
+          setSlotSeleccionado(null);
+        }
+      }}
+    >
+      <h5 className="agenda-titulo">
         <b>{servicio.nombreServicio.toUpperCase()}</b>
       </h5>
       {/* CALENDARIO HORIZONTAL */}
-      <div className="calendario-horizontal mb-2">
+      <div className="calendario-horizontal">
         {dias.map((d) => {
           const activo = d.toDateString() === fechaSeleccionada.toDateString();
 
@@ -284,7 +288,10 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                 deshabilitado ? "disabled" : ""
               }`}
               onClick={() => {
-                if (!deshabilitado) setFechaSeleccionada(d);
+                if (deshabilitado) return;
+
+                setFechaSeleccionada(d);
+                setSlotSeleccionado(null);
               }}
             >
               <div>
@@ -318,14 +325,15 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           <SlotHora
             key={s.inicio}
             slot={s}
+            slotSeleccionado={slotSeleccionado}
             onClick={() => {
               if (s.ocupado) return;
 
               setSlotSeleccionado({
+                ...s,
                 fecha: fechaSeleccionada.toISOString().slice(0, 10),
-                horaInicio: new Date(s.inicio).getTime(),
-                horaFin: new Date(s.fin).getTime(),
-                gabineteId: s.gabineteId,
+                horaInicio: s.inicio,
+                horaFin: s.fin,
               });
             }}
           />
@@ -334,7 +342,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
 
       {/* BOTÓN CONFIRMAR */}
       {slotSeleccionado && (
-        <div className="mt-4 p-3 border rounded-3 bg-light shadow-sm">
+        <div className="resumen-turno mt-4 p-3 ">
           <h6 className="fw-bold mb-2">Resumen del turno</h6>
 
           <div>
@@ -404,14 +412,14 @@ Turno ID: ${data.turnoId.slice(0, 8)}
               </div>
               <div className="mb-3 mt-3">
                 <span className="text-danger fw-semibold">
-                  ¡Este turno requiere de aprobación!
+                  ¡Este turno se confirma por WhatsApp!
                 </span>
               </div>
             </>
           )}
 
           <button
-            className="btn btn-dark w-100"
+            className="swal-btn-confirm d-block mx-auto"
             onClick={handleConfirmacion}
             disabled={loadingReserva}
           >

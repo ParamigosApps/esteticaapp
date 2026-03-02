@@ -454,9 +454,10 @@ export function swalResumenTurno({
   modoReserva,
 }) {
   const esManual = modoReserva === "reserva";
-
+  
+  let tituloSwal = esManual ? "Solicitud de turno":"Confirmación de turno"
   return Swal.fire({
-    title: `<span class="swal-title-main">Confirmar turno</span>`,
+    title: `<span class="swal-title-main">${tituloSwal}</span>`,
     width: "480px",
     showCancelButton: true,
     confirmButtonText: esManual

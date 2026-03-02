@@ -37,7 +37,7 @@ export default function ServiciosAdmin() {
 
   return (
     <div>
-      <h4>Servicios</h4>
+      <h4>Servicios </h4>
 
       <input placeholder="Nombre" onChange={(e) => setNombre(e.target.value)} />
       <input
