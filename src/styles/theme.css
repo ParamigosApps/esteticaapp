@@ -3,22 +3,87 @@
 ===================================================== */
 
 :root {
-  /* 🎯 COLORES PRINCIPALES */
-  --color-primary: #212529;
-  --color-secondary: #e1306c;
-  --color-bg: #f9fafb;
-  --color-card: #ffffff;
 
-  /* 📝 TEXTO */
-  --text-main: #212529;
-  --text-muted: #6b7280;
+  /* ======================================
+     🎀 COLORES BASE (Estética Premium)
+  ====================================== */
 
-  /* 🧊 BORDES */
-  --border-soft: #e9ecef;
+  --color-primary: #c77dff;          /* violeta suave */
+  --color-primary-hover: #b266f5;
 
-  /* 🌫 SOMBRAS */
-  --shadow-soft: 0 4px 12px rgba(0,0,0,.08),
-                 0 1px 2px rgba(0,0,0,.06);
+  --color-secondary: #f78fb3;        /* rosa elegante */
+  --color-secondary-hover: #f368a6;
+
+  --color-accent: #ffd6e8;           /* rosa pastel claro */
+
+  --color-success: #4caf7d;
+  --color-warning: #f4b740;
+  --color-danger: #e57373;
+  --color-info: #64b5f6;
+
+  /* ======================================
+     🧱 SUPERFICIES
+  ====================================== */
+
+  --color-bg: #fdf9ff;               /* fondo muy suave violeta */
+  --color-surface: #ffffff;
+  --color-surface-alt: #f6f1fb;      /* violeta muy claro */
+  --color-surface-soft: #fff3f8;     /* rosita suave */
+
+  /* ======================================
+     📝 TEXTO
+  ====================================== */
+
+  --text-main: #2e2e2e;
+  --text-muted: #7a7a8c;
+  --text-light: #a1a1b5;
+  --text-inverted: #ffffff;
+
+  /* ======================================
+     🔘 BOTONES
+  ====================================== */
+
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-hover: var(--color-primary-hover);
+  --btn-primary-text: #ffffff;
+
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-hover: var(--color-secondary-hover);
+  --btn-secondary-text: #ffffff;
+
+  --btn-soft-bg: var(--color-surface-soft);
+  --btn-soft-hover: #ffe3f1;
+  --btn-soft-text: #c2185b;
+
+  /* ======================================
+     🧊 BORDES
+  ====================================== */
+
+  --border-soft: #f0e6f7;
+  --border-medium: #e4d7f5;
+  --border-strong: #d6c2f0;
+
+  /* ======================================
+     🌫 SOMBRAS (suaves y femeninas)
+  ====================================== */
+
+  --shadow-soft:
+    0 4px 14px rgba(199, 125, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+
+  --shadow-medium:
+    0 8px 24px rgba(199, 125, 255, 0.12);
+
+  --shadow-strong:
+    0 14px 36px rgba(199, 125, 255, 0.18);
+
+  /* ======================================
+     🔵 RADIOS
+  ====================================== */
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 14px;
 }
 
 /* ===================================================

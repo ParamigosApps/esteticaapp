@@ -1,19 +1,3 @@
-/* ============================= */
-/* PANEL BASE */
-/* ============================= */
-
-.admin-panel {
-  padding: 28px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.admin-title {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  letter-spacing: -0.3px;
-}
 
 /* ============================= */
 /* CARD CREAR SERVICIO */
@@ -148,20 +132,7 @@
 /* GABINETES */
 /* ============================= */
 
-.service-gabinetes {
-  display: flex;
-  gap: 14px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
 
-.service-gabinetes label {
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
 
 /* ============================= */
 /* SCHEDULE LIST EDIT MODE */
@@ -191,27 +162,47 @@
 .admin-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 22px;
   align-items: center;
+  margin: 0 auto 15px auto;
+  justify-content: center;
 }
 
 /* ============================= */
 /* INPUTS */
 /* ============================= */
 
-.admin-input {
+.admin-input{
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
   font-size: 14px;
+  font-weight: 700;
   outline: none;
   transition: all 0.15s ease;
-  min-width: 140px;
+
+}
+
+.duracion, .anticipo{
+  max-width: 80px;
+}
+
+.precio-admin{
+  max-width: 90px;
+}
+.reserva{
+  max-width: 230px;
 }
 
 .admin-input:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column; /* 🔥 esto obliga label arriba */
+  gap: 4px;
 }
 
 select,
@@ -220,56 +211,6 @@ input[type="time"] {
   border-radius: 8px;
   border: 1px solid #d1d5db;
   font-size: 13px;
-}
-
-/* ============================= */
-/* BOTONES */
-/* ============================= */
-
-.admin-button {
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.admin-button.primary {
-  background: #2563eb;
-  color: white;
-}
-
-.admin-button.primary:hover {
-  background: #1d4ed8;
-}
-
-.admin-button.secondary {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.admin-button.secondary:hover {
-  background: #d1d5db;
-}
-
-.admin-button.danger {
-  background: #dc2626;
-  color: white;
-}
-
-.admin-button.danger:hover {
-  background: #b91c1c;
-}
-
-.admin-button.success {
-  background: #16a34a;
-  color: white;
-}
-
-.admin-button.success:hover {
-  background: #15803d;
 }
 
 /* ============================= */
@@ -288,8 +229,4 @@ input[type="time"] {
     margin-top: 10px;
   }
 
-  .admin-input,
-  .admin-button {
-    width: 100%;
-  }
 }

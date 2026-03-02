@@ -153,7 +153,7 @@
 ------------------------------------------------------------ */
 .admin-content {
   background: #ffffff;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 10px;
 
@@ -1021,6 +1021,7 @@
   border: 1px solid #333;
 }
 
+
 /* =============================
    LOTES ACCORDION ADMIN
 ============================= */
@@ -1114,3 +1115,252 @@
   color: #474747;
   margin-bottom: 10px;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.admin-panel {
+  padding: 4px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  letter-spacing: -0.3px;
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  width: 220px;
+  background: #111;
+  color: white;
+  padding: 20px;
+}
+
+.admin-sidebar a {
+  display: block;
+  color: white;
+  padding: 8px 0;
+  text-decoration: none;
+}
+
+.admin-sidebar a.active {
+  font-weight: bold;
+  color: #4caf50;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 30px;
+  background: #f5f5f5;
+}
+
+.input-admin{
+  padding: 6px 10px;
+  margin: 0px 8px;
+  border: none;
+  border-radius: var(--radius-2);
+}
+
+
+/* ----------------------------------- TURNOS PANEL ----------------------------------- */
+
+.tabla-turnos-wrapper {
+  background: var(--color-surface);
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+
+/* TABLA BASE */
+.tabla-turnos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+/* HEADER */
+.tabla-turnos thead {
+  background: var(--color-surface-alt);
+}
+
+.tabla-turnos th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* BODY */
+.tabla-turnos td {
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+/* Zebra rows */
+.tabla-turnos tbody tr:nth-child(even) {
+  background: var(--color-surface-alt);
+}
+
+/* Hover */
+.tabla-turnos tbody tr:hover {
+  background: var(--color-surface-soft);
+  transition: background 0.2s ease;
+}
+
+/* Cliente */
+.tabla-turnos td:nth-child(4) {
+  font-weight: 500;
+}
+
+/* Servicio */
+.tabla-turnos td:nth-child(5) {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Horario */
+.tabla-turnos td:nth-child(2) {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Duración */
+.tabla-turnos td:nth-child(3) {
+  color: var(--text-muted);
+}
+
+/* Estado chip ya está estilizado */
+
+/* ACCIONES */
+.tabla-turnos td:last-child {
+  white-space: nowrap;
+}
+
+
+/* BOTONES ADMIN */
+.swal-btn-aprobar {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  padding: 6px 14px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-strong);
+  margin-right: 4px;
+}
+
+.swal-btn-agregar, .swal-btn-guardar {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  padding: 10px 18px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-strong);
+  margin-left: 8px;
+}
+.swal-btn-aprobar:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+.swal-btn-rechazar, .swal-btn-desactivar {
+  background: var(--btn-soft-bg);
+  color: var(--btn-soft-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-strong);
+}
+.swal-btn-eliminar
+{
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-strong);
+}
+
+.swal-btn-editar {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-primary-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-strong);
+}
+
+.swal-btn-rechazar:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ----------------------------------- FIN TURNOS PANEL ----------------------------------- */

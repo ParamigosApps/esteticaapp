@@ -83,6 +83,7 @@ function GabineteItem({ gabinete }) {
 
     for (const dia of dias) {
       await addDoc(collection(db, "gabinetes", gabinete.id, "horarios"), {
+        gabineteId: gabinete.id, // 🔥 agregar esto
         diaSemana: dia,
         desde,
         hasta,
@@ -102,7 +103,7 @@ function GabineteItem({ gabinete }) {
 
   async function eliminarGabinete() {
     const confirmar = window.confirm(
-      `¿Eliminar el gabinete "${gabinete.nombre}"?\n\nSe borrarán también todos sus horarios.`,
+      `¿Eliminar el gabinete "${gabinete.nombreGabinete}"?\n\nSe borrarán también todos sus horarios.`,
     );
     if (!confirmar) return;
 
@@ -112,19 +113,19 @@ function GabineteItem({ gabinete }) {
   return (
     <div className="service-card">
       <div className="service-header">
-        <div className="service-title">{gabinete.nombre}</div>
+        <div className="service-title">{gabinete.nombreGabinete}</div>
 
         <div className="service-actions">
           <button
-            className="admin-button secondary"
+            className="swal-btn-editar"
             onClick={() => setEditando(!editando)}
           >
-            {editando ? "Cerrar" : "✏ Editar"}
+            {editando ? "Cerrar" : "Editar"}
           </button>
 
           {gabinete.activo ? (
             <button
-              className="admin-button danger"
+              className="swal-btn-desactivar"
               onClick={() =>
                 updateDoc(doc(db, "gabinetes", gabinete.id), {
                   activo: false,
@@ -135,7 +136,7 @@ function GabineteItem({ gabinete }) {
             </button>
           ) : (
             <button
-              className="admin-button success"
+              className="swal-btn-desactivar"
               onClick={() =>
                 updateDoc(doc(db, "gabinetes", gabinete.id), {
                   activo: true,
@@ -147,7 +148,7 @@ function GabineteItem({ gabinete }) {
           )}
 
           <button
-            className="admin-button danger"
+            className="swal-btn-eliminar"
             onClick={eliminarGabinete}
             style={{ marginLeft: 8 }}
           >
@@ -235,14 +236,14 @@ export default function GabinetesPanel() {
     if (!nombre.trim()) return;
 
     const yaExisteActivo = gabinetes.some(
-      (g) => g.activo && normalizar(g.nombre) === normalizar(nombre),
+      (g) => g.activo && normalizar(g.nombreGabinete) === normalizar(nombre),
     );
 
     if (yaExisteActivo)
       return alert("Ya existe un gabinete activo con ese nombre");
 
     await addDoc(collection(db, "gabinetes"), {
-      nombre: nombre.trim(),
+      nombreGabinete: nombre.trim(),
       activo: true,
       prioridad: 1,
       creadoEn: serverTimestamp(),
@@ -263,7 +264,7 @@ export default function GabinetesPanel() {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />
-          <button className="admin-button primary" onClick={crearGabinete}>
+          <button className="swal-btn-guardar" onClick={crearGabinete}>
             Crear gabinete
           </button>
         </div>

@@ -1,15 +1,40 @@
 .slot {
-  padding: 10px;
-  margin: 4px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  width: 80px;
+  height: 70px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-2);
 }
 
 .slot.libre {
   background: #e8f7ee;
+
 }
 
 .slot.ocupado {
   background: #f5d6d6;
   cursor: not-allowed;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 4px;
+}
+
+.dia-agenda {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 16px;
+}
+.calendario-horizontal{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 14px auto 8px auto;
+  gap: 2px;
+}
+.dia-btn{
+  background-color: #ea99cc47;
+  width: 50px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-2);
 }

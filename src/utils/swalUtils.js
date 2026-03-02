@@ -1,5 +1,5 @@
 import Swal from 'sweetalert2'
-import { formatearSoloFecha } from './utils'
+
 
 function normalizarFecha(ev) {
   if (!ev?.fechaInicio) return null
@@ -328,159 +328,208 @@ export function swalLoginEmail({
   })
 }
 
-export function mostrarResultadoEntradasGratis({
-  evento,
-  exitosas = [],
-  fallidas = [],
-  onConfirm,
+// =====================================================
+// 💳 TRANSFERENCIA MANUAL TURNO (ESTILO APPBAR)
+// =====================================================
+export function swalTransferenciaTurnoManual({
+  monto,
+  alias,
+  cbu,
+  titular,
+  banco,
+  telefono,
+  mensaje,
+  onConfirmar,
 }) {
-  // ==========================================================
-  // ✅ AGRUPAR EXITOSAS POR LOTE
-  // ==========================================================
-  const okAgrupadas = {}
+  return Swal.fire({
+    title: `<span class="swal-title-main">Transferencia Bancaria</span>`,
+    width: '480px',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    allowEnterKey: false,
 
-  exitosas.forEach(e => {
-    const loteKey =
-      e.lote?.id ||
-      e.loteIndice ||
-      `${e.lote?.nombre || e.loteNombre || e.nombre}-${e.lote?.genero || ''}`
+    html: `
+      <div class="transfer-box">
+        <p class="transfer-monto">
+          <b>Monto a transferir:</b>
+          <span class="transfer-precio">$${monto}</span>
+        </p>
 
-    const loteNombre =
-      e.lote?.nombre || e.loteNombre || e.nombre || 'Entrada general'
-
-    if (!okAgrupadas[loteKey]) {
-      okAgrupadas[loteKey] = {
-        lote: loteNombre,
-        genero: e.lote?.genero || null,
-        generadas: 0,
-      }
-    }
-
-    okAgrupadas[loteKey].generadas += Number(e.cantidad || 1)
-  })
-
-  const okHtml = Object.values(okAgrupadas)
-    .map(
-      info => `
-      <div class="swal-row ok">
-        <div class="swal-row-title">
-          ${info.lote || 'Entrada'}
+        <div class="transfer-datos-dark">
+          <div class="dato-line">
+            <span class="label">Alias</span>
+            <span class="value">${alias}</span>
+          </div>
+          <div class="dato-line">
+            <span class="label">CBU</span>
+            <span class="value">${cbu}</span>
+          </div>
+          <div class="dato-line">
+            <span class="label">Titular</span>
+            <span class="value">${titular}</span>
+          </div>
+          <div class="dato-line">
+            <span class="label">Banco</span>
+            <span class="value">${banco}</span>
+          </div>
         </div>
-        <div class="swal-row-value">
-          x${Number(info.generadas || 0)}
+        <p class="small text-muted">
+          Importante: Enviar comprobante por WhatsApp para que su turno sea confirmado.
+          
+        </p>
+        <button id="comprobante-btn" class="method-btn full-btn azul">
+          Confirmar y enviar comprobante
+        </button>
+
+        <button id="copiar-btn" class="method-btn full-btn celeste">
+          Copiar ALIAS
+        </button>
+
+        <div id="copiado-ok" class="copiado-ok" style="display:none;">
+          Alias copiado
         </div>
+
+        <button id="cerrar-btn" class="method-btn full-btn gris">
+          Cancelar
+        </button>
       </div>
-    `
-    )
-    .join('')
+    `,
 
-  // ==========================================================
-  // ❌ AGRUPAR FALLIDAS POR LOTE + CUPO
-  // ==========================================================
-  const errAgrupadas = {}
+    didOpen: () => {
+      const copiarBtn = document.getElementById('copiar-btn')
+      const compBtn = document.getElementById('comprobante-btn')
+      const cerrarBtn = document.getElementById('cerrar-btn')
 
-  fallidas.forEach(e => {
-    const lote = e.lote?.nombre || e.loteNombre || e.nombre || 'Entrada general'
-
-    if (!errAgrupadas[lote]) {
-      errAgrupadas[lote] = {
-        lote,
-        solicitadas: 0,
-        maxPorUsuario: e.maxPorUsuario ?? null,
-        usadas: Number(e.usadasPorUsuario || 0),
-        pendientes: Number(e.pendientesPorUsuario || 0),
-        motivo: e.error || 'No se pudo generar la entrada',
-      }
-    }
-
-    errAgrupadas[lote].solicitadas += Number(e.cantidad || 0)
-  })
-  const errHtml = Object.values(errAgrupadas)
-    .map(e => {
-      let detalle = ''
-
-      if (Number.isFinite(e.maxPorUsuario)) {
-        const disponibles = e.maxPorUsuario - e.usadas - e.pendientes
-
-        if (disponibles > 0) {
-          detalle = `
-          Tenés ${e.usadas} ·
-          Solicitaste ${e.solicitadas} ·
-          Podés solicitar hasta ${disponibles}
-        `
-        } else {
-          detalle = `
-          Ya alcanzaste el máximo permitido (${e.maxPorUsuario})
-        `
+      if (copiarBtn) {
+        copiarBtn.onclick = async () => {
+          await navigator.clipboard.writeText(alias)
+          const ok = document.getElementById('copiado-ok')
+          if (ok) ok.style.display = 'block'
+          setTimeout(() => {
+            if (ok) ok.style.display = 'none'
+          }, 1800)
         }
       }
 
-      return `
-      <div class="swal-row error">
-        <div class="swal-row-title">${e.lote}</div>
-        <div class="swal-row-sub">
-          ${e.motivo}
-          ${detalle ? `<div class="swal-row-hint">${detalle}</div>` : ''}
-        </div>
-      </div>
-    `
-    })
-    .join('')
+      if (compBtn) {
+        compBtn.onclick = async () => {
+          try {
+            if (typeof onConfirmar === 'function') {
+              await onConfirmar()
+            }
 
-  // ==========================================================
-  // 🎨 HTML FINAL
-  // ==========================================================
-  const html = `
-    <div class="swal-event-header">
-  <h2>🎟 ${evento?.nombre || 'Evento'}</h2>
-  ${
-    evento?.fechaInicio
-      ? `<small>${formatearSoloFecha(evento.fechaInicio)}</small>`
-      : ''
-  }
-</div>
+            if (telefono) {
+              window.open(
+                `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`,
+                '_blank'
+              )
+            }
 
-${
-  okHtml
-    ? `<div class="swal-block">
-      <h4 class="swal-block-title success">Entradas confirmadas</h4>
-      ${okHtml}
-    </div>`
-    : ''
-}
+            Swal.close()
+          } catch (e) {
+            console.error('Error confirmando turno manual', e)
+          }
+        }
+      }
 
-${
-  errHtml
-    ? `<div class="swal-block">
-      <h4 class="swal-block-title error">Entradas no generadas</h4>
-      ${errHtml}
-    </div>`
-    : ''
-}
-  `
-
-  // ==========================================================
-  // 🔔 SWAL FINAL
-  // ==========================================================
-  return Swal.fire({
-    icon: fallidas.length > 0 ? 'warning' : 'success',
-    title: 'Resultado de tu solicitud',
-    html,
-    showCancelButton: true,
-    confirmButtonText: 'Ir a mis entradas',
-    cancelButtonText: 'Cerrar',
-    buttonsStyling: false,
-    reverseButtons: true,
-    customClass: {
-      popup: 'swal-resultado-entradas',
-      confirmButton: 'swal-btn-confirm',
-      cancelButton: 'swal-btn-cancel',
+      if (cerrarBtn) {
+        cerrarBtn.onclick = () => Swal.close()
+      }
     },
-  }).then(res => {
-    if (res.isConfirmed && typeof onConfirm === 'function') {
-      onConfirm()
-    }
   })
+}
+
+// =====================================================
+// 🗓 RESUMEN TURNO
+// =====================================================
+export function swalResumenTurno({
+  servicio,
+  profesional,
+  fecha,
+  horaInicio,
+  horaFin,
+  duracion,
+  precio,
+  modoReserva,
+}) {
+  const esManual = modoReserva === "reserva";
+
+  return Swal.fire({
+    title: `<span class="swal-title-main">Confirmar turno</span>`,
+    width: "480px",
+    showCancelButton: true,
+    confirmButtonText: esManual
+      ? "Confirmar por WhatsApp"
+      : "Pagar y confirmar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+    buttonsStyling: false,
+
+    customClass: {
+      popup: "swal-popup-custom",
+      confirmButton: esManual
+        ? "swal-btn-confirm"
+        : "swal-btn-confirm-dark",
+      cancelButton: "swal-btn-cancel",
+    },
+
+    html: `
+      <div class="swal-turno-container">
+
+        <div class="swal-turno-header">
+          <div class="swal-servicio">${servicio}</div>
+          <div class="swal-profesional">con <b>${profesional}</b></div>
+        </div>
+
+        <div class="swal-turno-body">
+
+          <div class="swal-row">
+            <div class="swal-label">📅 Fecha</div>
+            <div class="swal-value">${fecha}</div>
+          </div>
+
+          <div class="swal-row">
+            <div class="swal-label">⏰ Horario</div>
+            <div class="swal-value">${horaInicio} - ${horaFin}</div>
+          </div>
+
+          <div class="swal-row">
+            <div class="swal-label">⏳ Duración</div>
+            <div class="swal-value">${duracion} min</div>
+          </div>
+
+          ${
+            precio > 0
+              ? `
+              <div class="swal-row precio-row">
+                <div class="swal-label">💳 Precio</div>
+                <div class="swal-value precio">$${precio}</div>
+              </div>
+              `
+              : ""
+          }
+
+        </div>
+
+        <div class="swal-turno-footer ${
+          esManual ? "manual" : "automatico"
+        }">
+          ${
+            esManual
+              ? `
+              ⚠️ Este turno requiere confirmación manual. 
+              Un administrador verificará disponibilidad y te responderá por WhatsApp.
+              `
+              : `
+              Serás redirigido a MercadoPago para completar el pago y confirmar el turno.
+              `
+          }
+        </div>
+
+      </div>
+    `,
+  });
 }
 
 export function swalConfirmWarningHtml({
@@ -584,3 +633,5 @@ export function swalLimitePedidos() {
     buttonsStyling: false,
   })
 }
+
+

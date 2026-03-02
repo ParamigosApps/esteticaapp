@@ -72,9 +72,9 @@
 
 .service-row {
   display: flex;
-  gap: 16px;
+  gap: 16px ;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 2px;
 }
 
 .field-group {
@@ -110,6 +110,7 @@
 .checkbox-inline {
   display: flex;
   align-items: center;
+  padding: auto;
   gap: 8px;
   font-weight: 500;
   cursor: pointer;
@@ -127,10 +128,18 @@
 
 /* Gabinetes */
 .service-gabinetes {
-  margin-top: 12px;
   display: flex;
+  gap: 14px;
+  margin-top: 6;
   flex-wrap: wrap;
-  gap: 12px;
+}
+
+.service-gabinetes label {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
 .gabinete-checkbox {

@@ -25,15 +25,24 @@ function normalizar(str) {
 function ServicioItem({ servicio, gabinetes }) {
   const [editando, setEditando] = useState(false);
 
-  const [nombre, setNombre] = useState(servicio.nombre);
+  const [nombreServicio, setNombreServicio] = useState(
+    servicio.nombreServicio || "",
+  );
+  const [nombreProfesional, setNombreProfesional] = useState(
+    servicio.nombreProfesional || "",
+  );
   const [duracion, setDuracion] = useState(servicio.duracionMin);
   const [precio, setPrecio] = useState(servicio.precio);
-  const [requiereSenaOnline, setRequiereSenaOnline] = useState(
-    servicio.requiereSenaOnline || false,
+  const [modoReserva, setModoReserva] = useState(
+    servicio.modoReserva || "automatico",
   );
 
-  const [porcentajeSena, setPorcentajeSena] = useState(
-    servicio.porcentajeSena || 30,
+  const [pedirAnticipo, setPedirAnticipo] = useState(
+    servicio.pedirAnticipo || false,
+  );
+
+  const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(
+    servicio.porcentajeAnticipo || 50,
   );
 
   const [seleccionados, setSeleccionados] = useState(
@@ -47,23 +56,26 @@ function ServicioItem({ servicio, gabinetes }) {
   }
 
   async function guardarCambios() {
-    if (!nombre.trim()) return alert("El servicio necesita nombre");
+    if (!nombreServicio.trim()) return alert("El servicio necesita nombre");
     if (seleccionados.length === 0)
       return alert("Debe tener al menos un gabinete");
 
     await updateDoc(doc(db, "servicios", servicio.id), {
-      nombre: nombre.trim(),
+      nombreServicio: nombreServicio.trim(),
+      nombreProfesional: nombreProfesional.trim(),
       duracionMin: Number(duracion),
       precio: Number(precio),
-      requiereSenaOnline,
-      porcentajeSena: requiereSenaOnline ? Number(porcentajeSena) : null,
+      modoReserva,
+      pedirAnticipo,
+      porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
       gabinetes: seleccionados
         .map((id) => {
           const g = gabinetes.find((x) => x.id === id);
           if (!g) return null;
+
           return {
             id: g.id,
-            nombre: g.nombre ?? "",
+            nombreGabinete: g.nombreGabinete ?? "",
           };
         })
         .filter(Boolean),
@@ -75,7 +87,7 @@ function ServicioItem({ servicio, gabinetes }) {
 
   async function desactivarServicio() {
     const confirmar = window.confirm(
-      `¿Desactivar el servicio "${servicio.nombre}"?`,
+      `¿Desactivar el servicio "${servicio.nombreServicio}"?`,
     );
     if (!confirmar) return;
 
@@ -106,21 +118,21 @@ function ServicioItem({ servicio, gabinetes }) {
       {/* HEADER */}
       <div className="service-header">
         <div className="service-title">
-          {servicio.nombre}
+          Servicio: <b>{servicio.nombreServicio}</b>
           {!servicio.activo && <span className="badge inactive">Inactivo</span>}
         </div>
 
         <div className="service-actions">
           <button
-            className="admin-button secondary"
+            className="swal-btn-editar"
             onClick={() => setEditando(!editando)}
           >
-            ✏ Editar
+            Editar
           </button>
 
           {servicio.activo ? (
             <button
-              className="admin-button danger"
+              className="swal-btn-desactivar"
               onClick={desactivarServicio}
             >
               Desactivar
@@ -140,7 +152,7 @@ function ServicioItem({ servicio, gabinetes }) {
               </button>
 
               <button
-                className="admin-button danger"
+                className="swal-btn-eliminar"
                 onClick={eliminarServicio}
                 style={{ marginLeft: 8 }}
               >
@@ -153,15 +165,22 @@ function ServicioItem({ servicio, gabinetes }) {
 
       {/* INFO */}
       <div className="service-info">
+        {servicio.nombreProfesional && (
+          <span>
+            Profesional: <strong>{servicio.nombreProfesional}</strong>
+          </span>
+        )}
         <span>
-          <strong>{servicio.duracionMin}</strong> min
+          Duración: <strong>{servicio.duracionMin}</strong> min
         </span>
         <span>
-          <strong>${servicio.precio}</strong>
+          Valor: <strong>${servicio.precio}</strong>
         </span>
         <span>
           Gabinetes:{" "}
-          {servicio.gabinetes?.map((g) => g.nombre).join(", ") || "—"}
+          <strong>
+            {servicio.gabinetes?.map((g) => g.nombreGabinete).join(", ") || "—"}
+          </strong>
         </span>
       </div>
 
@@ -171,12 +190,18 @@ function ServicioItem({ servicio, gabinetes }) {
           {/* FILA 1 */}
           <div className="service-row">
             <div className="field-group">
-              <label>Nombre:</label>
+              <label>Servicio:</label>
               <input
-                className="admin-input"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Limpieza facial profunda"
+                className="admin-input servicio"
+                value={nombreServicio}
+                onChange={(e) => setNombreServicio(e.target.value)}
+              />
+
+              <label>Profesional:</label>
+              <input
+                className="admin-input profesional"
+                value={nombreProfesional}
+                onChange={(e) => setNombreProfesional(e.target.value)}
               />
             </div>
 
@@ -184,7 +209,7 @@ function ServicioItem({ servicio, gabinetes }) {
               <label>Duración (min):</label>
               <input
                 type="number"
-                className="admin-input"
+                className="admin-input duracion"
                 value={duracion}
                 onChange={(e) => setDuracion(e.target.value)}
                 placeholder="60"
@@ -198,7 +223,7 @@ function ServicioItem({ servicio, gabinetes }) {
                 <span>$</span>
                 <input
                   type="number"
-                  className="admin-input"
+                  className="admin-input precio-admin"
                   value={precio}
                   onChange={(e) => setPrecio(e.target.value)}
                   placeholder="12000"
@@ -210,29 +235,43 @@ function ServicioItem({ servicio, gabinetes }) {
 
           {/* FILA 2 — SEÑA */}
           <div className="service-row service-sena-row">
-            <label className="checkbox-inline">
+            <label className="checkbox-inline text-muted">
               <input
                 type="checkbox"
-                checked={requiereSenaOnline}
-                onChange={(e) => setRequiereSenaOnline(e.target.checked)}
+                checked={pedirAnticipo}
+                onChange={(e) => setPedirAnticipo(e.target.checked)}
               />
-              Pedir seña online
+              {pedirAnticipo == true ? "Solicitando seña" : "No pedir seña"}
             </label>
 
-            {requiereSenaOnline && (
-              <div className="sena-percentage">
-                <span>% de la seña:</span>
+            {pedirAnticipo && (
+              <div className="field-group">
+                <label>Modo de reserva:</label>
                 <input
                   type="number"
-                  className="admin-input small-input"
-                  value={porcentajeSena}
-                  onChange={(e) => setPorcentajeSena(e.target.value)}
+                  className="admin-input seña"
+                  value={porcentajeAnticipo}
+                  onChange={(e) => setPorcentajeAnticipo(e.target.value)}
                   placeholder="50"
                   min={5}
                   max={100}
                 />
               </div>
             )}
+            {/* MODO DE RESERVA */}
+            <div className="service-row">
+              <div className="field-group">
+                <label>Modo de reserva:</label>
+                <select
+                  className="admin-input reserva"
+                  value={modoReserva}
+                  onChange={(e) => setModoReserva(e.target.value)}
+                >
+                  <option value="automatico">Confirmación automática</option>
+                  <option value="reserva">Requiere aprobación</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* GABINETES */}
@@ -244,19 +283,19 @@ function ServicioItem({ servicio, gabinetes }) {
                   checked={seleccionados.includes(g.id)}
                   onChange={() => toggleGabinete(g.id)}
                 />
-                {g.nombre}
+                {g.nombreGabinete}
               </label>
             ))}
           </div>
 
           {/* BOTONES */}
           <div className="service-editor-actions">
-            <button className="admin-button primary" onClick={guardarCambios}>
+            <button className="swal-btn-guardar" onClick={guardarCambios}>
               Guardar cambios
             </button>
 
             <button
-              className="admin-button secondary"
+              className="swal-btn-cancel"
               onClick={() => setEditando(false)}
             >
               Cancelar
@@ -275,9 +314,14 @@ export default function ServiciosPanel() {
   const [gabinetes, setGabinetes] = useState([]);
   const [servicios, setServicios] = useState([]);
 
-  const [nombre, setNombre] = useState("");
+  const [nombreServicio, setNombreServicio] = useState("");
+  const [nombreProfesional, setNombreProfesional] = useState("");
   const [duracion, setDuracion] = useState(60);
   const [precio, setPrecio] = useState(0);
+  const [modoReserva, setModoReserva] = useState("reserva");
+  const [pedirAnticipo, setPedirAnticipo] = useState(false);
+  const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(50);
+
   const [seleccionados, setSeleccionados] = useState([]);
 
   useEffect(() => {
@@ -296,7 +340,7 @@ export default function ServiciosPanel() {
         id: d.id,
         ...d.data(),
       }));
-      data.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      data.sort((a, b) => a.nombreServicio.localeCompare(b.nombreServicio));
       setServicios(data);
     });
   }, []);
@@ -308,23 +352,28 @@ export default function ServiciosPanel() {
   }
 
   async function crearServicio() {
-    if (!nombre.trim() || seleccionados.length === 0) return;
+    if (!nombreServicio.trim() || seleccionados.length === 0) return;
 
     const yaExisteActivo = servicios.some(
-      (s) => s.activo && normalizar(s.nombre) === normalizar(nombre),
+      (s) =>
+        s.activo && normalizar(s.nombreServicio) === normalizar(nombreServicio),
     );
 
     if (yaExisteActivo)
-      return alert("Ya existe un servicio activo con ese nombre");
+      return alert("Ya existe un servicio activo con ese nombreServicio");
 
     if (duracion <= 0) return alert("Duración inválida");
     if (precio < 0) return alert("Precio inválido");
 
     await addDoc(collection(db, "servicios"), {
-      nombre: nombre.trim(),
-      nombreNormalizado: normalizar(nombre),
+      nombreServicio: nombreServicio.trim(),
+      nombreServicioNormalizado: normalizar(nombreServicio),
+      nombreProfesional: nombreProfesional.trim(),
       duracionMin: Number(duracion),
       precio: Number(precio),
+      modoReserva,
+      pedirAnticipo,
+      porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
       gabinetes: seleccionados
         .map((id) => {
           const g = gabinetes.find((x) => x.id === id);
@@ -332,7 +381,7 @@ export default function ServiciosPanel() {
 
           return {
             id: g.id,
-            nombre: g.nombre ?? "",
+            nombreGabinete: g.nombreGabinete ?? "",
           };
         })
         .filter(Boolean),
@@ -340,9 +389,12 @@ export default function ServiciosPanel() {
       creadoEn: serverTimestamp(),
     });
 
-    setNombre("");
+    setNombreServicio("");
+    setNombreProfesional("");
     setDuracion(60);
     setPrecio(0);
+    setPedirAnticipo(false);
+    setPorcentajeAnticipo(50);
     setSeleccionados([]);
   }
 
@@ -350,47 +402,109 @@ export default function ServiciosPanel() {
     <div className="admin-panel">
       <div className="admin-title">Servicios</div>
 
-      <div className="admin-card">
-        <div className="admin-row">
+      <div className="admin-row form-servicio-grid">
+        <div className="form-field">
+          <label className="admin-label">Servicio</label>
           <input
-            className="admin-input"
+            className="admin-input servicio"
             placeholder="Nombre del servicio"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
+            value={nombreServicio}
+            onChange={(e) => setNombreServicio(e.target.value)}
           />
+        </div>
 
+        <div className="form-field">
+          <label>Profesional</label>
           <input
-            className="admin-input"
+            className="admin-input profesional"
+            placeholder="Nombre del profesional"
+            value={nombreProfesional}
+            onChange={(e) => setNombreProfesional(e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label>Duración (min)</label>
+          <input
+            className="admin-input duracion"
             type="number"
             value={duracion}
             onChange={(e) => setDuracion(e.target.value)}
-            placeholder="Duración (min)"
+            placeholder="Ej: 60"
           />
+        </div>
 
+        <div className="form-field">
+          <label>Precio</label>
           <input
-            className="admin-input"
+            className="admin-input precio-admin"
             type="number"
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
-            placeholder="Precio"
+            placeholder="$"
           />
-
-          <button className="admin-button primary" onClick={crearServicio}>
-            Crear
-          </button>
         </div>
 
-        <div className="admin-row" style={{ marginTop: 8 }}>
-          {gabinetes.map((g) => (
-            <label key={g.id}>
+        <div className="form-field">
+          <label>Modo de reserva</label>
+          <select
+            className="admin-input reserva"
+            value={modoReserva}
+            onChange={(e) => setModoReserva(e.target.value)}
+          >
+            <option value="automatico">Confirmación automática</option>
+            <option value="reserva">Requiere aprobación</option>
+          </select>
+        </div>
+        {/* FILA 2 — SEÑA */}
+        <div className="service-row service-sena-row">
+          <div className="field-group">
+            <label>¿Pedir seña?</label>
+            <label className="checkbox-inline text-muted">
               <input
                 type="checkbox"
-                checked={seleccionados.includes(g.id)}
-                onChange={() => toggleGabinete(g.id)}
+                checked={pedirAnticipo}
+                onChange={(e) => setPedirAnticipo(e.target.checked)}
               />
-              {g.nombre}
+              {pedirAnticipo == true ? "Solicitando seña" : "No pedir seña"}
             </label>
-          ))}
+          </div>
+          {pedirAnticipo && (
+            <div className="field-group">
+              <label>Porcentaje seña</label>
+              <input
+                type="number"
+                className="admin-input anticipo"
+                value={porcentajeAnticipo}
+                onChange={(e) => setPorcentajeAnticipo(e.target.value)}
+                placeholder="50"
+                min={5}
+                max={100}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* GABINETES */}
+        <div className="field-group">
+          <label>Gabinetes a utilizar</label>
+          <div className="service-gabinetes">
+            {gabinetes.map((g) => (
+              <label key={g.id} className="gabinete-checkbox">
+                <input
+                  type="checkbox"
+                  checked={seleccionados.includes(g.id)}
+                  onChange={() => toggleGabinete(g.id)}
+                />
+                {g.nombreGabinete}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="form-field button-field">
+          <button className="swal-btn-agregar" onClick={crearServicio}>
+            Crear servicio
+          </button>
         </div>
       </div>
 

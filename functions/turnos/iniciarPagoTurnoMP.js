@@ -131,9 +131,9 @@ const pref = await preference.create({
     ],
     external_reference: pagoRef.id,
     back_urls: {
-      success: `${frontUrl}/turno-resultado`,
-      failure: `${frontUrl}/turno-resultado`,
-      pending: `${frontUrl}/turno-resultado`,
+      success: `${frontUrl}/pago-resultado`,
+      failure: `${frontUrl}/pago-resultado`,
+      pending: `${frontUrl}/pago-resultado`,
     },
     auto_return: "approved",
   },

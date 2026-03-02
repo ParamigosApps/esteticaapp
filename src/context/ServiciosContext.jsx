@@ -23,7 +23,7 @@ export function ServiciosProvider({ children }) {
     const q = query(
       collection(db, "servicios"),
       where("activo", "==", true),
-      orderBy("nombre"),
+      orderBy("nombreServicio"),
     );
 
     const unsub = onSnapshot(

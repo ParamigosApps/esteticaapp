@@ -20,6 +20,7 @@ export default function MenuAcordeon() {
   const toggle = (k) => setAbierto((p) => (p === k ? null : k));
 
   const { servicios, loadingServicios } = useServicios();
+  console.log("SERVICIOS:", servicios);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
 
   return (
@@ -44,29 +45,31 @@ export default function MenuAcordeon() {
 
                     {!loadingServicios && !servicioSeleccionado && (
                       <div>
-                        {servicios.map((s) => (
-                          <div
-                            key={s.id}
-                            onClick={() => setServicioSeleccionado(s)}
-                            style={{
-                              padding: "12px",
-                              marginBottom: "10px",
-                              border: "1px solid #eee",
-                              borderRadius: "12px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <h6>{s.nombre}</h6>
-                            <small>{s.duracionMin} min</small>
-                          </div>
-                        ))}
+                        {servicios
+                          .filter((s) => s.activo)
+                          .map((s) => (
+                            <div
+                              key={s.id}
+                              onClick={() => setServicioSeleccionado(s)}
+                              style={{
+                                padding: "12px",
+                                marginBottom: "10px",
+                                border: "1px solid #eee",
+                                borderRadius: "12px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <h6>{s.nombreServicio}</h6>
+                              <small>{s.duracionMin} min</small>
+                            </div>
+                          ))}
                       </div>
                     )}
 
                     {servicioSeleccionado && (
                       <>
                         <button
-                          className="btn btn-sm btn-outline-secondary mb-3"
+                          className="btn btn-sm btn-outline-secondary mb-2"
                           onClick={() => setServicioSeleccionado(null)}
                         >
                           ← Volver

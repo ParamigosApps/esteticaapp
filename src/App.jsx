@@ -5,8 +5,14 @@ import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 import LoginEmpleado from "./pages/LoginEmpleado.jsx";
+
 import AdminRoute from "./components/admin/AdminRoute.jsx";
+import AdminPage from "./components/admin/AdminPage.jsx";
 import AdminDashboard from "./components/admin/AdminDashboard.jsx";
+import TurnosAdminPanel from "./components/admin/TurnosAdminPanel.jsx";
+import ServiciosPanel from "./components/admin/ServiciosPanel.jsx";
+import GabinetesPanel from "./components/admin/GabinetesPanel.jsx";
+
 import { ServiciosProvider } from "./context/ServiciosContext";
 
 import PagoResultado from "./pages/PagoResultado.jsx";
@@ -29,9 +35,15 @@ export default function App() {
           {/* Login empleados */}
           <Route path="/acceso" element={<LoginEmpleado />} />
 
-          {/* Panel admin protegido */}
+          {/* ADMIN PROTEGIDO */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminPage />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="turnos" element={<TurnosAdminPanel />} />
+              <Route path="servicios" element={<ServiciosPanel />} />
+              <Route path="gabinetes" element={<GabinetesPanel />} />
+            </Route>
           </Route>
 
           {/* Público */}

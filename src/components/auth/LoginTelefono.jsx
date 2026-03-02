@@ -18,7 +18,6 @@ export default function LoginTelefono() {
     setEnviando(true);
 
     try {
-      console.log("caca");
       showLoading({
         title: "Enviando mensaje",
         text: "Aguarda unos instantes...",
@@ -27,6 +26,7 @@ export default function LoginTelefono() {
       setConfirmacion(res);
       Swal.fire("SMS enviado", "Revisá tu teléfono", "success");
     } finally {
+      hideLoading();
       setEnviando(false);
     }
   }
