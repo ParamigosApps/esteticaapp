@@ -39,23 +39,20 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("permission-denied", "No autorizado");
     }
 
-    if (turno.estado !== "pendiente_pago") {
+    if (turno.estado !== "pendiente_pago_mp") {
       throw new HttpsError(
         "failed-precondition",
         `Estado inválido: ${turno.estado}`
       );
     }
 
-    if (!turno.requiereSena || !turno.montoSena) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Este turno no requiere seña"
-      );
-    }
+  if (!turno.pedirAnticipo || !turno.montoAnticipo) {
+    throw new HttpsError("failed-precondition", "Este turno no requiere seña");
+  }
 
     // ⛔ Si ya venció
     if (turno.venceEn && turno.venceEn < Date.now()) {
-      throw new HttpsError("failed-precondition", "Turno vencido");
+      throw new HttpsError("failed-precondition", "Turno expirado");
     }
 
     if (turno.pagoId) {
@@ -82,7 +79,7 @@ await pagoRef.set({
   metodo: "mp",
   estado: "pendiente",
 
-  monto: Number(turno.montoSena),
+  monto: Number(turno.montoAnticipo),
 
   mpPreferenceId: null,
   mpInitPoint: null,
@@ -122,25 +119,25 @@ await turnoRef.update({
 
     const preference = new Preference(client);
 
-    const pref = await preference.create({
-      body: {
-        items: [
-          {
-            title: `Seña turno - ${turno.servicioNombre}`,
-            quantity: 1,
-            unit_price: Number(turno.montoSena),
-            currency_id: "ARS",
-          },
-        ],
-        external_reference: pagoRef.id, // 🔑 CLAVE
-        back_urls: {
-          success: `${frontUrl}/turno-resultado`,
-          failure: `${frontUrl}/turno-resultado`,
-          pending: `${frontUrl}/turno-resultado`,
-        },
-        auto_return: "approved",
+const pref = await preference.create({
+  body: {
+    items: [
+      {
+        title: `Seña turno - ${turno.nombreServicio || "Servicio"}`,
+        quantity: 1,
+        unit_price: Number(turno.montoAnticipo),
+        currency_id: "ARS",
       },
-    });
+    ],
+    external_reference: pagoRef.id,
+    back_urls: {
+      success: `${frontUrl}/turno-resultado`,
+      failure: `${frontUrl}/turno-resultado`,
+      pending: `${frontUrl}/turno-resultado`,
+    },
+    auto_return: "approved",
+  },
+});
 
     await pagoRef.update({
   mpPreferenceId: pref.id || null,

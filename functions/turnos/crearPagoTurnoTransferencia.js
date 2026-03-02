@@ -36,21 +36,22 @@ exports.crearPagoTurnoTransferencia = onCall(
       throw new HttpsError("permission-denied", "No autorizado")
     }
 
-    if (turno.estado !== "pendiente_pago") {
+    if (turno.estado !== "pendiente_pago_mp") {
       throw new HttpsError(
         "failed-precondition",
         `Estado inválido: ${turno.estado}`
       )
     }
 
-if (!turno.requiereSena || !Number(turno.montoSena)) {      throw new HttpsError(
+if (!turno.pedirAnticipo || !Number(turno.montoSena)) {      throw new HttpsError(
         "failed-precondition",
         "Este turno no requiere seña"
       )
     }
 
     // ⛔ Si ya venció el hold
-if (turno.venceEn && turno.venceEn <= Date.now()) {      throw new HttpsError("failed-precondition", "Turno vencido")
+if (turno.venceEn && turno.venceEn <= Date.now()) {
+        throw new HttpsError("failed-precondition", "Turno expirado")
     }
 
     // 🔐 Crear documento pago_turno
@@ -76,6 +77,7 @@ if (turno.venceEn && turno.venceEn <= Date.now()) {      throw new HttpsError("f
       pagoId: pagoRef.id,
       metodoPago: "transferencia",
       estado: "pendiente_aprobacion",
+      venceEn: null,
       updatedAt: Timestamp.now(),
     })
 

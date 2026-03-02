@@ -32,7 +32,6 @@ const MP_COLLECTOR_ID = defineSecret('MP_COLLECTOR_ID')
 // ======================================================
 // TURNOS
 // ======================================================
-const { crearTurnoHold } = require('./turnos/crearTurnoHold')
 const { getAgendaGabinete } = require('./turnos/getAgendaGabinete')
 
 
@@ -47,7 +46,8 @@ const { confirmarPagoTurno } = require('./admin/confirmarPagoTurno')
 // ======================================================
 // TURNOS (CALLABLE)
 // ======================================================
-exports.crearTurnoHold = crearTurnoHold
+exports.crearTurnoInteligente =
+  require("./turnos/crearTurnoInteligente").crearTurnoInteligente;
 exports.crearPagoTurnoTransferencia =
   require('./turnos/crearPagoTurnoTransferencia').crearPagoTurnoTransferencia
 exports.iniciarPagoTurnoMP =
@@ -55,7 +55,7 @@ exports.iniciarPagoTurnoMP =
 
 exports.getAgendaGabinete = getAgendaGabinete
 
-// ======================================================
+  // ======================================================
 // ADMIN(CALLABLE)
 // ======================================================
 
@@ -378,7 +378,7 @@ exports.expirarPagosTurnos = onSchedule(
 
       if (turnoId) {
         await db.collection('turnos').doc(turnoId).update({
-          estado: 'vencido',
+          estado: 'expirado',
           venceEn: null,
           updatedAt: FieldValue.serverTimestamp(),
         })

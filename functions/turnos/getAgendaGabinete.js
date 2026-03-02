@@ -38,43 +38,50 @@ exports.getAgendaGabinete = onCall(
     // 1️⃣ HORARIOS Y BLOQUEOS
     // --------------------------------------------------
     await Promise.all(
-      idsValidos.map(async (gabineteId) => {
+  idsValidos.map(async (gabineteId) => {
 
-        // HORARIOS
-        const horariosSnap = await db
-          .collection('gabinetes')
-          .doc(gabineteId)
-          .collection('horarios')
-          .where('activo', '==', true)
-          .get()
+    const gabineteDoc = await db.collection('gabinetes').doc(gabineteId).get();
+    if (!gabineteDoc.exists) return;
 
-        horariosSnap.forEach(d => {
-          horarios.push({
-            id: d.id,
-            gabineteId,
-            ...d.data()
-          })
-        })
+    const gabineteData = gabineteDoc.data();
+    if (gabineteData.activo === false) return;
 
-        // BLOQUEOS
-        const bloqueosSnap = await db
-          .collection('gabinetes')
-          .doc(gabineteId)
-          .collection('bloqueos')
-          .get()
+    // HORARIOS
+    const horariosSnap = await db
+      .collection('gabinetes')
+      .doc(gabineteId)
+      .collection('horarios')
+      .where('activo', '==', true)
+      .get();
 
-        bloqueosSnap.forEach(d => {
-          const b = d.data()
-          bloqueos.push({
-            id: d.id,
-            gabineteId,
-            desde: b.desde?.toMillis?.() || null,
-            hasta: b.hasta?.toMillis?.() || null,
-            motivo: b.motivo || ''
-          })
-        })
-      })
-    )
+    horariosSnap.forEach(d => {
+      horarios.push({
+        id: d.id,
+        gabineteId,
+        ...d.data()
+      });
+    });
+
+    // BLOQUEOS
+    const bloqueosSnap = await db
+      .collection('gabinetes')
+      .doc(gabineteId)
+      .collection('bloqueos')
+      .get();
+
+    bloqueosSnap.forEach(d => {
+      const b = d.data();
+      bloqueos.push({
+        id: d.id,
+        gabineteId,
+        desde: b.desde?.toMillis?.() || null,
+        hasta: b.hasta?.toMillis?.() || null,
+        motivo: b.motivo || ''
+      });
+    });
+
+  })
+);
 
     // --------------------------------------------------
     // 2️⃣ TURNOS
@@ -88,7 +95,7 @@ exports.getAgendaGabinete = onCall(
       const t = d.data()
 
       if (![
-        'pendiente_pago',
+        'pendiente_pago_mp',
         'pendiente_aprobacion',
         'señado',
         'confirmado'
@@ -99,15 +106,14 @@ exports.getAgendaGabinete = onCall(
       turnos.push({
         id: d.id,
         gabineteId: t.gabineteId,
-
-        inicioMs: Number(t.inicioMs ?? t.inicio?.toMillis?.() ?? null),
-        finMs: Number(t.finMs ?? t.fin?.toMillis?.() ?? null),
-
+        fecha: t.fecha || null,
+        horaInicio: Number(t.horaInicio ?? null),
+        horaFin: Number(t.horaFin ?? null),
         estado: t.estado,
         servicioId: t.servicioId || null,
       })
     })
-
+console.log("TURNOS ENVIADOS A FRONT:", turnos)
     return { horarios, bloqueos, turnos }
 
   }
