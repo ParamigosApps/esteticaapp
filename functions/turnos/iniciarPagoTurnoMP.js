@@ -56,7 +56,7 @@ exports.iniciarPagoTurnoMP = onCall(
     }
 
     if (turno.pagoId) {
-  const pagoExistente = await db.collection("pagos_turnos").doc(turno.pagoId).get();
+  const pagoExistente = await db.collection("pagos").doc(turno.pagoId).get();
 
   if (pagoExistente.exists) {
     const p = pagoExistente.data();
@@ -67,7 +67,7 @@ exports.iniciarPagoTurnoMP = onCall(
 }
 
     // 🔐 Crear pago_turno
-    const pagoRef = db.collection("pagos_turnos").doc();
+    const pagoRef = db.collection("pagos").doc();
 
 
 
@@ -138,6 +138,8 @@ const pref = await preference.create({
     auto_return: "approved",
   },
 });
+
+  console.log("front url: "+frontUrl)
 
     await pagoRef.update({
   mpPreferenceId: pref.id || null,

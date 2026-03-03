@@ -225,7 +225,7 @@ export default function TurnosAdminPanel() {
 
           <tbody>
             {turnosFiltrados.map((t) => {
-              const cliente = clientes[t.clienteId];
+              const cliente = clientes[t.uid];
               const gabinete = gabinetes[t.gabineteId];
 
               const ahora = new Date().getTime();
@@ -243,7 +243,9 @@ export default function TurnosAdminPanel() {
                   <td>
                     {cliente?.nombre ||
                       cliente?.email ||
-                      t.clienteId.slice(0, 8)}
+                      t.nombreCliente ||
+                      t.email ||
+                      (t.clienteId || t.uid || "").slice(0, 8)}
                   </td>
 
                   <td>{t.nombreServicio}</td>

@@ -55,7 +55,7 @@ if (turno.venceEn && turno.venceEn <= Date.now()) {
     }
 
     // 🔐 Crear documento pago_turno
-    const pagoRef = db.collection("pagos_turnos").doc()
+    const pagoRef = db.collection("pagos").doc()
 
     await pagoRef.set({
       turnoId,

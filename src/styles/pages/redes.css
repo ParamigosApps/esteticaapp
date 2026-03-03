@@ -34,3 +34,20 @@
   width: 26px;
   height: 26px;
 }
+
+/* =========================================
+   BOTÓN INSTAGRAM — COLOR REAL
+========================================= */
+
+.btn-instagram {
+  border: 1px solid #e1306c;
+  color: #e1306c;
+  background: transparent;
+}
+
+.btn-instagram:hover,
+.btn-instagram:focus {
+  background: #e1306c !important;
+  color: #fff !important;
+  border-color: #e1306c !important;
+}

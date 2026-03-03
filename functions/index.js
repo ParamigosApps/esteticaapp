@@ -28,7 +28,13 @@ const { setAdminClaimHandler } = require('./setAdminClaim')
 const MP_ACCESS_TOKEN = defineSecret('MP_ACCESS_TOKEN')
 const MP_COLLECTOR_ID = defineSecret('MP_COLLECTOR_ID')
 
+// ======================================================
+// WEBHOOK MP
+// ======================================================
+exports.webhookMP =
+  require('./mp/webhookMP').webhookMP;
 
+  
 // ======================================================
 // TURNOS
 // ======================================================
@@ -171,7 +177,7 @@ exports.processWebhookEvent = onDocumentWritten(
         throw new Error('external_reference_missing')
       }
 
-      const pagoRef = db.collection('pagos_turnos').doc(pagoId)
+      const pagoRef = db.collection('pagos').doc(pagoId)
       const pagoSnap = await pagoRef.get()
 
       if (!pagoSnap.exists) {
@@ -292,7 +298,7 @@ exports.reconciliarPagosPendientes = onSchedule(
     if (!token) return
 
     const pagosTurnosSnap = await db
-      .collection('pagos_turnos')
+      .collection('pagos')
       .where('estado', 'in', ['pendiente', 'rechazado'])
       .where('mpPaymentId', '!=', null)
       .limit(20)
@@ -361,7 +367,7 @@ exports.expirarPagosTurnos = onSchedule(
     const ahora = Date.now()
 
     const snap = await db
-      .collection('pagos_turnos')
+      .collection('pagos')
       .where('estado', '==', 'pendiente')
       .where('expiraEn', '<=', ahora)
       .get()

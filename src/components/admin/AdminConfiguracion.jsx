@@ -76,8 +76,6 @@ export default function AdminConfiguracion() {
     redes: false,
     ubicacion: false,
     auth: false,
-    pagos: false,
-    limites: false,
   });
 
   const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }));
@@ -109,23 +107,6 @@ export default function AdminConfiguracion() {
     facebook: false,
   });
 
-  const [pagosConfig, setPagosConfig] = useState({
-    mercadopago: {
-      habilitado: true,
-      obligatorioEntradas: true,
-    },
-    transferencia: {
-      habilitado: false,
-      permitirEntradas: false,
-    },
-  });
-
-  const [limitesCompra, setLimitesCompra] = useState({
-    maxItemsDistintos: 8,
-    maxUnidadesPorProducto: 8,
-    maxUnidadesTotales: 20,
-  });
-
   if (loading) return null;
   if (!user || Number(user.nivel) !== 4) {
     return (
@@ -150,45 +131,6 @@ export default function AdminConfiguracion() {
       };
       await setDoc(ref, base);
       setAuthConfig(base);
-    }
-  }
-
-  async function cargarPagosConfig() {
-    const ref = doc(db, "configuracion", "pagos");
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      setPagosConfig(snap.data());
-    } else {
-      const base = {
-        mercadopago: {
-          habilitado: true,
-          obligatorioEntradas: true,
-        },
-        transferencia: {
-          habilitado: false,
-          permitirEntradas: false,
-        },
-      };
-      await setDoc(ref, base);
-      setPagosConfig(base);
-    }
-  }
-
-  async function cargarLimitesCompra() {
-    const ref = doc(db, "configuracion", "limitesCompra");
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      setLimitesCompra(snap.data());
-    } else {
-      const base = {
-        maxItemsDistintos: 10,
-        maxUnidadesPorProducto: 10,
-        maxUnidadesTotales: 20,
-      };
-      await setDoc(ref, base);
-      setLimitesCompra(base);
     }
   }
 
@@ -219,8 +161,6 @@ export default function AdminConfiguracion() {
     cargarDatosBancarios();
     cargarRedes();
     cargarUbicacion();
-    cargarPagosConfig();
-    cargarLimitesCompra();
   }, [loading, user]);
 
   // ============================================================
@@ -235,14 +175,6 @@ export default function AdminConfiguracion() {
     });
   }
 
-  async function guardarLimitesCompra() {
-    await setDoc(doc(db, "configuracion", "limitesCompra"), limitesCompra);
-
-    swalSuccess({
-      title: "Límites de compra",
-      text: "Configuración actualizada correctamente",
-    });
-  }
   async function guardarBanco() {
     if (!esCbuValido(datosBanco.cbuBanco)) {
       swalError({
@@ -256,15 +188,6 @@ export default function AdminConfiguracion() {
     swalSuccess({
       title: "Datos bancarios",
       text: "Actualizados con exito",
-    });
-  }
-
-  async function guardarPagosConfig() {
-    await setDoc(doc(db, "configuracion", "pagos"), pagosConfig);
-
-    swalSuccess({
-      title: "Métodos de pago",
-      text: "Configuración actualizada correctamente",
     });
   }
 
@@ -365,168 +288,7 @@ export default function AdminConfiguracion() {
           </button>
         </div>
       </Seccion>
-      {/*METODOS DE PAGO*/}
-      <Seccion
-        title="Métodos de pago"
-        open={open.pagos}
-        onToggle={() => toggle("pagos")}
-      >
-        <p className="text-muted mb-3" style={{ fontSize: 13 }}>
-          Habilita/deshabilita metodo de compras de entradas. (Solo recomendado
-          permitir <b>Transferencias</b> para eventos privados). Mercado Pago es
-          obligatorio para la compra de entradas.
-        </p>
 
-        {/* MERCADO PAGO */}
-        <div className="form-check mb-2">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            checked
-            disabled
-          />
-          <label className="form-check-label">
-            Mercado Pago
-            <span className="badge bg-success ms-2">Obligatorio</span>
-          </label>
-        </div>
-
-        {/* TRANSFERENCIA */}
-        <div className="form-check mb-2">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            checked={pagosConfig.transferencia.habilitado}
-            onChange={(e) =>
-              setPagosConfig({
-                ...pagosConfig,
-                transferencia: {
-                  ...pagosConfig.transferencia,
-                  habilitado: e.target.checked,
-                },
-              })
-            }
-          />
-          <label className="form-check-label">Transferencia bancaria</label>
-        </div>
-
-        {/* PERMITIR ENTRADAS POR TRANSFERENCIA */}
-        {pagosConfig.transferencia.habilitado && (
-          <div className="form-check ms-4 mt-2">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              checked={pagosConfig.transferencia.permitirEntradas}
-              onChange={(e) =>
-                setPagosConfig({
-                  ...pagosConfig,
-                  transferencia: {
-                    ...pagosConfig.transferencia,
-                    permitirEntradas: e.target.checked,
-                  },
-                })
-              }
-            />
-            <label className="form-check-label text-warning">
-              Permitir venta de entradas por transferencia (no recomendado en
-              eventos grandes)
-            </label>
-          </div>
-        )}
-
-        <div className="form-divider my-3" />
-
-        <div className="d-flex justify-content-center">
-          <button className="btn swal-btn-confirm" onClick={guardarPagosConfig}>
-            Guardar métodos de pago
-          </button>
-        </div>
-      </Seccion>
-      {/* ===================================================== */}
-      <Seccion
-        title="Límites de compra y stock"
-        open={open.limites}
-        onToggle={() => toggle("limites")}
-      >
-        <p className="text-muted mb-3" style={{ fontSize: 13 }}>
-          Controla cuántos productos puede reservar un cliente para evitar abuso
-          y bloqueo de stock.
-        </p>
-
-        <div className="limites-grid">
-          {/* PRODUCTOS DISTINTOS */}
-          <div className="limite-card">
-            <div className="limite-title">🧾 Productos distintos</div>
-            <div className="limite-desc">
-              Cantidad máxima de productos diferentes en una sola compra.
-            </div>
-            <input
-              className="form-control"
-              type="number"
-              min="1"
-              value={limitesCompra.maxItemsDistintos}
-              onChange={(e) =>
-                setLimitesCompra({
-                  ...limitesCompra,
-                  maxItemsDistintos: Number(e.target.value),
-                })
-              }
-            />
-          </div>
-
-          {/* UNIDADES POR PRODUCTO */}
-          <div className="limite-card">
-            <div className="limite-title">📦 Unidades por producto</div>
-            <div className="limite-desc">
-              Máximo de unidades que un cliente puede comprar del mismo
-              producto.
-            </div>
-            <input
-              className="form-control"
-              type="number"
-              min="1"
-              value={limitesCompra.maxUnidadesPorProducto}
-              onChange={(e) =>
-                setLimitesCompra({
-                  ...limitesCompra,
-                  maxUnidadesPorProducto: Number(e.target.value),
-                })
-              }
-            />
-          </div>
-
-          {/* UNIDADES TOTALES */}
-          <div className="limite-card">
-            <div className="limite-title">🛒 Unidades totales por compra</div>
-            <div className="limite-desc">
-              Límite total sumando todos los productos del carrito.
-            </div>
-            <input
-              className="form-control"
-              type="number"
-              min="1"
-              value={limitesCompra.maxUnidadesTotales}
-              onChange={(e) =>
-                setLimitesCompra({
-                  ...limitesCompra,
-                  maxUnidadesTotales: Number(e.target.value),
-                })
-              }
-            />
-          </div>
-        </div>
-
-        <div className="form-divider my-3" />
-
-        <div className="d-flex justify-content-center">
-          <button
-            className="btn swal-btn-confirm"
-            onClick={guardarLimitesCompra}
-          >
-            Guardar límites
-          </button>
-        </div>
-      </Seccion>
       {/*DATOS BANCARIOS*/}
       <Seccion
         title="Datos bancarios"

@@ -118,23 +118,70 @@
   margin: 0;
 }
 
+.servicio-sub {
+  font-size: 0.9rem;
+  color: #666;
+  opacity: 0.9;
+}
+.servicio-profesional{
+  margin:-12px 0px !important;
+
+}
+.servicio-descripcion {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  opacity: 0.7;
+}
 .servicio-precio {
   font-weight: 700;
   font-size: 0.95rem;
   color: #000;
 }
-
-.servicio-meta {
-  margin-top: 6px;
+.servicio-duracion {
   font-size: 0.85rem;
   color: #666;
   display: flex;
-  gap: 12px;
+  gap: 4px;
+}
+.servicio-tipo {
+  font-size: 0.85rem;
+  color: #666;
+  display: flex;
+  margin-left: 10px;
+  gap: 6px;
+}
+.servicio-meta {
+  font-size: 0.85rem;
+  color: #666;
 }
 
 .servicio-anticipo {
-  margin-top: 6px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #b8860b;
   font-weight: 600;
+}
+
+.servicio-meta-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge-reserva {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sin-reserva {
+  font-size: 0.85rem;
+  color: #b8860b;
+  font-weight: 700;
+}
+
+.reserva-inmediata {
+  color: #4dab53;
+  font-size: 0.85rem;
+  font-weight: 700;
 }

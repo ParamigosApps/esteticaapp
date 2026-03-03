@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useState } from "react";
 
-export default function AdminPage() {
+export default function AdminPage2() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -66,6 +66,14 @@ export default function AdminPage() {
             onClick={cerrarSidebar}
           >
             Gabinetes
+          </Link>
+
+          <Link
+            to="/admin/configuracion"
+            className={linkClass("configuracion")}
+            onClick={cerrarSidebar}
+          >
+            Configuración
           </Link>
         </nav>
       </aside>

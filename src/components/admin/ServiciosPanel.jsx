@@ -31,6 +31,7 @@ function ServicioItem({ servicio, gabinetes }) {
   const [nombreProfesional, setNombreProfesional] = useState(
     servicio.nombreProfesional || "",
   );
+  const [descripcion, setDescripcion] = useState(servicio.descripcion || "");
   const [duracion, setDuracion] = useState(servicio.duracionMin);
   const [precio, setPrecio] = useState(servicio.precio);
   const [modoReserva, setModoReserva] = useState(
@@ -63,6 +64,7 @@ function ServicioItem({ servicio, gabinetes }) {
     await updateDoc(doc(db, "servicios", servicio.id), {
       nombreServicio: nombreServicio.trim(),
       nombreProfesional: nombreProfesional.trim(),
+      descripcion: descripcion,
       duracionMin: Number(duracion),
       precio: Number(precio),
       modoReserva,
@@ -140,7 +142,7 @@ function ServicioItem({ servicio, gabinetes }) {
           ) : (
             <>
               <button
-                className="admin-button success"
+                className="swal-btn-desactivar"
                 onClick={async () => {
                   await updateDoc(doc(db, "servicios", servicio.id), {
                     activo: true,
@@ -202,6 +204,13 @@ function ServicioItem({ servicio, gabinetes }) {
                 className="admin-input profesional"
                 value={nombreProfesional}
                 onChange={(e) => setNombreProfesional(e.target.value)}
+              />
+
+              <label>Descripción:</label>
+              <input
+                className="admin-input profesional"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
               />
             </div>
 
@@ -316,6 +325,7 @@ export default function ServiciosPanel() {
 
   const [nombreServicio, setNombreServicio] = useState("");
   const [nombreProfesional, setNombreProfesional] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [duracion, setDuracion] = useState(60);
   const [precio, setPrecio] = useState(0);
   const [modoReserva, setModoReserva] = useState("reserva");
@@ -365,10 +375,12 @@ export default function ServiciosPanel() {
     if (duracion <= 0) return alert("Duración inválida");
     if (precio < 0) return alert("Precio inválido");
 
+    console.log(descripcion);
     await addDoc(collection(db, "servicios"), {
       nombreServicio: nombreServicio.trim(),
       nombreServicioNormalizado: normalizar(nombreServicio),
       nombreProfesional: nombreProfesional.trim(),
+      descripcion: descripcion,
       duracionMin: Number(duracion),
       precio: Number(precio),
       modoReserva,
@@ -391,6 +403,7 @@ export default function ServiciosPanel() {
 
     setNombreServicio("");
     setNombreProfesional("");
+    setDescripcion("");
     setDuracion(60);
     setPrecio(0);
     setPedirAnticipo(false);
@@ -424,6 +437,15 @@ export default function ServiciosPanel() {
           />
         </div>
 
+        <div className="form-field">
+          <label>Descripción</label>
+          <input
+            className="admin-input profesional"
+            placeholder="Descripción breve"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+          />
+        </div>
         <div className="form-field">
           <label>Duración (min)</label>
           <input

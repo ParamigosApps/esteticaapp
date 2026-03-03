@@ -7,9 +7,10 @@ import NotFound from "./pages/NotFound.jsx";
 import LoginEmpleado from "./pages/LoginEmpleado.jsx";
 
 import AdminRoute from "./components/admin/AdminRoute.jsx";
-import AdminPage from "./components/admin/AdminPage.jsx";
+import AdminPage from "./components/admin/AdminPage2.jsx";
 import AdminDashboard from "./components/admin/AdminDashboard.jsx";
 import TurnosAdminPanel from "./components/admin/TurnosAdminPanel.jsx";
+import AdminConfiguracion from "./components/admin/AdminConfiguracion.jsx";
 import ServiciosPanel from "./components/admin/ServiciosPanel.jsx";
 import GabinetesPanel from "./components/admin/GabinetesPanel.jsx";
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="turnos" element={<TurnosAdminPanel />} />
+              <Route path="configuracion" element={<AdminConfiguracion />} />
               <Route path="servicios" element={<ServiciosPanel />} />
               <Route path="gabinetes" element={<GabinetesPanel />} />
             </Route>

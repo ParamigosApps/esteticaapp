@@ -34,7 +34,8 @@ export default function RedesSociales() {
       </div>
     );
   const botones = [];
-  if (redes.toggleWhatsapp && redes.whatsappContacto)
+
+  if (redes.whatsappContacto)
     botones.push({
       label: "WhatsApp",
       url: `https://wa.me/${redes.whatsappContacto}`,
@@ -42,7 +43,7 @@ export default function RedesSociales() {
       icon: <FaWhatsapp />,
     });
 
-  if (redes.toggleInstagram && redes.instagramContacto)
+  if (redes.instagramContacto)
     botones.push({
       label: "Instagram",
       url: `https://instagram.com/${redes.instagramContacto.replace("@", "")}`,
@@ -50,7 +51,7 @@ export default function RedesSociales() {
       icon: <FaInstagram />,
     });
 
-  if (redes.toggleFacebook && redes.facebookContacto)
+  if (redes.facebookContacto)
     botones.push({
       label: "Facebook",
       url: `https://facebook.com/${redes.facebookContacto}`,
@@ -58,7 +59,7 @@ export default function RedesSociales() {
       icon: <FaFacebook />,
     });
 
-  if (redes.toggleTiktok && redes.tiktokContacto)
+  if (redes.tiktokContacto)
     botones.push({
       label: "TikTok",
       url: `https://tiktok.com/@${redes.tiktokContacto.replace("@", "")}`,
@@ -66,7 +67,7 @@ export default function RedesSociales() {
       icon: <FaTiktok />,
     });
 
-  if (redes.toggleX && redes.xContacto)
+  if (redes.xContacto)
     botones.push({
       label: "X",
       url: `https://x.com/${redes.xContacto.replace("@", "")}`,
@@ -74,14 +75,15 @@ export default function RedesSociales() {
       icon: <FaXTwitter />,
     });
 
-  if (redes.toggleWeb && redes.webContacto)
+  if (redes.webContacto)
     botones.push({
       label: "Página web",
-      url: `https://${redes.webContacto} `,
+      url: redes.webContacto.startsWith("http")
+        ? redes.webContacto
+        : `https://${redes.webContacto}`,
       class: "btn-outline-dark text-secondary btn-shadow",
       icon: <FaChrome />,
     });
-
   if (botones.length === 0)
     return <p className="text-muted">No hay redes activas.</p>;
 

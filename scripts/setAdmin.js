@@ -10,7 +10,7 @@ admin.initializeApp({
 })
 
 async function run() {
-  const uid = 'RUkoQli9kFR0OZaRyH9qaLBTxUk1'
+  const uid = 'UQus8fyBZ3S005gsRVa6BKlN9iM2'
 
   await admin.auth().setCustomUserClaims(uid, {
     nivel: 4,   // 🔥 ESTO es lo que tu sistema usa

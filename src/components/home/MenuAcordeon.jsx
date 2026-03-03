@@ -3,14 +3,14 @@
 // --------------------------------------------------------------
 
 import React, { useState } from "react";
-
+import TurnosSection from "./TurnosSection.jsx";
+import NuestroEquipo from "../home/NuestroEquipo.jsx";
 import RedesSociales from "../home/RedesSociales.jsx";
 import LoginPanel from "./LoginPanel.jsx";
 import UbicacionPanel from "./UbicacionPanel.jsx";
 
-import TurnosPanel from "../turnos/TurnosPanel.jsx";
-import { useServicios } from "../../context/ServiciosContext";
-
+import iconTurnos from "../../assets/icons/turnos.png";
+import iconNuestroEquipo from "../../assets/icons/nuestro-equipo.png";
 import iconRedesSociales from "../../assets/icons/redes-sociales.png";
 import iconMapas from "../../assets/icons/mapa.png";
 import iconLogin from "../../assets/icons/login.png";
@@ -18,10 +18,6 @@ import iconLogin from "../../assets/icons/login.png";
 export default function MenuAcordeon() {
   const [abierto, setAbierto] = useState(null);
   const toggle = (k) => setAbierto((p) => (p === k ? null : k));
-
-  const { servicios, loadingServicios } = useServicios();
-  console.log("SERVICIOS:", servicios);
-  const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
 
   return (
     <main className="menu-desplegable flex-grow-1">
@@ -34,89 +30,33 @@ export default function MenuAcordeon() {
                 className={`accordion-button ${abierto === "turnos" ? "" : "collapsed"}`}
                 onClick={() => toggle("turnos")}
               >
-                <img src={iconMapas} className="accordion-icon" />
+                <img src={iconTurnos} className="accordion-icon" />
                 <span className="TitulosAcordeon">Turnos</span>
               </button>
 
               {abierto === "turnos" && (
                 <div className="accordion-collapse show">
                   <div className="accordion-body mt-3 mb-3">
-                    {loadingServicios && (
-                      <div
-                        className="d-flex justify-content-center align-items-center"
-                        style={{ minHeight: "70px" }}
-                      >
-                        <p className="text-muted mb-0">Cargando servicios...</p>
-                      </div>
-                    )}
+                    <TurnosSection />
+                  </div>
+                </div>
+              )}
+            </div>
 
-                    {!loadingServicios && !servicioSeleccionado && (
-                      <div>
-                        {servicios
-                          .filter((s) => s.activo)
-                          .map((s) => (
-                            <div
-                              key={s.id}
-                              className="servicio-card"
-                              onClick={() => setServicioSeleccionado(s)}
-                            >
-                              <div className="servicio-card-header">
-                                <h6 className="servicio-titulo">
-                                  {s.nombreServicio}
-                                </h6>
-                                {s.precio > 0 && (
-                                  <div className="servicio-precio">
-                                    ${s.precio.toLocaleString("es-AR")}
-                                  </div>
-                                )}
-                              </div>
+            {/* Nuestro equipo */}
+            <div className="accordion-item">
+              <button
+                className={`accordion-button ${abierto === "equipo" ? "" : "collapsed"}`}
+                onClick={() => toggle("equipo")}
+              >
+                <img src={iconNuestroEquipo} className="accordion-icon" />
+                <span>Nuestro equipo</span>
+              </button>
 
-                              <div className="servicio-meta">
-                                <span className="servicio-profesional">
-                                  con <b>{s.nombreProfesional}</b>
-                                </span>
-                                <span className="servicio-duracion">
-                                  Duración: <b>{s.duracionMin} min</b>
-                                </span>
-                              </div>
-
-                              {s.pedirAnticipo && (
-                                <>
-                                  {" "}
-                                  <span className="servicio-anticipo ">
-                                    Reservas con el {s.porcentajeAnticipo}% del
-                                    total (
-                                    <strong>
-                                      $
-                                      {(
-                                        (s.precio * s.porcentajeAnticipo) /
-                                        100
-                                      ).toLocaleString("es-AR")}
-                                    </strong>
-                                    )
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {servicioSeleccionado && (
-                      <>
-                        <button
-                          className="btn btn-sm btn-outline-secondary mb-2"
-                          onClick={() => setServicioSeleccionado(null)}
-                        >
-                          ← Volver
-                        </button>
-
-                        <TurnosPanel
-                          gabineteId={servicioSeleccionado.gabinetes[0].id}
-                          servicio={servicioSeleccionado}
-                        />
-                      </>
-                    )}
+              {abierto === "equipo" && (
+                <div className="accordion-collapse show">
+                  <div className="accordion-body mt-4 mb-4">
+                    <NuestroEquipo />
                   </div>
                 </div>
               )}

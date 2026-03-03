@@ -268,6 +268,7 @@ export function AuthProvider({ children }) {
         const ref = doc(db, "usuarios", fbUser.uid);
         const snap = await getDoc(ref);
 
+        console.log("PROJECT ID:", db.app.options.projectId);
         // 🎯 NIVEL REAL (Firestore > claims para clientes)
         let nivel = 1; // cliente por defecto
 

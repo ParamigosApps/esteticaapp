@@ -10,8 +10,8 @@ exports.getAgendaGabinete = onCall(
   async (request) => {
 
     // 🔐 Auth
-    if (!request.auth?.uid)
-      throw new HttpsError('unauthenticated', 'No autenticado')
+    // if (!request.auth?.uid)
+    //   throw new HttpsError('unauthenticated', 'No autenticado')
 
     const { gabineteIds } = request.data || {}
 
