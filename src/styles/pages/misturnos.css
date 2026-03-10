@@ -1,0 +1,9 @@
+/* opcional: hace que el link btn-link se vea más prolijo */
+.btn-link.btn-sm {
+  padding-left: 0;
+  padding-right: 0;
+  text-decoration: none;
+}
+.btn-link.btn-sm:hover {
+  text-decoration: underline;
+}

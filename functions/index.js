@@ -40,20 +40,19 @@ exports.webhookMP =
 // ======================================================
 const { getAgendaGabinete } = require('./turnos/getAgendaGabinete')
 
-
-
 // ======================================================
 // ADMIN
 // ======================================================
 const { confirmarPagoTurno } = require('./admin/confirmarPagoTurno')
-
-
 
 // ======================================================
 // TURNOS (CALLABLE)
 // ======================================================
 exports.crearTurnoInteligente =
   require("./turnos/crearTurnoInteligente").crearTurnoInteligente;
+exports.reprogramarTurnoInteligente =
+  require("./turnos/reprogramarTurnoInteligente").reprogramarTurnoInteligente;
+
 exports.crearPagoTurnoTransferencia =
   require('./turnos/crearPagoTurnoTransferencia').crearPagoTurnoTransferencia
 exports.iniciarPagoTurnoMP =
@@ -61,6 +60,7 @@ exports.iniciarPagoTurnoMP =
 
 exports.getAgendaGabinete = getAgendaGabinete
 
+exports.notificarAdminNuevoTurno = require("./turnos/notificarAdminNuevoTurno").notificarAdminNuevoTurno;
   // ======================================================
 // ADMIN(CALLABLE)
 // ======================================================
@@ -92,6 +92,10 @@ exports.quitarEmpleadoAdmin = onCall(async req => {
   return quitarEmpleadoAdminHandler(req)
 })
 
+
+
+exports.marcarTurnosFinalizados =
+  require("./turnos/marcarTurnosFinalizados").marcarTurnosFinalizados;
 // ======================================================
 // HELPERS
 // ======================================================
@@ -114,6 +118,87 @@ async function mpGet(url, token, retries = 5) {
   }
 
   throw new Error(`MP fetch failed: ${lastErr}`)
+}
+
+function calcularEstadoPago(montoTotal = 0, montoPagado = 0) {
+  const total = Number(montoTotal || 0)
+  const pagado = Math.max(0, Number(montoPagado || 0))
+
+  if (total <= 0) {
+    return pagado > 0 ? 'abonado' : 'pendiente'
+  }
+
+  if (pagado <= 0) return 'pendiente'
+  if (pagado < total) return 'parcial'
+  return 'abonado'
+}
+
+async function aplicarPagoAprobadoEnTurno({
+  db,
+  turnoId,
+  pago,
+  payment,
+  now,
+}) {
+  if (!turnoId) return
+
+  const turnoRef = db.collection('turnos').doc(turnoId)
+  const turnoSnap = await turnoRef.get()
+  if (!turnoSnap.exists) return
+
+  const turno = turnoSnap.data() || {}
+
+  const montoTotal = Number(
+    turno.montoTotal ??
+    pago.montoTotal ??
+    turno.total ??
+    0
+  )
+
+  const montoActual = Number(turno.montoPagado ?? 0)
+  const montoPago = Number(
+    pago.monto ??
+    payment.transaction_amount ??
+    0
+  )
+
+  const nuevoMontoPagado =
+    montoTotal > 0
+      ? Math.min(montoTotal, montoActual + montoPago)
+      : montoActual + montoPago
+
+  const saldoPendiente = Math.max(0, montoTotal - nuevoMontoPagado)
+
+  const estadoTurnoActual =
+    turno.estadoTurno ||
+    turno.estado ||
+    'pendiente'
+
+  const estadoTurnoFinal = ['cancelado', 'perdido', 'finalizado'].includes(estadoTurnoActual)
+    ? estadoTurnoActual
+    : 'confirmado'
+
+  const updateData = {
+    estadoTurno: estadoTurnoFinal,
+    estadoPago: calcularEstadoPago(montoTotal, nuevoMontoPagado),
+
+    metodoPago: 'mercadopago', // compatibilidad vieja
+    metodoPagoEsperado: turno.metodoPagoEsperado || 'mercadopago',
+    metodoPagoUsado: 'mercadopago',
+
+    montoTotal,
+    montoPagado: nuevoMontoPagado,
+    saldoPendiente,
+
+    pagoId: pago?.id || turno.pagoId || null,
+    updatedAt: now,
+  }
+
+  if (estadoTurnoFinal === 'confirmado') {
+    updateData.confirmadoAt = turno.confirmadoAt || now
+  }
+
+  await turnoRef.update(updateData)
 }
 
 // ======================================================
@@ -209,24 +294,24 @@ exports.processWebhookEvent = onDocumentWritten(
           return
         }
 
-        await pagoRef.update({
-          estado: 'aprobado',
-          mpStatus: payment.status,
-          mpPaymentId: payment.id,
-          approvedAt: now,
-          updatedAt: now,
+      await pagoRef.update({
+        estado: 'aprobado',
+        metodo: 'mercadopago',
+        canal: pago.canal || 'checkout_pro',
+        origen: pago.origen || 'turno_online',
+        mpStatus: payment.status,
+        mpPaymentId: payment.id,
+        approvedAt: now,
+        updatedAt: now,
+      })
+
+        await aplicarPagoAprobadoEnTurno({
+          db,
+          turnoId: pago.turnoId,
+          pago,
+          payment,
+          now,
         })
-
-        const turnoRef = db.collection('turnos').doc(pago.turnoId)
-        const turnoSnap = await turnoRef.get()
-
-        if (turnoSnap.exists) {
-          await turnoRef.update({
-            estado: 'confirmado',
-            confirmadoAt: now,
-            updatedAt: now,
-          })
-        }
 
       }
       // ================================
@@ -237,12 +322,15 @@ exports.processWebhookEvent = onDocumentWritten(
         payment.status === 'cancelled'
       ) {
 
-        await pagoRef.update({
-          estado: 'rechazado',
-          mpStatus: payment.status,
-          mpPaymentId: payment.id,
-          updatedAt: now,
-        })
+    await pagoRef.update({
+      estado: 'pendiente',
+      metodo: 'mercadopago',
+      canal: pago.canal || 'checkout_pro',
+      origen: pago.origen || 'turno_online',
+      mpStatus: payment.status,
+      mpPaymentId: payment.id,
+      updatedAt: now,
+    })
 
       }
       // ================================
@@ -320,8 +408,7 @@ exports.reconciliarPagosPendientes = onSchedule(
 
         if (payment.status === 'approved') {
 
-         if (pago.estado !== 'aprobado'){
-
+          if (pago.estado !== 'aprobado') {
             await pagoRef.update({
               estado: 'aprobado',
               mpStatus: payment.status,
@@ -329,10 +416,12 @@ exports.reconciliarPagosPendientes = onSchedule(
               updatedAt: now,
             })
 
-            const turnoRef = db.collection('turnos').doc(pago.turnoId)
-            await turnoRef.update({
-              estado: 'confirmado',
-              confirmadoAt: now,
+            await aplicarPagoAprobadoEnTurno({
+              db,
+              turnoId: pago.turnoId,
+              pago,
+              payment,
+              now,
             })
           }
 
@@ -383,11 +472,27 @@ exports.expirarPagosTurnos = onSchedule(
       const turnoId = doc.data().turnoId
 
       if (turnoId) {
-        await db.collection('turnos').doc(turnoId).update({
-          estado: 'expirado',
-          venceEn: null,
-          updatedAt: FieldValue.serverTimestamp(),
-        })
+        const turnoRef = db.collection('turnos').doc(turnoId)
+        const turnoSnap = await turnoRef.get()
+
+        if (turnoSnap.exists) {
+          const turno = turnoSnap.data() || {}
+          const estadoTurnoActual =
+            turno.estadoTurno ||
+            turno.estado ||
+            'pendiente'
+
+          await turnoRef.update({
+            estadoPago: 'expirado',
+            metodoPagoEsperado: turno.metodoPagoEsperado || doc.data().metodo || 'mercadopago',
+            metodoPagoUsado: turno.metodoPagoUsado || null,
+            estadoTurno: ['cancelado', 'perdido', 'finalizado', 'pendiente_aprobacion'].includes(estadoTurnoActual)
+              ? estadoTurnoActual
+              : 'cancelado',
+            venceEn: null,
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+        }
       }
     }
   }

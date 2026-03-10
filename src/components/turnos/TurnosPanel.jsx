@@ -4,16 +4,112 @@
 import { useEffect, useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
+import { useAuth } from "../../context/AuthContext";
+
 import Swal from "sweetalert2";
 
-import { generarSlotsDia } from "./AgendaUtils";
-import { swalResumenTurno } from "../../utils/swalUtils";
-
+import { generarSlotsDia } from "../../public/utils/generarSlotsDia";
+import {
+  swalRequiereLogin,
+  swalResumenTurno,
+} from "../../public/utils/swalUtils";
 import { showLoading, hideLoading } from "../../services/loadingService";
 
-import SlotHora from "./SlotHora";
+import SlotHora from "./panels/SlotHora";
+
+function toISODateLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getMonthRange(baseDate) {
+  const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+
+  return {
+    fechaDesde: toISODateLocal(start),
+    fechaHasta: toISODateLocal(end),
+  };
+}
+
+function generarDiasDelMes(baseDate) {
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const primerDia = new Date(year, month, 1);
+  const ultimoDia = new Date(year, month + 1, 0);
+
+  const dias = [];
+  let cursor = new Date(primerDia);
+
+  while (cursor <= ultimoDia) {
+    const copia = new Date(cursor);
+
+    if (
+      copia >= hoy ||
+      copia.getMonth() !== hoy.getMonth() ||
+      copia.getFullYear() !== hoy.getFullYear()
+    ) {
+      dias.push(copia);
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dias;
+}
+
+function getFechaMaxReservable(servicio) {
+  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const max = new Date(hoy);
+  max.setDate(max.getDate() + maxDias - 1);
+  max.setHours(0, 0, 0, 0);
+
+  return max;
+}
+
+function calcularMontoAnticipo(servicio) {
+  const precio = Number(servicio?.precio || 0);
+  const porcentaje = Number(servicio?.porcentajeAnticipo || 0);
+
+  if (precio <= 0 || porcentaje <= 0) return 0;
+
+  return Math.round((precio * porcentaje) / 100);
+}
+
+function buscarPrimerDiaDisponible(dias, agenda, servicio) {
+  for (const d of dias) {
+    const diaSemana = d.getDay();
+
+    const hayHorarioEseDia = agenda?.horarios?.some(
+      (h) => Number(h.diaSemana) === diaSemana,
+    );
+
+    if (!hayHorarioEseDia) continue;
+
+    const slotsDelDia = generarSlotsDia(agenda, servicio, d);
+    const tieneDisponibilidad = slotsDelDia.some((s) => !s.ocupado);
+
+    if (tieneDisponibilidad) {
+      return d;
+    }
+  }
+
+  return null;
+}
 
 export default function TurnosPanel({ servicio }) {
+  const { user, loading: authLoading } = useAuth();
+
   const [agenda, setAgenda] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,6 +118,19 @@ export default function TurnosPanel({ servicio }) {
   const [loadingReserva, setLoadingReserva] = useState(false);
 
   const fn = httpsCallable(getFunctions(), "crearTurnoInteligente");
+
+  const precioTotal = Number(servicio?.precio || 0);
+  const porcentajeAnticipo = Number(servicio?.porcentajeAnticipo || 0);
+  const montoAnticipo = calcularMontoAnticipo(servicio);
+  const saldoPendiente = Math.max(0, precioTotal - montoAnticipo);
+
+  const esReservaManual = servicio?.modoReserva === "reserva";
+
+  const requierePagoOnline =
+    servicio?.pedirAnticipo &&
+    montoAnticipo > 0 &&
+    (servicio?.tipoAnticipo || "online") === "online" &&
+    !esReservaManual;
 
   useEffect(() => {
     const gabineteIds = (servicio?.gabinetes || [])
@@ -41,13 +150,17 @@ export default function TurnosPanel({ servicio }) {
         setLoading(true);
 
         const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+        const { fechaDesde, fechaHasta } = getMonthRange(fechaSeleccionada);
 
-        const result = await getAgendaFn({ gabineteIds });
+        const result = await getAgendaFn({
+          gabineteIds,
+          fechaDesde,
+          fechaHasta,
+        });
 
         if (activo) {
           setAgenda(result.data ?? null);
         }
-        console.log("AGENDA STATE:", agenda);
       } catch (err) {
         console.error("Error cargando agenda:", err);
       } finally {
@@ -60,28 +173,52 @@ export default function TurnosPanel({ servicio }) {
     return () => {
       activo = false;
     };
-  }, [servicio?.id]);
+  }, [
+    servicio?.id,
+    fechaSeleccionada.getFullYear(),
+    fechaSeleccionada.getMonth(),
+  ]);
 
-  function generarProximosDias(cantidad = 7) {
-    const dias = [];
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+  useEffect(() => {
+    if (!agenda) return;
 
-    let cursor = new Date(hoy);
+    const dias = generarDiasDelMes(fechaSeleccionada);
+    if (!dias.length) return;
 
-    while (dias.length < cantidad) {
-      dias.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
+    const fechaActualKey = toISODateLocal(fechaSeleccionada);
+
+    const diaActual = dias.find((d) => toISODateLocal(d) === fechaActualKey);
+    const primerDisponible = buscarPrimerDiaDisponible(dias, agenda, servicio);
+
+    if (!primerDisponible) return;
+
+    const diaActualTieneDisponibilidad = diaActual
+      ? generarSlotsDia(agenda, servicio, diaActual).some((s) => !s.ocupado)
+      : false;
+
+    if (!diaActualTieneDisponibilidad) {
+      const nuevaFecha = new Date(primerDisponible);
+      nuevaFecha.setHours(0, 0, 0, 0);
+
+      if (toISODateLocal(nuevaFecha) !== fechaActualKey) {
+        setFechaSeleccionada(nuevaFecha);
+        setSlotSeleccionado(null);
+      }
     }
+  }, [agenda, servicio, fechaSeleccionada]);
 
-    return dias;
+  function cambiarMes(offset) {
+    const nueva = new Date(fechaSeleccionada);
+    nueva.setDate(1);
+    nueva.setMonth(nueva.getMonth() + offset);
+    setFechaSeleccionada(nueva);
+    setSlotSeleccionado(null);
   }
 
   async function reservarTurno() {
     if (!slotSeleccionado) return;
 
-    const fecha = fechaSeleccionada.toISOString().slice(0, 10);
-
+    const fecha = toISODateLocal(fechaSeleccionada);
     try {
       setLoadingReserva(true);
 
@@ -114,7 +251,14 @@ export default function TurnosPanel({ servicio }) {
       setSlotSeleccionado(null);
 
       const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
-      const resultAgenda = await getAgendaFn({ gabineteIds });
+      const { fechaDesde, fechaHasta } = getMonthRange(fechaSeleccionada);
+
+      const resultAgenda = await getAgendaFn({
+        gabineteIds,
+        fechaDesde,
+        fechaHasta,
+      });
+
       setAgenda(resultAgenda.data || null);
 
       return res?.data;
@@ -163,6 +307,13 @@ Turno ID: ${data.turnoId.slice(0, 8)}
   }
 
   async function handleConfirmacion() {
+    if (authLoading) return;
+
+    if (!user) {
+      await swalRequiereLogin();
+      return;
+    }
+
     const resumen = await swalResumenTurno({
       servicio: servicio.nombreServicio,
       profesional: servicio.nombreProfesional,
@@ -171,20 +322,12 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
       precio: servicio.precio,
+      precioAnticipo: montoAnticipo || null,
       modoReserva: servicio.modoReserva,
     });
 
     if (!resumen.isConfirmed) return;
 
-    const requierePagoOnline =
-      servicio.pedirAnticipo && Number(servicio.porcentajeAnticipo || 0) > 0;
-
-    console.log(
-      "pedir anticipo: " +
-        servicio.pedirAnticipo +
-        "tipoAnticipo:" +
-        servicio.tipoAnticipo,
-    );
     if (servicio.modoReserva === "reserva") {
       await handleReservaManual();
     } else if (requierePagoOnline) {
@@ -213,7 +356,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     );
   if (!agenda) return null;
 
-  const dias = generarProximosDias(18);
+  const dias = generarDiasDelMes(fechaSeleccionada);
 
   const slots = generarSlotsDia(agenda, servicio, fechaSeleccionada);
 
@@ -242,29 +385,90 @@ Turno ID: ${data.turnoId.slice(0, 8)}
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  let textBtnTurno =
-    servicio.modoReserva === "reserva"
-      ? "Solicitar turno"
-      : "Pagar y confirmar";
+  const fechaMaxReservable = getFechaMaxReservable(servicio);
+
+  const primerDiaMesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+  const primerDiaMesAnterior = new Date(
+    fechaSeleccionada.getFullYear(),
+    fechaSeleccionada.getMonth() - 1,
+    1,
+  );
+
+  const primerDiaMesSiguiente = new Date(
+    fechaSeleccionada.getFullYear(),
+    fechaSeleccionada.getMonth() + 1,
+    1,
+  );
+
+  const puedeIrMesAnterior = primerDiaMesAnterior >= primerDiaMesActual;
+  const puedeIrMesSiguiente = primerDiaMesSiguiente <= fechaMaxReservable;
+
+  let textBtnTurno = "Confirmar turno";
+
+  if (esReservaManual) {
+    textBtnTurno = "Solicitar turno";
+  } else if (requierePagoOnline) {
+    textBtnTurno = `Abonar $${montoAnticipo.toLocaleString("es-AR")} y confirmar`;
+  }
 
   return (
     <div
       className="agenda-panel"
       onClick={(e) => {
-        if (!e.target.closest(".slot")) {
+        const clickEnSlot = e.target.closest(".slot");
+        const clickEnResumen = e.target.closest(".resumen-turno");
+        const clickEnAgenda = e.target.closest(".agenda-panel");
+
+        if (!clickEnSlot && !clickEnResumen && !clickEnAgenda) {
           setSlotSeleccionado(null);
         }
       }}
     >
+      <div className="agenda-header">
+        {" "}
+        <small className="agenda-disponibilidad">
+          Agenda abierta hasta el{" "}
+          <b>{fechaMaxReservable.toLocaleDateString("es-AR")}</b>
+        </small>
+      </div>
       <h5 className="agenda-titulo">
         <b>{servicio.nombreServicio.toUpperCase()}</b>
       </h5>
+      <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
+        <div className="text-center mb-2"></div>
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm"
+          onClick={() => cambiarMes(-1)}
+          disabled={!puedeIrMesAnterior}
+        >
+          ← Mes anterior
+        </button>
+
+        <div style={{ fontWeight: 700 }}>
+          {fechaSeleccionada.toLocaleDateString("es-AR", {
+            month: "long",
+            year: "numeric",
+          })}
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm"
+          onClick={() => cambiarMes(1)}
+          disabled={!puedeIrMesSiguiente}
+        >
+          Mes siguiente →
+        </button>
+      </div>
       {/* CALENDARIO HORIZONTAL */}
       <div className="calendario-horizontal">
         {dias.map((d) => {
           const activo = d.toDateString() === fechaSeleccionada.toDateString();
 
           const pasado = d < hoy;
+          const fueraDeAgenda = d > fechaMaxReservable;
 
           const diaSemana = d.getDay();
 
@@ -279,7 +483,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           const tieneDisponibilidad =
             hayHorarioEseDia && slotsDelDia.some((s) => !s.ocupado);
 
-          const deshabilitado = pasado || !tieneDisponibilidad;
+          const deshabilitado = pasado || fueraDeAgenda || !tieneDisponibilidad;
           return (
             <button
               key={d.toISOString()}
@@ -304,7 +508,6 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           );
         })}
       </div>
-
       <div className="mb-2 mt-4 text-center">
         <h5>
           {fechaSeleccionada.toLocaleDateString("es-AR", {
@@ -314,11 +517,14 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           })}
         </h5>
       </div>
-
       {/* SLOTS DEL DÍA SELECCIONADO */}
       <div className="slots-grid">
         {slots.length === 0 && (
-          <p className="text-muted">No hay horarios disponibles.</p>
+          <>
+            <div className="w-100 text-center">
+              <p className="text-muted mb-0">No hay horarios disponibles.</p>
+            </div>
+          </>
         )}
 
         {slots.map((s) => (
@@ -331,7 +537,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
 
               setSlotSeleccionado({
                 ...s,
-                fecha: fechaSeleccionada.toISOString().slice(0, 10),
+                fecha: toISODateLocal(fechaSeleccionada),
                 horaInicio: s.inicio,
                 horaFin: s.fin,
               });
@@ -360,63 +566,50 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             {horaFinFormateada}
           </div>
 
-          <div className="mb-1">
+          <div>
             <strong>Duración:</strong> {servicio.duracionMin} min
           </div>
 
-          {servicio.precio > 0 && (
-            <div>
-              <strong>Precio:</strong> ${servicio.precio}
+          {precioTotal > 0 && (
+            <>
+              <div>
+                <strong>Costo servicio:</strong> $
+                {precioTotal.toLocaleString("es-AR")}
+              </div>
+            </>
+          )}
+
+          {requierePagoOnline && (
+            <div className="mb-3 mt-1">
+              <span className="total-seña text-success fw-semibold">
+                Abonas <b>${montoAnticipo.toLocaleString("es-AR")}</b> para
+                confirmar el turno.{" "}
+                {montoAnticipo != precioTotal && (
+                  <span className=" ">
+                    ¡El valor restante se abona el día del servicio!
+                  </span>
+                )}
+              </span>
             </div>
           )}
 
-          {servicio.pedirAnticipo && servicio.modoReserva == "automatico" && (
-            <>
-              <div className="mb-1">
-                <span className="text-muted fw-semibold">
-                  {"  -  "}Reservas con el {servicio.porcentajeAnticipo}% del
-                  total (
-                  <strong>
-                    $
-                    {(
-                      (servicio.precio * servicio.porcentajeAnticipo) /
-                      100
-                    ).toLocaleString("es-AR")}
-                  </strong>
-                  )
-                </span>
-              </div>
-
-              <div className="mb-3 mt-3">
-                <span className="text-success fw-semibold">
-                  ¡Podes confirmar el turno en este momento!
-                </span>
-              </div>
-            </>
+          {esReservaManual && servicio.pedirAnticipo && montoAnticipo > 0 && (
+            <div className="mb-3 mt-1">
+              <span className="total-seña text-danger fw-semibold">
+                Este turno se solicita por WhatsApp. Reservas este servicio con
+                <b> ${montoAnticipo.toLocaleString("es-AR")}</b>.
+              </span>
+            </div>
           )}
 
-          {servicio.pedirAnticipo && servicio.modoReserva == "reserva" && (
-            <>
-              <div className="mb-1">
-                <span className="text-muted fw-semibold">
-                  Reservas con el {servicio.porcentajeAnticipo}% del total (
-                  <strong>
-                    $
-                    {(
-                      (servicio.precio * servicio.porcentajeAnticipo) /
-                      100
-                    ).toLocaleString("es-AR")}
-                  </strong>
-                  )
-                </span>
-              </div>
-              <div className="mb-3 mt-3">
-                <span className="text-danger fw-semibold">
+          {esReservaManual &&
+            (!servicio.pedirAnticipo || montoAnticipo <= 0) && (
+              <div className="mb-3 mt-1">
+                <span className="total-seña text-danger fw-semibold">
                   ¡Este turno se confirma por WhatsApp!
                 </span>
               </div>
-            </>
-          )}
+            )}
 
           <button
             className="swal-btn-confirm d-block mx-auto"

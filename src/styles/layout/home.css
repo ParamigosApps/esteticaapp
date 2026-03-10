@@ -1,0 +1,205 @@
+.home-wrapper{
+  max-width:1200px;
+  margin:auto;
+}
+
+.home-grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:25px;
+  padding:20px;
+}
+
+.home-foto{
+  width:100%;
+  border-radius:18px;
+}
+.home-img-sec{
+  width:100%;
+  max-width: 180px;
+  height:max-content;
+  border-radius:18px;
+}
+
+.home-negocio-info{
+  display:flex;
+  gap:20px;
+  margin-top:20px;
+}
+
+.home-logo{
+  width:90px;
+  height:90px;
+  border-radius:10px;
+  object-fit:cover;
+}
+
+.home-sub{
+  color:#666;
+}
+
+.home-desc{
+  color:#444;
+}
+
+.home-panel{
+  height: 100% !important;
+  background:white;
+  border-radius:16px;
+  padding:12px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.08);
+}
+
+.home-map{
+  width:100%;
+  height:220px;
+  border-radius:12px;
+  border:0;
+}
+
+.home-wsp{
+  color:#0a7cff;
+  text-decoration:none;
+}
+
+
+
+/* HOME-MID */
+
+.home-grid-mid{
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:25px;
+  padding:20px;
+}
+
+.categorias-container{
+  min-height: 500px;
+  background-color: #f9f7f7;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.buscador-servicios{
+  background-color: var( --color-bg);
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.80;
+
+  border: 1px solid var(  --border-medium);
+  border-radius: 8px;
+
+  
+}
+
+.buscador-servicios::placeholder{
+  text-align: center;
+  opacity: 0.75;
+}
+
+
+
+
+/* CATEGORIAS SERVICIOS */
+
+.categorias-servicios-list{
+  margin-top:20px;
+}
+
+.categorias-title{
+  font-size:14px;
+  margin-bottom:10px;
+}
+
+.categoria-card{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #eee;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:all .15s;
+}
+
+.categoria-card:hover{
+  background:#fafafa;
+}
+
+.categoria-nombre{
+  font-weight:500;
+}
+
+.categoria-count{
+  font-size:12px;
+  color:#777;
+}
+
+
+
+/* // INICIAR SESION */
+
+.user-dropdown{
+  position:absolute;
+  right:10px;
+}
+
+.dropdown-menu-custom{
+  position:absolute;
+  right:0;
+  top:30px;
+
+  background:white;
+  border:1px solid #eee;
+  border-radius:8px;
+
+  box-shadow:0 8px 20px rgba(0,0,0,0.08);
+
+  padding:10px 12px;
+  display:flex;
+  flex-direction:column;
+  min-width:150px;
+  min-height: 110px;
+}
+
+.dropdown-item{
+  font-size:13px;
+  opacity: 0.9;
+  font-weight: 700 !important;
+  background:none;
+  border:none;
+  text-align:left;
+  cursor:pointer;
+}
+
+.dropdown-item:hover{
+  background:#d0d0d0 !important;
+  border-radius: 2px;
+}
+
+
+/* BTN WHATSAPP FLOTANTE */
+
+.whatsappIcon {
+  width: 30px;
+  height: 30px;
+}
+#chat {
+  position: fixed;
+  bottom: 56px;
+  right: 36px;
+  margin-bottom: 8px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.163);
+  border-radius: 50%;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(64, 63, 63, 0.948);
+  transition:
+    transform 0.2s,
+    right 0.6s;
+}
+#chat:hover {
+  right: 16px;
+  transform: scale(1.24);
+}

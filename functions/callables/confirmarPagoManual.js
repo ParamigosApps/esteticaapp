@@ -39,26 +39,40 @@ exports.confirmarPagoManual = onCall(async request => {
     throw new HttpsError('not-found', 'Pago inexistente')
   }
 
-  const pago = snap.data()
+  const pago = snap.data() || {}
 
   // --------------------------------------------------
   // 🔒 Idempotencia dura
   // --------------------------------------------------
-  if (pago.estado === 'pagado') {
-    return { ok: true, alreadyPaid: true }
+  if (pago.estado === 'aprobado' || pago.estado === 'pagado') {
+    return { ok: true, alreadyApproved: true }
   }
 
   // --------------------------------------------------
-  // 💾 Marcar como pagado (manual)
+  // 🚫 No confirmar pagos ya cerrados
+  // --------------------------------------------------
+  if (['rechazado', 'expirado', 'reembolsado'].includes(pago.estado)) {
+    throw new HttpsError(
+      'failed-precondition',
+      `No se puede aprobar un pago en estado ${pago.estado}`
+    )
+  }
+
+  // --------------------------------------------------
+  // 💾 Marcar como aprobado manualmente
   // --------------------------------------------------
   await pagoRef.update({
-    estado: 'pagado',
+    estado: 'aprobado',
 
+    aprobadoPorUid: auth.uid,
     aprobadoPor: 'admin',
     aprobadoManual: true,
+    metodoConfirmacion: 'manual',
 
-    liquidado: false, // ✅ clave contable
-    eventoId: pago.eventoId, // ✅ imprescindible para liquidaciones
+    liquidado: false,
+    liquidacionId: pago.liquidacionId ?? null,
+
+    eventoId: pago.eventoId ?? null,
 
     aprobadoEn: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),

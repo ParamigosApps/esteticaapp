@@ -1,11 +1,25 @@
 // src/pages/Home.jsx
-import { useEffect } from "react";
+
+import { db } from "../Firebase";
+import { doc, getDoc } from "firebase/firestore";
+
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
-import Navbar from "../components/Navbar.jsx";
-import MenuAcordeon from "../components/home/MenuAcordeon.jsx";
+import BuscadorServicios from "../public/components/buscador/BuscadorServicios";
+import TurnosSection from "../public/home/TurnosSection.jsx";
+import InfoContactoPanel from "../public/components/contacto/InfoContactoPanel.jsx";
+
+import imgPrincipal from "../assets/img/local.jpg";
+import imgSecundaria from "../assets/img/secundaria.png";
+import whatsappIcon from "../assets/icons/whatsapp.png";
 
 export default function Home() {
+  const [busqueda, setBusqueda] = useState("");
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+
+  const [whatsapp, setWhatsapp] = useState(null);
+
   useEffect(() => {
     const aviso = localStorage.getItem("avisoPostPago");
     if (!aviso) return;
@@ -68,13 +82,82 @@ export default function Home() {
     }
   }, []);
 
-  return (
-    <>
-      <Navbar />
+  useEffect(() => {
+    async function cargarWhatsapp() {
+      const snap = await getDoc(doc(db, "configuracion", "social"));
+      if (snap.exists()) {
+        setWhatsapp(snap.data());
+      }
+    }
 
-      <div className="container mt-1">
-        <MenuAcordeon />
-      </div>
-    </>
+    cargarWhatsapp();
+  }, []);
+
+  return (
+    <div className="home-wrapper">
+      {/* HEADER NEGOCIO */}
+      <section className="home-top">
+        <div className="home-grid">
+          {/* IZQUIERDA */}
+          <div className="home-negocio">
+            <img src={imgPrincipal} className="home-foto" />
+
+            <div className="home-negocio-info">
+              <img src={imgSecundaria} className="home-img-sec" />
+
+              <div>
+                <h1>PIEL & CEJAS</h1>
+
+                <p className="home-sub">Cosmetología • Estética • Bienestar</p>
+
+                <p className="home-desc">
+                  Tratamientos faciales y corporales, masajes relajantes y
+                  cuidado profesional de la piel en un ambiente pensado para tu
+                  bienestar.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* DERECHA */}
+          <div className="home-panel">
+            <InfoContactoPanel />
+          </div>
+        </div>
+      </section>
+
+      <section className="home-mid">
+        <div className="home-grid-mid">
+          {/* IZQUIERDA */}
+          <div className="categorias-container">
+            <BuscadorServicios
+              busqueda={busqueda}
+              setBusqueda={setBusqueda}
+              setCategoriaSeleccionada={setCategoriaSeleccionada}
+            />
+          </div>
+
+          {/* DERECHA */}
+          <div className="home-turnos-panel">
+            <TurnosSection
+              busqueda={busqueda}
+              categoriaSeleccionada={categoriaSeleccionada}
+              setCategoriaSeleccionada={setCategoriaSeleccionada}
+            />
+          </div>
+        </div>
+      </section>
+      {whatsapp?.whatsappContacto && (
+        <div id="chat">
+          <a
+            href={`https://wa.me/54${whatsapp.whatsappContacto}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img src={whatsappIcon} alt="WhatsApp" className="whatsappIcon" />
+          </a>
+        </div>
+      )}
+    </div>
   );
 }

@@ -77,7 +77,7 @@ Authentication and authorization are split into two layers:
 
 Any change to roles or permission names must stay consistent across:
 - Firestore doc `configuracion/permisos`.
-- The `modulo` strings used in `App.jsx` and `AdminPage2.jsx`.
+- The `modulo` strings used in `App.jsx` and `AdminLayout.jsx`.
 - The checks in `AdminRoute` and any other permission-aware components.
 
 ### Catalog, shopping cart, orders, and payments
@@ -151,7 +151,7 @@ This decoupling makes it possible to enhance ticketing rules (limits, pricing, l
 
 ### Admin panel and back-office flows
 
-- **AdminPage (`src/pages/AdminPage2.jsx`)** is the main admin dashboard container.
+- **AdminLayout (`src/pages/AdminLayout.jsx`)** is the main admin dashboard container.
   - Uses `useAuth` to obtain `user`, `rolUsuario`, and `permisos`, and calculates access to each module via a shared `acceso(mod)` helper.
   - Renders a sidebar with buttons for logical sections (events, tickets, purchases, dashboard, products, employees, QR validators, configuration).
   - Maintains `seccion` in state and switches between admin subcomponents:

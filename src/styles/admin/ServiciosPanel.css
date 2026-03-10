@@ -1,63 +1,313 @@
+/* =========================
+   LAYOUT GENERAL
+========================= */
 
-/* ============================= */
-/* CARD CREAR SERVICIO */
-/* ============================= */
-
-.admin-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+.servicios-admin-page {
+  width: 100%;
 }
 
-/* ============================= */
-/* SERVICE CARD */
-/* ============================= */
+.servicios-page-title {
+  margin-bottom: 18px;
+}
+
+.servicios-admin-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.servicios-admin-section {
+  width: 100%;
+}
+
+.servicios-panel-card,
+.admin-panel-container {
+  border: 1px solid var(--border-soft, #e5e7eb);
+  border-radius: 18px;
+  background: #fff;
+  padding: 18px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.04);
+}
+
+/* =========================
+   HEADERS GENERALES
+========================= */
+
+.admin-categorias-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #edf1f5;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.servicios-section-header {
+  margin-bottom: 16px;
+}
+
+.servicios-section-desc {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.admin-categorias-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  cursor: pointer;
+}
+
+.collapse-icon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* =========================
+   CONTENEDORES PRINCIPALES
+========================= */
+
+.admin-servicios-create {
+  display: grid;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+/* =========================
+   FORM NUEVO SERVICIO
+========================= */
+
+.servicios-form-shell {
+  padding: 0;
+}
+
+.servicios-form-block {
+  border: 1px solid #e7ecf1;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.servicios-form-block-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.servicios-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.form-field,
+.field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.form-field label,
+.field-group label,
+.service-editor label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+.admin-input,
+select,
+input[type="time"] {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  font-weight: 600;
+  background: #fff;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.admin-input:focus,
+select:focus,
+input[type="time"]:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.duracion,
+.anticipo {
+  max-width: 120px;
+}
+
+.precio-admin {
+  max-width: 140px;
+}
+
+.reserva {
+  max-width: 260px;
+}
+
+/* =========================
+   RESERVA Y PAGO
+========================= */
+
+.service-sena-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+  border: 1px solid #edf1f5;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.servicios-form-actions-wrap,
+.button-field {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* =========================
+   GABINETES
+========================= */
+
+.service-gabinetes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gabinete-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* =========================
+   LISTADO POR CATEGORÍA
+========================= */
+
+.servicios-categoria-bloque {
+  border: 1px solid #e7ecf1;
+  border-radius: 16px;
+  background: #fff;
+  margin-bottom:36px;
+  padding: 14px;
+}
+
+.servicios-categoria-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.servicios-categoria-count {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: #111827;
+  color: #fff;
+}
+
+/* =========================
+   CARD SERVICIO
+========================= */
 
 .service-card {
-  background: var(--color-bg);
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e7ecf1;
   border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-  transition: all 0.2s ease;
+  background: #fff;
+  padding: 16px;
+  margin-bottom: 12px !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .service-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
 .service-card.inactive {
-  opacity: 0.65;
-  background: #f9fafb;
+  opacity: 0.8;
+  background: #fafafa;
 }
-
-/* ============================= */
-/* HEADER */
-/* ============================= */
 
 .service-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.service-title-wrap {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.service-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
 }
 
 .service-title {
-  font-size: 16px;
-  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  font-size: 16px;
 }
 
 .badge {
   font-size: 11px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .badge.inactive {
@@ -65,174 +315,447 @@
   color: #b91c1c;
 }
 
-/* ============================= */
-/* ACTIONS */
-/* ============================= */
-
 .service-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* ============================= */
-/* INFO ROW */
-/* ============================= */
-
-.service-info {
-  display: flex;
-  gap: 24px;
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 12px;
-}
-
-/* ============================= */
-/* HORARIOS CHIP */
-/* ============================= */
-
-.service-schedule {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 6px;
 }
 
-.schedule-chip {
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 12px;
-  padding: 4px 10px;
+.service-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #edf0f4;
+}
+
+.service-info span {
+  background: #f8fafc;
+  border: 1px solid #edf1f5;
   border-radius: 999px;
-  font-weight: 500;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #4b5563;
 }
 
-/* ============================= */
-/* EDITOR */
-/* ============================= */
+/* =========================
+   EDITOR INTERNO
+========================= */
 
 .service-editor {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid #e5e7eb;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #d9dee7;
+  display: grid;
+  gap: 16px;
 }
 
-/* Editor secciones */
+.service-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
 
-.service-editor-section {
-  margin-top: 14px;
+.service-editor-block {
+  border: 1px solid #e7ecf1;
+  border-radius: 16px;
+  background: #fcfcfd;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.service-editor-block-full {
+  grid-column: 1 / -1;
+}
+
+.service-editor-block-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.service-editor-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.service-editor-fields-1 {
+  grid-template-columns: 1fr;
+}
+
+.service-editor-fields-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.service-editor-fields-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.service-field-sm {
+  max-width: 220px;
+}
+
+.service-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 2px;
+}
+
+.service-editor .field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.service-editor .field-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
 
 .service-editor-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
-  margin-top: 16px;
+  flex-wrap: wrap;
+  padding-top: 4px;
 }
 
-/* ============================= */
-/* GABINETES */
-/* ============================= */
+/* =========================
+   HORARIOS DEL SERVICIO
+========================= */
 
-
-
-/* ============================= */
-/* SCHEDULE LIST EDIT MODE */
-/* ============================= */
-
-.schedule-list {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.horarios-servicio-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
 }
 
-.schedule-row {
+.service-horarios-servicio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.horario-dia-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+
+.horario-dia-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f3f4f6;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
-/* ============================= */
-/* ROW */
-/* ============================= */
+.horario-dia-check {
+  margin: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-.admin-row {
+.horario-dia-inactivo {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.horario-franjas-list {
+  display: grid;
+  gap: 10px;
+}
+
+.horario-franja-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.horario-franja-input {
+  min-width: 0;
+}
+
+.btn-editar-nombre,
+.btn-desactivar {
+  min-width: 110px;
+  font-size: 0.8rem;
+  padding: 7px 8px !important;
+  white-space: nowrap;
+}
+
+.btn-desactivar {
+  min-width: 85px;
+}
+
+.horario-btn-quitar {
+  min-width: 80px;
+  font-size: 0.8rem;
+  padding: 7px 8px !important;
+  white-space: nowrap;
+}
+
+.horario-btn-quitar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================
+   CATEGORIAS SERVICIOS PANEL
+========================= */
+
+.admin-categorias-panel .categorias-panel-card {
+  max-width: 1300px;
+  margin-inline: auto;
+}
+
+.admin-categorias-panel .categorias-create-row {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-categorias-panel .categorias-create-input {
+  min-width: 0;
+}
+
+.admin-categorias-panel .categorias-create-btn {
+  width: 100%;
+}
+
+.admin-categorias-panel .categorias-subheader {
+  margin-bottom: 14px;
+}
+
+.admin-categorias-panel .admin-loading {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+
+
+.admin-categorias-panel .categoria-card {
+  width: 100%;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+}
+
+.admin-categorias-panel .categoria-card.inactive {
+  opacity: 0.72;
+  background: #fafafa;
+}
+
+.admin-categorias-panel .categoria-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.categoria-card{
+  max-width: 400px !important;
+}
+.admin-categorias-panel .categoria-nombre-pro {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
+  gap: 8px;
   align-items: center;
-  margin: 0 auto 15px auto;
-  justify-content: center;
-}
-
-.form-servicio-grid{
-  background-color: var(--color-bg);
-  border: 1px solid var(--border-soft);
-  padding: 12px;
-  border-radius: 10px;
-}
-/* ============================= */
-/* INPUTS */
-/* ============================= */
-
-.admin-input{
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.3;
   font-weight: 700;
-  outline: none;
-  transition: all 0.15s ease;
-
 }
 
-.duracion, .anticipo{
-  max-width: 80px;
+.admin-categorias-panel .categoria-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
-.precio-admin{
-  max-width: 90px;
-}
-.reserva{
-  max-width: 230px;
-}
-
-.admin-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.form-field {
+.admin-categorias-panel .categoria-actions-pro {
   display: flex;
-  flex-direction: column; /* 🔥 esto obliga label arriba */
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-select,
-input[type="time"] {
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 13px;
+.admin-categorias-panel .categoria-btn-delete {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-/* ============================= */
-/* RESPONSIVE */
-/* ============================= */
+.admin-categorias-panel .categoria-btn-delete:hover {
+  background: #ffe4e6;
+}
 
-@media (max-width: 768px) {
-  .admin-row,
-  .service-info,
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 992px) {
+  .servicios-panel-card,
+  .admin-panel-container {
+    padding: 16px;
+  }
+
+  .servicios-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .service-header {
     flex-direction: column;
     align-items: stretch;
   }
 
   .service-actions {
-    margin-top: 10px;
+    width: 100%;
+  }
+}
+
+
+
+@media (max-width: 768px) {
+  .servicios-categoria-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
+  .servicios-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+    .service-editor-fields-2,
+  .service-editor-fields-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .service-field-sm {
+    max-width: 100%;
+  }
+  
+  .service-info {
+    flex-direction: column;
+  }
+
+  .service-info span {
+    border-radius: 12px;
+  }
+
+  .service-actions,
+  .service-editor-actions {
+    flex-wrap: wrap;
+  }
+
+  .service-sena-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .horario-franja-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .horario-btn-quitar {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .horario-dia-header {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-categorias-panel .categorias-create-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-categorias-panel .categoria-actions-pro {
+    flex-direction: column;
+  }
+
+  .admin-categorias-panel .categoria-actions-pro button,
+  .admin-categorias-panel .categoria-btn-delete,
+  .admin-categorias-panel .categorias-create-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .servicios-panel-card,
+  .admin-panel-container,
+  .servicios-categoria-bloque,
+  .service-card,
+  .horario-dia-card,
+  .servicios-form-block,
+  .admin-servicios-create {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .service-title {
+    font-size: 15px;
+  }
+
+  .service-actions,
+  .service-editor-actions {
+    flex-direction: column;
+  }
+
+  .service-actions button,
+  .service-editor-actions button,
+  .button-field button,
+  .horario-btn-quitar,
+  .gabinete-checkbox {
+    width: 100%;
+  }
+
+  .horario-franja-row {
+    grid-template-columns: 1fr;
+  }
+
+  .horario-franja-input,
+  .horario-btn-quitar,
+  .gabinete-checkbox {
+    width: 100%;
+  }
+
+  .horario-dia-check {
+    width: 100%;
+  }
+
+  .gabinete-checkbox {
+    justify-content: flex-start;
+  }
 }

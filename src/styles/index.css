@@ -3,27 +3,31 @@
    ============================================================ */
 
    @import './theme.css';
-   
    @import './turnos.css';
    @import './agenda.css';
    @import './gabinete.css';
-   @import './servicios.css';
 /* -------------------------
    LAYOUT
 ------------------------- */
 @import './layout/header.css';
+@import './layout/home.css';
 @import './layout/footer.css';
-@import './layout/acordeon.css';
 /* -------------------------
    PÁGINAS
 ------------------------- */
 
 @import './pages/login.css';
+@import './pages/misturnos.css';
 @import './pages/usuario.css';
 @import './pages/ubicacion.css';
 @import './pages/redes.css';
 
 
+/* -------------------------
+   PANELS
+------------------------- */
+@import './panels/info.css';
+@import './admin/categoriasServiciosPanel.css';
 /* -------------------------
    ADMIN COMPLETO
 ------------------------- */

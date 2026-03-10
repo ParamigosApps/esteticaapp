@@ -32,7 +32,7 @@ import { guardarPerfilUsuario } from "../services/usuarioService";
 
 import { showLoading, hideLoading } from "../services/loadingService.js";
 
-import { swalLoginEmail } from "../utils/swalUtils";
+import { swalLoginEmail } from "../public/utils/swalUtils.js";
 // ============================================================
 // CONTEXT
 // ============================================================
@@ -268,7 +268,6 @@ export function AuthProvider({ children }) {
         const ref = doc(db, "usuarios", fbUser.uid);
         const snap = await getDoc(ref);
 
-        console.log("PROJECT ID:", db.app.options.projectId);
         // 🎯 NIVEL REAL (Firestore > claims para clientes)
         let nivel = 1; // cliente por defecto
 
@@ -416,7 +415,7 @@ export function AuthProvider({ children }) {
     try {
       Swal.fire({
         title: "Conectando con Google",
-        text: "Verificando tu cuenta…",
+        text: "Esperando confirmación…",
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
@@ -488,7 +487,7 @@ export function AuthProvider({ children }) {
     try {
       Swal.fire({
         title: "Conectando con Facebook",
-        text: "Verificando tu cuenta…",
+        text: "Esperando confirmación…",
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,

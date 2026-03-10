@@ -4,6 +4,9 @@ import Swal from 'sweetalert2'
 export function showLoading({
   title = 'Procesando',
   text = 'Por favor aguardá unos segundos...',
+  showBackButton = false,
+  backButtonText = 'Volver atrás',
+  onBack = null,
 } = {}) {
   Swal.fire({
     title: `<span class="loading-title">${title}</span>`,
@@ -15,12 +18,22 @@ export function showLoading({
       </div>
     `,
     showConfirmButton: false,
+    showCancelButton: showBackButton,
+    cancelButtonText: backButtonText,
     allowOutsideClick: false,
     allowEscapeKey: false,
     backdrop: true,
     customClass: {
       popup: 'swal-loading-popup',
+      cancelButton: 'swal-loading-back-btn',
     },
+  }).then((result) => {
+    if (
+      result.dismiss === Swal.DismissReason.cancel &&
+      typeof onBack === 'function'
+    ) {
+      onBack()
+    }
   })
 }
 

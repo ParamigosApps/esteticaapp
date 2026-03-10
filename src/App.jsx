@@ -1,22 +1,27 @@
 import { Routes, Route } from "react-router-dom";
 
-import Layout from "./components/layout/Layout.jsx";
+import PublicLayout from "./public/layout/PublicLayout.jsx";
+
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 import LoginEmpleado from "./pages/LoginEmpleado.jsx";
 
-import AdminRoute from "./components/admin/AdminRoute.jsx";
-import AdminPage from "./components/admin/AdminPage2.jsx";
-import AdminDashboard from "./components/admin/AdminDashboard.jsx";
-import TurnosAdminPanel from "./components/admin/TurnosAdminPanel.jsx";
-import AdminConfiguracion from "./components/admin/AdminConfiguracion.jsx";
-import ServiciosPanel from "./components/admin/ServiciosPanel.jsx";
-import GabinetesPanel from "./components/admin/GabinetesPanel.jsx";
+import AdminRoute from "./components/admin/routes/AdminRoute.jsx";
+import AdminLayout from "./components/layout/AdminLayout.jsx";
+import AdminDashboard from "./components/admin/panels/AdminDashboardPanel.jsx";
+import TurnosAdminPanel from "./components/admin/panels/TurnosAdminPanel.jsx";
+import AdminConfiguracion from "./components/admin/panels/ConfiguracionPanel.jsx";
+import ServiciosPanel from "./components/admin/panels/ServiciosPanel.jsx";
+import GabinetesPanel from "./components/admin/panels/GabinetesPanel.jsx";
 
 import { ServiciosProvider } from "./context/ServiciosContext";
 
 import PagoResultado from "./pages/PagoResultado.jsx";
+
+import MisTurnos from "./public/pages/MisTurnos.jsx";
+import MiPerfil from "./public/pages/MiPerfil.jsx";
+
 import { ToastContainer } from "react-toastify";
 
 export default function App() {
@@ -33,12 +38,12 @@ export default function App() {
         />
 
         <Routes>
-          {/* Login empleados */}
+          {/* LOGIN EMPLEADOS */}
           <Route path="/acceso" element={<LoginEmpleado />} />
 
           {/* ADMIN PROTEGIDO */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<AdminPage />}>
+            <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="turnos" element={<TurnosAdminPanel />} />
@@ -48,9 +53,11 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* Público */}
-          <Route element={<Layout />}>
+          {/* PÚBLICO */}
+          <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/mis-turnos" element={<MisTurnos />} />
+            <Route path="/mi-perfil" element={<MiPerfil />} />
             <Route path="/pago-resultado" element={<PagoResultado />} />
             <Route path="*" element={<NotFound />} />
           </Route>

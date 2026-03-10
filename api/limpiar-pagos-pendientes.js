@@ -1,55 +1,28 @@
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from '../src/Firebase.js'
-import { liberarCuposGratis } from '../src/logic/entradas/entradasCupos.js'
+//C:\Users\ivang\OneDrive\Escritorio\esteticapp\api\limpiar-pagos-pendientes.js
 
-const TIMEOUT_MS = 15 * 60 * 1000 // 15 minutos
+import { limpiarPagosPendientes } from '../src/services/limpiarPagosPendientes.js'
 
-export async function limpiarPagosPendientes() {
-  const snap = await getDocs(collection(db, 'pagos'))
-  const ahora = Date.now()
-
-  let countRevisados = 0
-  let countLiberados = 0
-
-  for (const d of snap.docs) {
-    countRevisados++
-
-    const pago = d.data()
-
-    // --------------------------------------------------
-    // Filtros defensivos
-    // --------------------------------------------------
-    if (pago.estado !== 'pendiente') continue
-    if (pago.metodo !== 'mp') continue
-
-    const iniciado = pago.paymentStartedAt?.toMillis?.()
-    if (!iniciado) continue
-
-    if (ahora - iniciado < TIMEOUT_MS) continue
-
-    // --------------------------------------------------
-    // ⏱️ TIMEOUT → liberar stock
-    // --------------------------------------------------
-    try {
-      await liberarCuposGratis({
-        eventoId: pago.eventoId,
-        entradasGratisPendientes: pago.entradasGratisPendientes,
-      })
-
-      await updateDoc(doc(db, 'pagos', d.id), {
-        estado: 'timeout',
-        liberadoAt: new Date(),
-      })
-
-      countLiberados++
-    } catch (err) {
-      // ❌ Importante: NO romper el loop
-      console.error('❌ Error liberando pago', d.id, err)
-    }
+export default async function handler(req, res) {
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({
+      ok: false,
+      error: 'Method not allowed',
+    })
   }
 
-  return {
-    revisados: countRevisados,
-    liberados: countLiberados,
+  try {
+    const resultado = await limpiarPagosPendientes()
+
+    return res.status(200).json({
+      ok: true,
+      ...resultado,
+    })
+  } catch (error) {
+    console.error('❌ limpiar-pagos-pendientes error', error)
+
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || 'Error interno',
+    })
   }
 }

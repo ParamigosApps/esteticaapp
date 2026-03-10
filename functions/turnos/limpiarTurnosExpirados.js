@@ -17,7 +17,7 @@ exports.limpiarTurnosExpirados = onSchedule(
 
     const snap = await db
       .collection('turnos')
-      .where('estado', '==', 'pendiente')
+      .where('estadoTurno', '==', 'pendiente')
       .where('holdHasta', '<=', ahora)
       .get()
 
@@ -27,7 +27,7 @@ exports.limpiarTurnosExpirados = onSchedule(
 
     snap.docs.forEach(doc => {
       batch.update(doc.ref, {
-        estado: 'expirado'
+        estadoTurno: 'expirado'
       })
     })
 

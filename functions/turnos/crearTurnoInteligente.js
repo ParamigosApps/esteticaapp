@@ -1,165 +1,339 @@
-//functions\turnos\crearTurnoInteligente.js
+// --------------------------------------------------
+// functions/turnos/crearTurnoInteligente.js
+// --------------------------------------------------
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAdmin } = require("../_lib/firebaseAdmin");
-
 const { FieldValue } = require("firebase-admin/firestore");
 
+function normalizarEstadoTurno(turno = {}) {
+  if (turno.estadoTurno) return turno.estadoTurno;
+
+  switch (turno.estado) {
+    case "pendiente_pago_mp":
+      return "pendiente";
+    case "pendiente_aprobacion":
+      return "pendiente_aprobacion";
+    case "señado":
+      return "confirmado";
+    case "confirmado":
+      return "confirmado";
+    case "cancelado":
+      return "cancelado";
+    case "perdido":
+      return "perdido";
+    case "finalizado":
+      return "finalizado";
+    case "rechazado":
+      return "rechazado";
+    case "expirado":
+      return "cancelado";
+    default:
+      return "pendiente";
+  }
+}
+
+function esTurnoActivoYBloqueante(turno, ahora) {
+  const estadoTurno = normalizarEstadoTurno(turno);
+
+  if (!["pendiente", "pendiente_aprobacion", "confirmado"].includes(estadoTurno)) {
+    return false;
+  }
+
+  // si tiene vencimiento y ya venció, no debe bloquear
+  if (estadoTurno !== "confirmado" && turno.venceEn && Number(turno.venceEn) <= ahora) {
+    return false;
+  }
+
+  return true;
+}
+
+
+function toISODateEnZona(date, timeZone = "America/Argentina/Buenos_Aires") {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function sumarDiasISO(fechaISO, dias) {
+  const [y, m, d] = String(fechaISO).split("-").map(Number);
+  const base = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  base.setUTCDate(base.getUTCDate() + dias);
+  return base.toISOString().slice(0, 10);
+}
+
+function obtenerDiaSemanaISO(fechaISO) {
+  const [y, m, d] = String(fechaISO).split("-").map(Number);
+  if (!y || !m || !d) return null;
+
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+}
+
+function horaTextoAMinutos(hora) {
+  if (typeof hora !== "string" || !hora.includes(":")) return null;
+  const [h, m] = hora.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function obtenerMinutosEnZona(ms, timeZone = "America/Argentina/Buenos_Aires") {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(Number(ms)));
+
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+function turnoDentroDeHorarioServicio(servicio, fechaISO, inicioMs, finMs) {
+  if (!Array.isArray(servicio.horariosServicio) || !servicio.horariosServicio.length) {
+    return true;
+  }
+
+  const diaSemana = obtenerDiaSemanaISO(fechaISO);
+  if (diaSemana == null) return false;
+
+  const configDia = servicio.horariosServicio.find(
+    (h) => Number(h?.diaSemana) === Number(diaSemana),
+  );
+
+  if (!configDia?.activo) return false;
+
+  const franjas = Array.isArray(configDia.franjas) ? configDia.franjas : [];
+  if (!franjas.length) return false;
+
+  const inicioMin = obtenerMinutosEnZona(inicioMs);
+  const finMin = obtenerMinutosEnZona(finMs);
+
+  if (!Number.isFinite(inicioMin) || !Number.isFinite(finMin)) return false;
+
+  return franjas.some((f) => {
+    const desde = horaTextoAMinutos(f?.desde);
+    const hasta = horaTextoAMinutos(f?.hasta);
+
+    return (
+      Number.isFinite(desde) &&
+      Number.isFinite(hasta) &&
+      inicioMin >= desde &&
+      finMin <= hasta
+    );
+  });
+}
 
 exports.crearTurnoInteligente = onCall(
   { region: "us-central1" },
   async (request) => {
     console.log("=== crearTurnoInteligente INPUT ===");
-console.log("UID:", request.auth?.uid);
-console.log("DATA:", JSON.stringify(request.data));
-    if (!request.auth?.uid)
+    console.log("UID:", request.auth?.uid);
+    console.log("DATA:", JSON.stringify(request.data));
+
+    if (!request.auth?.uid) {
       throw new HttpsError("unauthenticated", "No autenticado");
+    }
 
-    const {
-      servicioId,
-      nombreServicio,
-      gabineteIds,
-      fecha,
-      horaInicio,
-      horaFin,
-      modoAsignacion,
-    } = request.data || {};
+const {
+  servicioId,
+  gabineteIds,
+  fecha,
+  horaInicio,
+  horaFin,
+  modoAsignacion,
+  origenSolicitud = "web",
+  metodoPagoSolicitado = null,
+} = request.data || {};
 
-    if (
-  !servicioId ||
-  !fecha ||
-  horaInicio == null ||
-  horaFin == null
-) {
-  throw new HttpsError("invalid-argument", "Datos incompletos");
-}
+    if (!servicioId || !fecha || horaInicio == null || horaFin == null) {
+      throw new HttpsError("invalid-argument", "Datos incompletos");
+    }
 
-    const db = getAdmin().firestore();
-
-    if (!Array.isArray(gabineteIds))
+    if (!Array.isArray(gabineteIds)) {
       throw new HttpsError("invalid-argument", "gabineteIds debe ser array");
+    }
 
     const idsValidos = gabineteIds.filter(
       (id) => typeof id === "string" && id.trim() !== ""
     );
 
-    if (!idsValidos.length)
+    if (!idsValidos.length) {
       throw new HttpsError("invalid-argument", "gabineteIds inválidos");
+    }
 
-    if (idsValidos.length > 10)
+    if (idsValidos.length > 10) {
       throw new HttpsError("invalid-argument", "Máximo 10 gabinetes");
+    }
+
+    const db = getAdmin().firestore();
+    const clienteId = request.auth.uid;
+
+    const clienteSnap = await db.collection("usuarios").doc(clienteId).get();
+
+    let nombreCliente = null;
+    let telefonoCliente = null;
+
+    if (clienteSnap.exists) {
+      const cliente = clienteSnap.data() || {};
+      nombreCliente = cliente.nombre || cliente.nombreCompleto || null;
+      telefonoCliente =
+        cliente.telefono ||
+        cliente.phone ||
+        cliente.celular ||
+        null;
+    }
 
     // ============================================
-// 🔎 CHEQUEAR MODO DE RESERVA REAL DEL SERVICIO
-// ============================================
+    // 🔎 SERVICIO
+    // ============================================
+    const servicioSnap = await db.collection("servicios").doc(servicioId).get();
 
-const servicioSnap = await db.collection("servicios").doc(servicioId).get();
+    if (!servicioSnap.exists) {
+      throw new HttpsError("not-found", "Servicio no encontrado");
+    }
 
-if (!servicioSnap.exists) {
-  throw new Error("Servicio no encontrado");
-}
+    const servicio = servicioSnap.data() || {};
+    const modoReserva = servicio.modoReserva || "automatico";
 
-const servicio = servicioSnap.data();
-const modoReserva = servicio.modoReserva || "automatico";
+    const pedirAnticipoServicio = Boolean(servicio.pedirAnticipo);
+    const tipoAnticipo = servicio.tipoAnticipo || "online"; // online | manual
+    const porcentajeAnticipo = Number(servicio.porcentajeAnticipo || 0);
 
-const pedirAnticipoServicio = Boolean(servicio.pedirAnticipo);
-const tipoAnticipo = servicio.tipoAnticipo || "online"; // online | manual
-const porcentajeAnticipo = Number(servicio.porcentajeAnticipo || 0);
+    const nombreServicioFinal =
+      servicio.nombreServicio ||
+      servicio.nombre ||
+      "Servicio";
+
+          const agendaMaxDias = Math.max(1, Number(servicio.agendaMaxDias || 7));
+    const hoyISO = toISODateEnZona(new Date());
+    const fechaMaxPermitida = sumarDiasISO(hoyISO, agendaMaxDias - 1);
+
+    if (fecha < hoyISO) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No se pueden reservar turnos en fechas pasadas",
+      );
+    }
+
+    if (fecha > fechaMaxPermitida) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Este servicio solo permite reservar hasta ${agendaMaxDias} días de anticipación`,
+      );
+    }
 
     return await db.runTransaction(async (tx) => {
-
       const inicioNum = Number(horaInicio);
-const finNum = Number(horaFin);
+      const finNum = Number(horaFin);
 
-if (isNaN(inicioNum) || isNaN(finNum)) {
-  throw new HttpsError("invalid-argument", "Horario inválido");
-}
+      if (Number.isNaN(inicioNum) || Number.isNaN(finNum)) {
+        throw new HttpsError("invalid-argument", "Horario inválido");
+      }
 
-if (finNum <= inicioNum) {
-  throw new HttpsError("invalid-argument", "Rango horario inválido");
-}
+       if (finNum <= inicioNum) {
+    throw new HttpsError("invalid-argument", "Rango horario inválido");
+  }
 
-    // 1️⃣ Traer gabinetes activos (SIN query IN dentro de transaction)
-    const gabineteDocs = await Promise.all(
-      idsValidos.map((id) => tx.get(db.collection("gabinetes").doc(id)))
-    );
+    const ahoraMs = Date.now();
+    const hoyISOActual = toISODateEnZona(new Date());
 
-    const gabinetes = gabineteDocs
-      .filter((snap) => snap.exists)
-      .map((snap) => ({ id: snap.id, ...snap.data() }))
-      .filter((g) => g.activo !== false);
-
-    if (!gabinetes.length) {
-      throw new HttpsError("failed-precondition", "Sin gabinetes activos");
+    if (fecha === hoyISOActual && inicioNum <= ahoraMs) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No se pueden reservar horarios pasados de hoy"
+      );
     }
-    console.log("Gabinetes válidos:", gabinetes.map(g => g.id));
-     // 2️⃣ Traer turnos del día (sin IN dentro de transaction)
-const turnosSnap = await tx.get(
-  db.collection("turnos").where("fecha", "==", fecha)
-);
 
-const turnos = turnosSnap.docs
-  .map((d) => d.data())
-  .filter((t) =>
-   [
-  "pendiente_pago_mp",
-  "pendiente_aprobacion",
-  "confirmado"
-].includes(
-      t.estado
-    )
-  );
+    if (!turnoDentroDeHorarioServicio(servicio, fecha, inicioNum, finNum)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "El horario seleccionado no está disponible para este servicio",
+      );
+    }
+      
+      // 1️⃣ Traer gabinetes activos
+      const gabineteDocs = await Promise.all(
+        idsValidos.map((id) => tx.get(db.collection("gabinetes").doc(id)))
+      );
 
-const ahora = Date.now();
+      const gabinetes = gabineteDocs
+        .filter((snap) => snap.exists)
+        .map((snap) => ({ id: snap.id, ...snap.data() }))
+        .filter((g) => g.activo !== false);
 
-const turnosActivos = turnos.filter((t) => {
-  if (!t.venceEn) return true;
-  return t.venceEn > ahora;
-});
+      if (!gabinetes.length) {
+        throw new HttpsError("failed-precondition", "Sin gabinetes activos");
+      }
 
-console.log("Turnos encontrados:", turnos.length);
-console.log("Detalle turnos:", turnos);
-console.log("Intentando reservar:", {
-  fecha,
-  horaInicio,
-  horaFin
-});
-     
-// ============================================
-// 🔒 SERVICIO EXCLUSIVO POR HORARIO
-// ============================================
+      console.log("Gabinetes válidos:", gabinetes.map((g) => g.id));
 
-const conflictoServicio = turnosActivos.some((t) =>
-  t.servicioId === servicioId &&
-  inicioNum < Number(t.horaFin) &&
-  finNum > Number(t.horaInicio)
-);
+      // 2️⃣ Traer turnos del día
+      const turnosSnap = await tx.get(
+        db.collection("turnos").where("fecha", "==", fecha)
+      );
 
-if (conflictoServicio) {
-  throw new HttpsError("failed-precondition", "Horario ocupado");
-}
+      const ahora = Date.now();
 
-const candidatos = gabinetes.filter((g) => {
-  const solapado = turnosActivos.some((t) => {
-    const conflicto =
-      t.gabineteId === g.id &&
-      inicioNum < Number(t.horaFin) &&
-finNum > Number(t.horaInicio);
+      const turnosActivos = turnosSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((t) => esTurnoActivoYBloqueante(t, ahora));
 
-    if (conflicto) {
-      console.log("⚠️ Conflicto detectado:", {
-        gabinete: g.id,
-        turnoExistente: t,
+      console.log("Turnos activos encontrados:", turnosActivos.length);
+      console.log("Intentando reservar:", {
+        fecha,
+        horaInicio: inicioNum,
+        horaFin: finNum,
       });
-    }
 
-    return conflicto;
-  });
+      // ============================================
+      // 🔒 SERVICIO EXCLUSIVO POR HORARIO
+      // ============================================
+      const conflictoServicio = turnosActivos.some((t) =>
+        t.servicioId === servicioId &&
+        inicioNum < Number(t.horaFin) &&
+        finNum > Number(t.horaInicio)
+      );
 
-  return !solapado;
-});
-console.log("Candidatos finales:", candidatos.map(g => g.id));
-      if (!candidatos.length)
+      if (conflictoServicio) {
         throw new HttpsError("failed-precondition", "Horario ocupado");
+      }
+
+      const candidatos = gabinetes.filter((g) => {
+        const solapado = turnosActivos.some((t) => {
+          const conflicto =
+            t.gabineteId === g.id &&
+            inicioNum < Number(t.horaFin) &&
+            finNum > Number(t.horaInicio);
+
+          if (conflicto) {
+            console.log("⚠️ Conflicto detectado:", {
+              gabinete: g.id,
+              turnoExistente: t.id,
+            });
+          }
+
+          return conflicto;
+        });
+
+        return !solapado;
+      });
+
+      console.log("Candidatos finales:", candidatos.map((g) => g.id));
+
+      if (!candidatos.length) {
+        throw new HttpsError("failed-precondition", "Horario ocupado");
+      }
 
       let gabineteElegido;
 
@@ -181,61 +355,108 @@ console.log("Candidatos finales:", candidatos.map(g => g.id));
         gabineteElegido = carga[0];
       }
 
-     // ============================================
-// 📌 SI EL SERVICIO ES PENDIENTE → CREAR SOLICITUD
-// ============================================
+      // ============================================
+      // 📌 ESTADOS INICIALES
+      // ============================================
+      const montoTotal = Number(servicio.precio || 0);
 
-let estadoInicial;
-let venceTurno = null;
-let montoAnticipoCalculado = 0;
+      let montoAnticipoCalculado = 0;
+      if (pedirAnticipoServicio) {
+        montoAnticipoCalculado =
+          (montoTotal * porcentajeAnticipo) / 100;
+      }
 
-if (modoReserva === "reserva") {
+      const requiereAnticipo = montoAnticipoCalculado > 0;
 
-  estadoInicial = "pendiente_aprobacion";
-  venceTurno = Date.now() + 24 * 60 * 60 * 1000;
+      let estadoTurnoInicial;
+      let estadoPagoInicial;
+      let venceTurno = null;
 
-} else {
+      let metodoPagoEsperado = "sin_pago";
 
-  // automático
-  if (pedirAnticipoServicio && tipoAnticipo === "online") {
+      if (montoTotal > 0) {
+        if (tipoAnticipo === "online") {
+          metodoPagoEsperado = "mercadopago";
+        } else if (tipoAnticipo === "manual") {
+          metodoPagoEsperado = "manual";
+        }
+      }
 
-    montoAnticipoCalculado =
-      (Number(servicio.precio || 0) * porcentajeAnticipo) / 100;
+      if (metodoPagoSolicitado === "mercadopago") {
+        metodoPagoEsperado = "mercadopago";
+      }
 
-    estadoInicial = "pendiente_pago_mp";
-    venceTurno = Date.now() + 60 * 60 * 1000;
+      if (metodoPagoSolicitado === "manual") {
+        metodoPagoEsperado = "manual";
+      }
 
-  } else {
+      if (modoReserva === "reserva") {
+        estadoTurnoInicial = "pendiente_aprobacion";
+        estadoPagoInicial = montoTotal > 0 ? "pendiente" : "abonado";
+        venceTurno = Date.now() + 24 * 60 * 60 * 1000;
+      } else {
+        if (requiereAnticipo) {
+          estadoTurnoInicial = "pendiente";
+          estadoPagoInicial = "pendiente";
+          venceTurno = Date.now() + 60 * 60 * 1000;
+        } else {
+          estadoTurnoInicial = "confirmado";
+          estadoPagoInicial = montoTotal > 0 ? "pendiente" : "abonado";
+        }
+      }
 
-    estadoInicial = "confirmado";
+      const montoPagado = 0;
+      const saldoPendiente = Math.max(0, montoTotal - montoPagado);
 
-  }
-}
+      const ref = db.collection("turnos").doc();
 
-const ref = db.collection("turnos").doc();
+      tx.set(ref, {
+        servicioId,
+        nombreServicio: nombreServicioFinal,
 
-    tx.set(ref, {
-      servicioId,
-      nombreServicio,
-      clienteId: request.auth.uid,
-      gabineteId: gabineteElegido.id,
-      fecha,
-      horaInicio: inicioNum,
-    horaFin: finNum,
-      estado: estadoInicial,
-      tipoAnticipo: tipoAnticipo,
-      pedirAnticipo: montoAnticipoCalculado > 0,
-      montoAnticipo: montoAnticipoCalculado,
-      precioTotal: Number(servicio.precio || 0),
-      creadoEn: FieldValue.serverTimestamp(),
-      venceEn: venceTurno,
-    });
+        clienteId,
+        usuarioId: clienteId, // compatibilidad con lógica vieja
+        nombreCliente,
+        telefonoCliente,
+
+        gabineteId: gabineteElegido.id,
+        nombreGabinete:
+          gabineteElegido.nombreGabinete || gabineteElegido.nombre || "",
+
+        fecha,
+        horaInicio: inicioNum,
+        horaFin: finNum,
+
+        estadoTurno: estadoTurnoInicial,
+        estadoPago: estadoPagoInicial,
+
+        origenSolicitud,
+        metodoPagoEsperado,
+        metodoPagoUsado: null,
+
+        tipoAnticipo,
+        pedirAnticipo: requiereAnticipo,
+        montoAnticipo: montoAnticipoCalculado,
+
+        montoTotal,
+        precioTotal: montoTotal, // compatibilidad
+        montoPagado,
+        saldoPendiente,
+
+        recordatorio24Enviado: false,
+        recordatorio24Procesando: false,
+
+        creadoEn: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        venceEn: venceTurno,
+      });
 
       return {
         ok: true,
         turnoId: ref.id,
         gabineteAsignado: gabineteElegido.id,
-        estadoInicial,
+        estadoTurnoInicial,
+        estadoPagoInicial,
         venceEn: venceTurno,
       };
     });

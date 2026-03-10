@@ -3,7 +3,7 @@ import {
   generarMinutos,
   formatearHora,
   esRangoValido,
-} from "../../utils/timeUtils";
+} from "../../public/utils/timeUtils";
 
 export default function TimeRangeSelector({ onAdd, showDay = true }) {
   const [dia, setDia] = useState(1);

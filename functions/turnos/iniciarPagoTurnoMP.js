@@ -1,10 +1,10 @@
-//functions\turnos\iniciarPagoTurnoMP.js
-
+// --------------------------------------------------
+// functions/turnos/iniciarPagoTurnoMP.js
+// --------------------------------------------------
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { defineSecret } = require("firebase-functions/params");
-
 const { FieldValue } = require("firebase-admin/firestore");
 
 const MP_ACCESS_TOKEN = defineSecret("MP_ACCESS_TOKEN");
@@ -33,53 +33,109 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("not-found", "Turno no encontrado");
     }
 
-    const turno = turnoSnap.data();
+    const turno = turnoSnap.data() || {};
+    const uid = request.auth.uid;
 
-    if (turno.clienteId !== request.auth.uid) {
+    if ((turno.clienteId || turno.usuarioId) !== uid) {
       throw new HttpsError("permission-denied", "No autorizado");
     }
 
-    if (turno.estado !== "pendiente_pago_mp") {
+    const estadoTurnoActual =
+      turno.estadoTurno ||
+      turno.estado ||
+      "pendiente";
+
+    const estadoPagoActual =
+      turno.estadoPago ||
+      "pendiente";
+
+    if (["cancelado", "perdido", "finalizado", "rechazado"].includes(estadoTurnoActual)) {
       throw new HttpsError(
         "failed-precondition",
-        `Estado inválido: ${turno.estado}`
+        `El turno no admite pago en estado ${estadoTurnoActual}`
       );
     }
 
-  if (!turno.pedirAnticipo || !turno.montoAnticipo) {
-    throw new HttpsError("failed-precondition", "Este turno no requiere seña");
-  }
+    if (!turno.pedirAnticipo || !Number(turno.montoAnticipo)) {
+      throw new HttpsError("failed-precondition", "Este turno no requiere seña");
+    }
 
-    // ⛔ Si ya venció
-    if (turno.venceEn && turno.venceEn < Date.now()) {
+    if (
+      turno.metodoPagoEsperado &&
+      !["mercadopago", "sin_pago"].includes(turno.metodoPagoEsperado)
+    ) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Este turno no está configurado para pagar por MercadoPago",
+      );
+    }
+
+    if (turno.venceEn && Number(turno.venceEn) < Date.now()) {
       throw new HttpsError("failed-precondition", "Turno expirado");
     }
 
-    if (turno.pagoId) {
-  const pagoExistente = await db.collection("pagos").doc(turno.pagoId).get();
-
-  if (pagoExistente.exists) {
-    const p = pagoExistente.data();
-    if (p.estado === "pendiente") {
-      throw new HttpsError("failed-precondition", "Ya existe un pago pendiente");
+    // Si ya tiene pago aprobado o pendiente de revisión, no iniciar otro
+    if (["abonado", "pendiente_aprobacion"].includes(estadoPagoActual)) {
+      throw new HttpsError(
+        "failed-precondition",
+        `El turno ya tiene un pago en estado ${estadoPagoActual}`
+      );
     }
-  }
-}
 
-    // 🔐 Crear pago_turno
+    if (turno.pagoId) {
+      const pagoExistenteSnap = await db.collection("pagos").doc(turno.pagoId).get();
+
+      if (pagoExistenteSnap.exists) {
+        const p = pagoExistenteSnap.data() || {};
+
+        if (["pendiente", "pendiente_aprobacion", "aprobado"].includes(p.estado)) {
+          // Si ya existe preference creada, devolvela
+          if (p.estado === "pendiente" && p.mpInitPoint) {
+            return {
+              ok: true,
+              pagoId: turno.pagoId,
+              init_point: p.mpInitPoint,
+              reused: true,
+            };
+          }
+
+          throw new HttpsError(
+            "failed-precondition",
+            `Ya existe un pago activo en estado ${p.estado}`
+          );
+        }
+      }
+    }
+
+    const mpAccessToken = MP_ACCESS_TOKEN.value();
+    const frontUrl = FRONT_URL.value()?.replace(/\/$/, "");
+
+    if (!mpAccessToken || !frontUrl) {
+      throw new HttpsError("internal", "MP no configurado");
+    }
+
+    const montoAnticipo = Number(turno.montoAnticipo || 0);
+    const montoTotal = Number(
+      turno.montoTotal ??
+      turno.precioTotal ??
+      turno.total ??
+      0
+    );
+
     const pagoRef = db.collection("pagos").doc();
-
-
-
 
 await pagoRef.set({
   turnoId,
-  clienteId: request.auth.uid,
+  clienteId: uid,
 
-  metodo: "mp",
+  metodo: "mercadopago",
+  canal: "checkout_pro",
+  origen: "turno_online",
   estado: "pendiente",
 
-  monto: Number(turno.montoAnticipo),
+  monto: montoAnticipo,
+  montoTotal,
+  tipoPago: "sena",
 
   mpPreferenceId: null,
   mpInitPoint: null,
@@ -87,7 +143,6 @@ await pagoRef.set({
   mpStatus: null,
 
   expiraEn: turno.venceEn || null,
-
   comprobanteUrl: null,
 
   creadoEn: FieldValue.serverTimestamp(),
@@ -96,20 +151,23 @@ await pagoRef.set({
 
 await turnoRef.update({
   pagoId: pagoRef.id,
-  metodoPago: "mp",
+
+  metodoPago: "mercadopago", // compatibilidad vieja
+  metodoPagoEsperado: "mercadopago",
+  metodoPagoUsado: null,
+  origenSolicitud: turno.origenSolicitud || "web",
+
+  estadoPago: "pendiente",
+
+  montoTotal,
+  montoPagado: Number(turno.montoPagado ?? 0),
+  saldoPendiente: Math.max(
+    0,
+    montoTotal - Number(turno.montoPagado ?? 0),
+  ),
+
   updatedAt: FieldValue.serverTimestamp(),
 });
-
-    // =============================
-    // MERCADOPAGO
-    // =============================
-
-    const mpAccessToken = MP_ACCESS_TOKEN.value();
-    const frontUrl = FRONT_URL.value()?.replace(/\/$/, "");
-
-    if (!mpAccessToken || !frontUrl) {
-      throw new HttpsError("internal", "MP no configurado");
-    }
 
     const { MercadoPagoConfig, Preference } = await import("mercadopago");
 
@@ -119,33 +177,31 @@ await turnoRef.update({
 
     const preference = new Preference(client);
 
-const pref = await preference.create({
-  body: {
-    items: [
-      {
-        title: `Seña turno - ${turno.nombreServicio || "Servicio"}`,
-        quantity: 1,
-        unit_price: Number(turno.montoAnticipo),
-        currency_id: "ARS",
+    const pref = await preference.create({
+      body: {
+        items: [
+          {
+            title: `Seña turno - ${turno.nombreServicio || "Servicio"}`,
+            quantity: 1,
+            unit_price: montoAnticipo,
+            currency_id: "ARS",
+          },
+        ],
+        external_reference: pagoRef.id,
+        back_urls: {
+          success: `${frontUrl}/pago-resultado`,
+          failure: `${frontUrl}/pago-resultado`,
+          pending: `${frontUrl}/pago-resultado`,
+        },
+        auto_return: "approved",
       },
-    ],
-    external_reference: pagoRef.id,
-    back_urls: {
-      success: `${frontUrl}/pago-resultado`,
-      failure: `${frontUrl}/pago-resultado`,
-      pending: `${frontUrl}/pago-resultado`,
-    },
-    auto_return: "approved",
-  },
-});
-
-  console.log("front url: "+frontUrl)
+    });
 
     await pagoRef.update({
-  mpPreferenceId: pref.id || null,
-  mpInitPoint: pref.init_point || null,
-  updatedAt: FieldValue.serverTimestamp(),
-});
+      mpPreferenceId: pref.id || null,
+      mpInitPoint: pref.init_point || null,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
     return {
       ok: true,
