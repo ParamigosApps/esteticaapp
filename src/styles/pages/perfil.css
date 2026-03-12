@@ -1,0 +1,237 @@
+.profile-hero {
+  align-items: center;
+}
+
+.profile-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.profile-avatar {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(247, 143, 179, 0.88), rgba(199, 125, 255, 0.9));
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+  box-shadow: 0 18px 36px rgba(180, 112, 217, 0.24);
+}
+
+.profile-hero-copy {
+  min-width: 0;
+}
+
+.profile-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.profile-btn-secondary,
+.profile-btn-primary {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.profile-btn-secondary {
+  border: 1px solid #ddd2ec;
+  background: linear-gradient(180deg, #ffffff, #f6f1fd);
+  color: #322740;
+  box-shadow: 0 10px 20px rgba(90, 59, 130, 0.06);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 18px;
+}
+
+.profile-side {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #ece6f5;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 249, 255, 0.98));
+  box-shadow: 0 14px 34px rgba(29, 21, 40, 0.06);
+}
+
+.profile-card-main {
+  min-height: 100%;
+}
+
+.profile-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-card-head h2 {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  color: #24192f;
+}
+
+.profile-card-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7f6f95;
+}
+
+.profile-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e9f8ef;
+  color: #18794e;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.profile-status-pill.editing {
+  background: #fff4d7;
+  color: #9a6700;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 7px;
+}
+
+.profile-field span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #44394f;
+}
+
+.profile-field .form-control {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid #d8d1e2;
+  background: #fff;
+  box-shadow: none;
+}
+
+.profile-field .form-control:focus {
+  border-color: #b589ed;
+  box-shadow: 0 0 0 4px rgba(199, 125, 255, 0.12);
+}
+
+.profile-field .form-control:disabled {
+  background: #faf8fd;
+  color: #5d5369;
+  opacity: 1;
+}
+
+.profile-field-full {
+  grid-column: 1 / -1;
+}
+
+.profile-help-text {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #faf7ff;
+  border: 1px solid rgba(214, 194, 240, 0.5);
+  color: #655b71;
+  line-height: 1.55;
+}
+
+.profile-action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-action-btn {
+  justify-content: center;
+  min-height: 46px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid #ddd2ec;
+  background: linear-gradient(180deg, #ffffff, #f7f2fd);
+  color: #332742;
+  font-weight: 700;
+  box-shadow: 0 10px 20px rgba(90, 59, 130, 0.06);
+}
+
+.profile-action-btn-whatsapp {
+  border-color: rgba(24, 121, 78, 0.2);
+  background: linear-gradient(180deg, #f8fffb, #e9f8ef);
+  color: #176843;
+}
+
+.profile-action-btn-danger {
+  border-color: rgba(180, 35, 24, 0.16);
+  background: linear-gradient(180deg, #fff9f9, #fff0f0);
+  color: #a62d23;
+}
+
+.profile-tip-card {
+  gap: 10px;
+}
+
+.profile-tip-text {
+  margin: 0;
+  color: #5f556c;
+  line-height: 1.65;
+}
+
+@media (max-width: 900px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .profile-hero-main,
+  .profile-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-field-full {
+    grid-column: auto;
+  }
+
+  .profile-hero-actions {
+    justify-content: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero-actions .btn {
+    width: 100%;
+  }
+}

@@ -121,9 +121,52 @@
   margin-left: 8px;
 }
 
-.swal-btn-confirm:hover {
+.swal-btn-alt {
+  background: var(--color-primary);
+  color: var(--btn-secondary-text);
+  padding: 12px 16px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid  var(--border-soft);
+  margin-left: 8px;
+}
+.swal-btn-confirm:hover , .swal-btn-alt:hover {
   background: var(--btn-secondary-hover);
   transform: translateY(-2px);
+}
+
+.swal-btn-danger {
+  background: var(--color-danger);
+  color: var(--text-inverted);
+  padding: 12px 16px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid transparent;
+  margin-left: 8px;
+}
+
+.swal-btn-danger:hover {
+  background: #d95f5f;
+  transform: translateY(-2px);
+}
+
+.swal-btn-dark {
+  background: #2f2a36;
+  color: var(--text-inverted);
+  padding: 12px 16px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid #423b4b;
+}
+
+.swal-btn-dark:hover {
+  background: #26212d;
 }
 
 .swal-btn-cancel {
@@ -137,4 +180,71 @@
 
 .swal-btn-cancel:hover {
   background: var(--btn-soft-hover);
+}
+
+.swal-reserva-ok {
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+.swal-reserva-ok-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.swal-reserva-ok-lead {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.swal-reserva-ok-text {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.swal-reserva-ok-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--radius-2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 249, 0.96));
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.swal-reserva-ok-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(232, 225, 241, 0.9);
+}
+
+.swal-reserva-ok-row:last-child {
+  border-bottom: none;
+}
+
+.swal-reserva-ok-row span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.swal-reserva-ok-row strong {
+  color: var(--text-main);
+  text-align: right;
+}
+
+.swal-reserva-ok-note {
+  padding: 12px 14px;
+  border-radius: var(--radius-2);
+  background: #eefaf3;
+  border: 1px solid #d3eedc;
+  color: #1f6d42;
+  font-weight: 600;
+  line-height: 1.5;
 }

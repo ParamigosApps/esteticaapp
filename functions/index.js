@@ -57,6 +57,10 @@ exports.crearPagoTurnoTransferencia =
   require('./turnos/crearPagoTurnoTransferencia').crearPagoTurnoTransferencia
 exports.iniciarPagoTurnoMP =
   require("./turnos/iniciarPagoTurnoMP").iniciarPagoTurnoMP;
+exports.enviarRecordatorios24h =
+  require("./turnos/enviarWhatsAppRecordatorio").enviarRecordatorios24h;
+exports.limpiarTurnosExpirados =
+  require("./turnos/limpiarTurnosExpirados").limpiarTurnosExpirados;
 
 exports.getAgendaGabinete = getAgendaGabinete
 
@@ -66,6 +70,28 @@ exports.notificarAdminNuevoTurno = require("./turnos/notificarAdminNuevoTurno").
 // ======================================================
 
 exports.confirmarPagoTurno = confirmarPagoTurno
+exports.registrarPagoTurnoAdmin =
+  require("./admin/registrarPagoTurnoAdmin").registrarPagoTurnoAdmin;
+exports.crearLiquidacionAdmin =
+  require("./admin/crearLiquidacionAdmin").crearLiquidacionAdmin;
+exports.confirmarPagoManual =
+  require("./callables/confirmarPagoManual").confirmarPagoManual;
+exports.validarEmailVerificado =
+  require("./callables/validarEmailVerificado").validarEmailVerificado;
+exports.cancelarTurnoAdmin =
+  require("./admin/cancelarTurnoAdmin").cancelarTurnoAdmin;
+exports.marcarTurnoRealizadoAdmin =
+  require("./admin/marcarTurnoRealizadoAdmin").marcarTurnoRealizadoAdmin;
+exports.marcarTurnoAusenteAdmin =
+  require("./admin/marcarTurnoAusenteAdmin").marcarTurnoAusenteAdmin;
+exports.marcarTurnoReembolsadoAdmin =
+  require("./admin/marcarTurnoReembolsadoAdmin").marcarTurnoReembolsadoAdmin;
+exports.reprogramarTurnoAdmin =
+  require("./admin/reprogramarTurnoAdmin").reprogramarTurnoAdmin;
+exports.aprobarTurnoProfesional =
+  require("./profesional/aprobarTurnoProfesional").aprobarTurnoProfesional;
+exports.cancelarTurnoProfesional =
+  require("./profesional/cancelarTurnoProfesional").cancelarTurnoProfesional;
 exports.desactivarServicio =
   require("./admin/desactivarServicio").desactivarServicio;
 
@@ -87,10 +113,28 @@ exports.crearEmpleadoAdmin = onCall(async req => {
   return crearEmpleadoAdminHandler(req)
 })
 
+exports.actualizarEmpleadoAdmin = onCall(async req => {
+  const { actualizarEmpleadoAdminHandler } = require('./actualizarEmpleadoAdmin')
+  return actualizarEmpleadoAdminHandler(req)
+})
+
 exports.quitarEmpleadoAdmin = onCall(async req => {
   const { quitarEmpleadoAdminHandler } = require('./quitarEmpleadoAdmin')
   return quitarEmpleadoAdminHandler(req)
 })
+
+exports.eliminarInvitacionEmpleadoAdmin = onCall(async req => {
+  const { eliminarInvitacionEmpleadoAdminHandler } = require('./eliminarInvitacionEmpleadoAdmin')
+  return eliminarInvitacionEmpleadoAdminHandler(req)
+})
+
+exports.listarInvitacionesEmpleadoAdmin = onCall(async req => {
+  const { listarInvitacionesEmpleadoAdminHandler } = require('./listarInvitacionesEmpleadoAdmin')
+  return listarInvitacionesEmpleadoAdminHandler(req)
+})
+
+exports.activarEmpleadoGoogle =
+  require('./activarEmpleadoGoogle').activarEmpleadoGoogle
 
 
 
@@ -189,6 +233,12 @@ async function aplicarPagoAprobadoEnTurno({
     montoTotal,
     montoPagado: nuevoMontoPagado,
     saldoPendiente,
+    senaPagada: Math.min(
+      Number(turno.senaRequerida ?? turno.montoAnticipo ?? 0),
+      nuevoMontoPagado
+    ),
+    pagosCount: Number(turno.pagosCount || 0) + 1,
+    ultimoPagoEn: now,
 
     pagoId: pago?.id || turno.pagoId || null,
     updatedAt: now,
@@ -196,6 +246,7 @@ async function aplicarPagoAprobadoEnTurno({
 
   if (estadoTurnoFinal === 'confirmado') {
     updateData.confirmadoAt = turno.confirmadoAt || now
+    updateData.confirmadoEn = turno.confirmadoEn || now
   }
 
   await turnoRef.update(updateData)

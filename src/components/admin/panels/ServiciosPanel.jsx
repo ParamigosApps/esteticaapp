@@ -11,10 +11,18 @@ import {
   serverTimestamp,
   updateDoc,
   doc,
+  getDocs,
+  deleteField,
 } from "firebase/firestore";
 
 import { getFunctions, httpsCallable } from "firebase/functions";
 import CategoriasServiciosPanel from "./CategoriasServiciosPanel";
+import { hideLoading, showLoading } from "../../../services/loadingService.js";
+import {
+  swalConfirmDanger,
+  swalError,
+  swalSuccess,
+} from "../../../public/utils/swalUtils.js";
 
 function normalizar(str) {
   return str.trim().toLowerCase();
@@ -30,6 +38,43 @@ function getCategoriaLabel(servicio) {
     (servicio.categoriaNombre || "").trim() ||
     obtenerCategoriaServicio(servicio.categoriaServicio)
   );
+}
+
+function getPrecioEfectivo(servicio) {
+  const precio = Number(servicio?.precio || 0);
+  const precioEfectivo = Number(servicio?.precioEfectivo || 0);
+
+  if (precioEfectivo > 0 && precioEfectivo < precio) {
+    return precioEfectivo;
+  }
+
+  return 0;
+}
+
+function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
+  return [
+    normalizar(nombreServicio || ""),
+    String(categoriaId || "").trim(),
+    String(profesionalId || "").trim(),
+  ].join("::");
+}
+
+function showError(text) {
+  return swalError({ text });
+}
+
+function confirmDanger(config) {
+  return swalConfirmDanger(config);
+}
+
+function getEmpleadoRoleLabel(empleado) {
+  const nivel = Number(empleado?.nivel || 0);
+
+  if (nivel === 4) return "Dueño";
+  if (nivel === 3) return "Admin";
+  if (nivel === 2) return "Caja";
+  if (nivel === 1) return "Profesional";
+  return "Equipo";
 }
 
 const DIAS_SEMANA = [
@@ -181,6 +226,7 @@ function HorariosServicioEditor({ horarios, setHorarios }) {
             <div key={dia.value} className="horario-dia-card">
               <div className="horario-dia-header">
                 <label className="checkbox-inline text-muted horario-dia-check">
+                  {" "}
                   <input
                     type="checkbox"
                     checked={item.activo}
@@ -245,7 +291,7 @@ function HorariosServicioEditor({ horarios, setHorarios }) {
                             : ""
                         }
                       >
-                        Quitar
+                        X
                       </button>
                     </div>
                   ))}
@@ -259,11 +305,92 @@ function HorariosServicioEditor({ horarios, setHorarios }) {
   );
 }
 
+function getResumenHorarioGabinete(gabinete) {
+  const horarios = Array.isArray(gabinete?.horarios) ? gabinete.horarios : [];
+
+  const activos = horarios
+    .filter(
+      (h) =>
+        h?.activo &&
+        typeof h?.desde === "string" &&
+        typeof h?.hasta === "string",
+    )
+    .sort((a, b) => {
+      const diaA = Number(a?.diaSemana ?? 99);
+      const diaB = Number(b?.diaSemana ?? 99);
+      if (diaA !== diaB) return diaA - diaB;
+      return String(a?.desde || "").localeCompare(String(b?.desde || ""));
+    });
+
+  if (!activos.length) return "Sin horarios configurados";
+
+  const DIAS_LABEL = {
+    0: "DO",
+    1: "LU",
+    2: "MA",
+    3: "MI",
+    4: "JU",
+    5: "VI",
+    6: "SÁ",
+  };
+
+  function compactarDias(dias = []) {
+    const unicos = [...new Set(dias)].sort((a, b) => a - b);
+    if (!unicos.length) return "";
+
+    const grupos = [];
+    let inicio = unicos[0];
+    let fin = unicos[0];
+
+    for (let i = 1; i < unicos.length; i++) {
+      const actual = unicos[i];
+
+      if (actual === fin + 1) {
+        fin = actual;
+      } else {
+        grupos.push([inicio, fin]);
+        inicio = actual;
+        fin = actual;
+      }
+    }
+
+    grupos.push([inicio, fin]);
+
+    return grupos
+      .map(([a, b]) => {
+        if (a === b) return DIAS_LABEL[a] || `Día ${a}`;
+        return `${DIAS_LABEL[a]} a ${DIAS_LABEL[b]}`;
+      })
+      .join(", ");
+  }
+
+  const gruposPorRango = new Map();
+
+  activos.forEach((h) => {
+    const key = `${h.desde}-${h.hasta}`;
+    if (!gruposPorRango.has(key)) {
+      gruposPorRango.set(key, []);
+    }
+    gruposPorRango.get(key).push(Number(h.diaSemana));
+  });
+
+  return Array.from(gruposPorRango.entries())
+    .map(([rango, dias]) => {
+      const [desde, hasta] = rango.split("-");
+      const diasTexto = compactarDias(dias);
+
+      return `${diasTexto} ${desde.slice(0, 2)} a ${hasta.slice(0, 2)}`;
+    })
+    .join(" · ");
+}
+
 // ===================================================
 // ITEM EDITABLE
 // ===================================================
-function ServicioItem({ servicio, gabinetes }) {
+function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [editando, setEditando] = useState(false);
+  const empleadoVinculado =
+    empleados.find((item) => item.id === servicio.profesionalId) || null;
 
   // ==============================
   // CATEGORÍAS (para editar)
@@ -287,15 +414,24 @@ function ServicioItem({ servicio, gabinetes }) {
   const [nombreProfesional, setNombreProfesional] = useState(
     servicio.nombreProfesional || "",
   );
+  const [profesionalId, setProfesionalId] = useState(
+    servicio.profesionalId || "",
+  );
   const [descripcion, setDescripcion] = useState(servicio.descripcion || "");
   const [duracion, setDuracion] = useState(servicio.duracionMin);
   const [precio, setPrecio] = useState(servicio.precio);
+  const [precioEfectivo, setPrecioEfectivo] = useState(
+    servicio.precioEfectivo || 0,
+  );
+  const [responsableGestion, setResponsableGestion] = useState(
+    servicio.responsableGestion || "admin",
+  );
   const [modoReserva, setModoReserva] = useState(
     servicio.modoReserva || "automatico",
   );
 
   const [pedirAnticipo, setPedirAnticipo] = useState(
-    servicio.pedirAnticipo || false,
+    servicio.pedirAnticipo || true,
   );
 
   const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(
@@ -314,26 +450,89 @@ function ServicioItem({ servicio, gabinetes }) {
     servicio.gabinetes?.map((g) => g.id) ?? [],
   );
 
+  function abrirEditor() {
+    setCategoriaId(servicio.categoriaId || "");
+    setNombreServicio(servicio.nombreServicio || "");
+    setNombreProfesional(servicio.nombreProfesional || "");
+    setProfesionalId(servicio.profesionalId || "");
+    setDescripcion(servicio.descripcion || "");
+    setDuracion(servicio.duracionMin ?? 60);
+    setPrecio(servicio.precio ?? 0);
+    setPrecioEfectivo(servicio.precioEfectivo ?? 0);
+    setResponsableGestion(servicio.responsableGestion || "admin");
+    setModoReserva(servicio.modoReserva || "automatico");
+    setPedirAnticipo(Boolean(servicio.pedirAnticipo));
+    setPorcentajeAnticipo(servicio.porcentajeAnticipo ?? 50);
+    setAgendaMaxDias(Number(servicio.agendaMaxDias || 14));
+    setHorariosServicio(
+      normalizarHorariosServicio(servicio.horariosServicio || []),
+    );
+    setSeleccionados(servicio.gabinetes?.map((g) => g.id) ?? []);
+    setEditando(true);
+  }
+
   function toggleGabinete(id) {
     setSeleccionados((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
-  async function guardarCambios() {
-    if (!nombreServicio.trim()) return alert("El servicio necesita nombre");
-    if (seleccionados.length === 0)
-      return alert("Debe tener al menos un gabinete");
+  function handleProfesionalChange(value) {
+    setProfesionalId(value);
 
-    if (!categoriaId) return alert("Debes elegir una categoría");
+    const profesional = empleados.find((item) => item.id === value);
+    if (profesional) {
+      setNombreProfesional(profesional.nombre || profesional.email || "");
+    }
+  }
+
+  async function guardarCambios() {
+    if (!nombreServicio.trim()) return showError("El servicio necesita nombre");
+    if (seleccionados.length === 0)
+      return showError("Debe tener al menos un gabinete");
+
+    if (!categoriaId) return showError("Debes elegir una categoría");
     const cat = categorias.find((c) => c.id === categoriaId);
-    if (!cat) return alert("Categoría inválida");
+    if (!cat) return showError("Categoría inválida");
     const categoriaNombre = (cat.nombre || "").trim();
 
-    if (precio <= 0) return alert("Precio inválido");
+    const yaExisteActivo = servicios.some(
+      (item) =>
+        item.id !== servicio.id &&
+        item.activo &&
+        getServicioDupKey(item) ===
+          getServicioDupKey({
+            nombreServicio,
+            categoriaId,
+            profesionalId,
+          }),
+    );
+
+    if (yaExisteActivo) {
+      return showError(
+        "Ya existe un servicio activo con ese nombre para ese profesional en esta categoria",
+      );
+    }
+
+    if (precio <= 0) return showError("Precio inválido");
+    if (Number(precioEfectivo) < 0)
+      return showError("Precio en efectivo inválido");
+    if (
+      Number(precioEfectivo) > 0 &&
+      Number(precioEfectivo) >= Number(precio)
+    ) {
+      return showError(
+        "El precio en efectivo debe ser menor al precio general",
+      );
+    }
+    if (responsableGestion === "profesional" && !profesionalId) {
+      return showError(
+        "Debes vincular un profesional si el servicio sera gestionado por profesionales",
+      );
+    }
 
     if (!tieneHorariosServicioValidos(horariosServicio)) {
-      return alert(
+      return showError(
         "Revisá los horarios del servicio. Cada día activo debe tener al menos una franja válida.",
       );
     }
@@ -345,10 +544,13 @@ function ServicioItem({ servicio, gabinetes }) {
 
       nombreServicio: nombreServicio.trim(),
       nombreServicioNormalizado: normalizar(nombreServicio),
+      profesionalId: profesionalId || null,
       nombreProfesional: nombreProfesional.trim(),
       descripcion: descripcion,
       duracionMin: Number(duracion),
       precio: Number(precio),
+      precioEfectivo: Number(precioEfectivo || 0),
+      responsableGestion,
       modoReserva,
       pedirAnticipo,
       porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
@@ -364,36 +566,61 @@ function ServicioItem({ servicio, gabinetes }) {
         .filter(Boolean),
 
       actualizadoEn: serverTimestamp(),
+      ...(servicio.activo
+        ? {
+            eliminadoEn: deleteField(),
+            desactivadoPor: deleteField(),
+          }
+        : {}),
     });
 
     setEditando(false);
   }
 
   async function desactivarServicio() {
-    const confirmar = window.confirm(
-      `¿Desactivar el servicio "${servicio.nombreServicio}"?`,
-    );
-    if (!confirmar) return;
+    const confirmar = await confirmDanger({
+      title: "Desactivar servicio",
+      html: `Se desactivara <b>${servicio.nombreServicio}</b>.`,
+      confirmText: "Desactivar",
+    });
+    if (!confirmar?.isConfirmed) return;
 
     try {
       const fn = httpsCallable(getFunctions(), "desactivarServicio");
       await fn({ servicioId: servicio.id });
     } catch (e) {
-      alert(e.message);
+      await showError(
+        e?.message || "Ocurrio un error al desactivar el servicio.",
+      );
     }
   }
 
   async function eliminarServicio() {
-    const confirmar = window.confirm(
-      "¿Eliminar definitivamente este servicio?\n\nEsta acción no se puede deshacer.",
-    );
-    if (!confirmar) return;
+    const confirmar = await confirmDanger({
+      title: "Eliminar servicio",
+      html: "Esta accion no se puede deshacer.",
+      confirmText: "Eliminar",
+    });
+    if (!confirmar?.isConfirmed) return;
 
     try {
-      const fn = httpsCallable(getFunctions(), "eliminarServicioDefinitivo");
+      showLoading({
+        title: "Eliminando servicio",
+        text: "Quitando el servicio del sistema...",
+      });
+      const fn = httpsCallable(getFunctions(), "eliminarServicio");
       await fn({ servicioId: servicio.id });
+      hideLoading();
+      swalSuccess({
+        title: "Servicio eliminado",
+        text: "El servicio fue eliminado correctamente.",
+      });
     } catch (e) {
-      alert(e.message);
+      hideLoading();
+      swalError({
+        title: "No se pudo eliminar",
+        text: e?.message || "Ocurrio un error al eliminar el servicio.",
+      });
     }
   }
 
@@ -414,7 +641,7 @@ function ServicioItem({ servicio, gabinetes }) {
         <div className="service-actions">
           <button
             className="swal-btn-editar"
-            onClick={() => setEditando(!editando)}
+            onClick={() => (editando ? setEditando(false) : abrirEditor())}
           >
             Editar
           </button>
@@ -434,6 +661,8 @@ function ServicioItem({ servicio, gabinetes }) {
                   await updateDoc(doc(db, "servicios", servicio.id), {
                     activo: true,
                     actualizadoEn: serverTimestamp(),
+                    eliminadoEn: deleteField(),
+                    desactivadoPor: deleteField(),
                   });
                 }}
               >
@@ -459,12 +688,35 @@ function ServicioItem({ servicio, gabinetes }) {
             Profesional: <strong>{servicio.nombreProfesional}</strong>
           </span>
         )}
+        {servicio.profesionalId && (
+          <span>
+            Vinculado a empleado:{" "}
+            <strong>
+              {empleadoVinculado?.nombre ||
+                empleadoVinculado?.email ||
+                servicio.profesionalId}
+            </strong>
+          </span>
+        )}
+        <span>
+          Gestion:{" "}
+          <strong>
+            {servicio.responsableGestion === "profesional"
+              ? "Profesional"
+              : "Administrador"}
+          </strong>
+        </span>
         <span>
           Duración: <strong>{servicio.duracionMin}</strong> min
         </span>
         <span>
           Valor: <strong>${servicio.precio}</strong>
         </span>
+        {getPrecioEfectivo(servicio) > 0 && (
+          <span>
+            Efectivo: <strong>${getPrecioEfectivo(servicio)}</strong>
+          </span>
+        )}
         <span>
           Gabinetes:{" "}
           <strong>
@@ -473,7 +725,6 @@ function ServicioItem({ servicio, gabinetes }) {
         </span>
       </div>
 
-      {/* EDITOR */}
       {/* EDITOR */}
       {editando && (
         <div className="service-editor">
@@ -508,6 +759,23 @@ function ServicioItem({ servicio, gabinetes }) {
                     value={nombreServicio}
                     onChange={(e) => setNombreServicio(e.target.value)}
                   />
+                </div>
+
+                <div className="field-group">
+                  <label>Empleado vinculado</label>
+                  <select
+                    className="admin-input servicio"
+                    value={profesionalId}
+                    onChange={(e) => handleProfesionalChange(e.target.value)}
+                  >
+                    <option value="">Sin vincular</option>
+                    {empleados.map((empleado) => (
+                      <option key={empleado.id} value={empleado.id}>
+                        {empleado.nombre || empleado.email} |{" "}
+                        {getEmpleadoRoleLabel(empleado)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="field-group">
@@ -555,6 +823,29 @@ function ServicioItem({ servicio, gabinetes }) {
                     onChange={(e) => setPrecio(e.target.value)}
                     min={0}
                   />
+                </div>
+
+                <div className="field-group">
+                  <label>Precio en efectivo</label>
+                  <input
+                    type="number"
+                    className="admin-input precio-admin"
+                    value={precioEfectivo}
+                    onChange={(e) => setPrecioEfectivo(e.target.value)}
+                    min={0}
+                  />
+                </div>
+
+                <div className="field-group">
+                  <label>Quien gestiona este servicio</label>
+                  <select
+                    className="admin-input reserva"
+                    value={responsableGestion}
+                    onChange={(e) => setResponsableGestion(e.target.value)}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="profesional">Profesional vinculado</option>
+                  </select>
                 </div>
 
                 <div className="field-group">
@@ -637,13 +928,24 @@ function ServicioItem({ servicio, gabinetes }) {
 
               <div className="service-gabinetes">
                 {gabinetes.map((g) => (
-                  <label key={g.id} className="gabinete-checkbox">
+                  <label
+                    key={g.id}
+                    className="gabinete-checkbox gabinete-checkbox-card"
+                  >
                     <input
                       type="checkbox"
                       checked={seleccionados.includes(g.id)}
                       onChange={() => toggleGabinete(g.id)}
                     />
-                    {g.nombreGabinete}
+
+                    <div className="gabinete-checkbox-content">
+                      <span className="gabinete-checkbox-title">
+                        {g.nombreGabinete}
+                      </span>
+                      <span className="gabinete-checkbox-sub">
+                        {getResumenHorarioGabinete(g)}
+                      </span>
+                    </div>
                   </label>
                 ))}
               </div>
@@ -674,19 +976,23 @@ function ServicioItem({ servicio, gabinetes }) {
 export default function ServiciosPanel() {
   const [gabinetes, setGabinetes] = useState([]);
   const [servicios, setServicios] = useState([]);
+  const [empleados, setEmpleados] = useState([]);
 
   const [categorias, setCategorias] = useState([]);
   const [categoriaId, setCategoriaId] = useState("");
 
   const [nombreServicio, setNombreServicio] = useState("");
   const [nombreProfesional, setNombreProfesional] = useState("");
+  const [profesionalId, setProfesionalId] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [duracion, setDuracion] = useState(60);
   const [precio, setPrecio] = useState(0);
+  const [precioEfectivo, setPrecioEfectivo] = useState(0);
+  const [responsableGestion, setResponsableGestion] = useState("admin");
   const [modoReserva, setModoReserva] = useState("reserva");
-  const [pedirAnticipo, setPedirAnticipo] = useState(false);
+  const [pedirAnticipo, setPedirAnticipo] = useState(true);
   const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(50);
-  const [agendaMaxDias, setAgendaMaxDias] = useState(7);
+  const [agendaMaxDias, setAgendaMaxDias] = useState(14);
   const [horariosServicio, setHorariosServicio] = useState(
     crearHorariosServicioBase(),
   );
@@ -707,13 +1013,65 @@ export default function ServiciosPanel() {
 
   // Gabinetes
   useEffect(() => {
-    return onSnapshot(collection(db, "gabinetes"), (snap) => {
-      setGabinetes(
-        snap.docs
+    let mounted = true;
+
+    async function cargarGabinetesConHorarios() {
+      try {
+        const gabinetesSnap = await getDocs(collection(db, "gabinetes"));
+
+        const baseGabinetes = gabinetesSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((g) => g.activo),
-      );
-    });
+          .filter((g) => g.activo);
+
+        const gabinetesConHorarios = await Promise.all(
+          baseGabinetes.map(async (g) => {
+            try {
+              const horariosSnap = await getDocs(
+                collection(db, "gabinetes", g.id, "horarios"),
+              );
+
+              const horarios = horariosSnap.docs
+                .map((d) => ({ id: d.id, ...d.data() }))
+                .filter((h) => h?.activo)
+                .sort((a, b) => {
+                  const diaA = Number(a?.diaSemana ?? 99);
+                  const diaB = Number(b?.diaSemana ?? 99);
+                  if (diaA !== diaB) return diaA - diaB;
+                  return String(a?.desde || "").localeCompare(
+                    String(b?.desde || ""),
+                  );
+                });
+
+              console.log("gabinete OK:", g.nombreGabinete, horarios);
+
+              return {
+                ...g,
+                horarios,
+              };
+            } catch (error) {
+              console.error("gabinete ERROR:", g.nombreGabinete, g.id, error);
+
+              return {
+                ...g,
+                horarios: [],
+              };
+            }
+          }),
+        );
+
+        if (mounted) {
+          setGabinetes(gabinetesConHorarios);
+        }
+      } catch (error) {
+        console.error("Error cargando gabinetes con horarios:", error);
+      }
+    }
+
+    cargarGabinetesConHorarios();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Servicios
@@ -730,41 +1088,93 @@ export default function ServiciosPanel() {
     });
   }, []);
 
+  useEffect(() => {
+    return onSnapshot(collection(db, "usuarios"), (snap) => {
+      setEmpleados(
+        snap.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+          .filter((empleado) => {
+            return (
+              Boolean(empleado.esEmpleado) || Number(empleado.nivel || 0) === 4
+            );
+          })
+          .sort((a, b) =>
+            String(a.nombre || a.email || "").localeCompare(
+              String(b.nombre || b.email || ""),
+              "es",
+            ),
+          ),
+      );
+    });
+  }, []);
+
   function toggleGabinete(id) {
     setSeleccionados((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
+  function handleProfesionalChange(value) {
+    setProfesionalId(value);
+
+    const profesional = empleados.find((item) => item.id === value);
+    if (profesional) {
+      setNombreProfesional(profesional.nombre || profesional.email || "");
+    }
+  }
+
   async function crearServicio() {
-    if (!nombreServicio.trim()) return alert("El servicio necesita nombre");
-    if (!categoriaId) return alert("Debes elegir una categoria de servicio");
+    if (!nombreServicio.trim()) return showError("El servicio necesita nombre");
+    if (!categoriaId)
+      return showError("Debes elegir una categoria de servicio");
     if (seleccionados.length === 0)
-      return alert("Debe tener al menos un gabinete");
+      return showError("Debe tener al menos un gabinete");
 
     const yaExisteActivo = servicios.some(
       (s) =>
         s.activo &&
-        normalizar(s.nombreServicio) === normalizar(nombreServicio) &&
-        (s.categoriaId || "") === categoriaId,
+        getServicioDupKey(s) ===
+          getServicioDupKey({
+            nombreServicio,
+            categoriaId,
+            profesionalId,
+          }),
     );
 
     if (yaExisteActivo)
-      return alert(
-        "Ya existe un subservicio activo con ese nombre en ese servicio madre",
+      return showError(
+        "Ya existe un servicio activo con ese nombre para ese profesional en esta categoria",
       );
 
-    if (Number(duracion) <= 0) return alert("Duración inválida");
-    if (Number(precio) < 0) return alert("Precio inválido");
+    if (Number(duracion) <= 0) return showError("Duración inválida");
+    if (Number(precio) < 0) return showError("Precio inválido");
+    if (Number(precioEfectivo) < 0)
+      return showError("Precio en efectivo inválido");
+    if (
+      Number(precioEfectivo) > 0 &&
+      Number(precioEfectivo) >= Number(precio)
+    ) {
+      return showError(
+        "El precio en efectivo debe ser menor al precio general",
+      );
+    }
+    if (responsableGestion === "profesional" && !profesionalId) {
+      return showError(
+        "Debes vincular un profesional si el servicio sera gestionado por profesionales",
+      );
+    }
 
     if (!tieneHorariosServicioValidos(horariosServicio)) {
-      return alert(
+      return showError(
         "Revisá los horarios del servicio. Cada día activo debe tener al menos una franja válida.",
       );
     }
 
     const cat = categorias.find((c) => c.id === categoriaId);
-    if (!cat) return alert("Categoría inválida");
+    if (!cat) return showError("Categoría inválida");
     const categoriaNombre = (cat.nombre || "").trim();
 
     await addDoc(collection(db, "servicios"), {
@@ -774,10 +1184,13 @@ export default function ServiciosPanel() {
 
       nombreServicio: nombreServicio.trim(),
       nombreServicioNormalizado: normalizar(nombreServicio),
+      profesionalId: profesionalId || null,
       nombreProfesional: nombreProfesional.trim(),
       descripcion,
       duracionMin: Number(duracion),
       precio: Number(precio),
+      precioEfectivo: Number(precioEfectivo || 0),
+      responsableGestion,
       modoReserva,
       pedirAnticipo,
       porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
@@ -799,11 +1212,14 @@ export default function ServiciosPanel() {
     setCategoriaId("");
     setNombreServicio("");
     setNombreProfesional("");
+    setProfesionalId("");
     setDescripcion("");
     setDuracion(60);
     setPrecio(0);
+    setPrecioEfectivo(0);
+    setResponsableGestion("admin");
     setModoReserva("reserva");
-    setPedirAnticipo(false);
+    setPedirAnticipo(true);
     setPorcentajeAnticipo(50);
     setAgendaMaxDias(14);
     setHorariosServicio(crearHorariosServicioBase());
@@ -864,6 +1280,23 @@ export default function ServiciosPanel() {
                   </div>
 
                   <div className="form-field">
+                    <label>Empleado vinculado</label>
+                    <select
+                      className="admin-input servicio"
+                      value={profesionalId}
+                      onChange={(e) => handleProfesionalChange(e.target.value)}
+                    >
+                      <option value="">Sin vincular</option>
+                      {empleados.map((empleado) => (
+                        <option key={empleado.id} value={empleado.id}>
+                          {empleado.nombre || empleado.email} |{" "}
+                          {getEmpleadoRoleLabel(empleado)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-field">
                     <label>Profesional</label>
                     <input
                       className="admin-input profesional"
@@ -895,7 +1328,7 @@ export default function ServiciosPanel() {
                   </div>
 
                   <div className="form-field">
-                    <label>Precio</label>
+                    <label>Precio general</label>
                     <input
                       className="admin-input precio-admin"
                       type="number"
@@ -903,6 +1336,29 @@ export default function ServiciosPanel() {
                       onChange={(e) => setPrecio(e.target.value)}
                       min={0}
                     />
+                  </div>
+
+                  <div className="form-field">
+                    <label>Precio en efectivo</label>
+                    <input
+                      className="admin-input precio-admin"
+                      type="number"
+                      value={precioEfectivo}
+                      onChange={(e) => setPrecioEfectivo(e.target.value)}
+                      min={0}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label>Quien gestiona este servicio</label>
+                    <select
+                      className="admin-input reserva"
+                      value={responsableGestion}
+                      onChange={(e) => setResponsableGestion(e.target.value)}
+                    >
+                      <option value="admin">Administrador</option>
+                      <option value="profesional">Profesional vinculado</option>
+                    </select>
                   </div>
 
                   <div className="form-field">
@@ -928,6 +1384,7 @@ export default function ServiciosPanel() {
                   <div className="field-group">
                     <label>¿Pedir seña?</label>
                     <label className="checkbox-inline text-muted">
+                      {"  "}
                       <input
                         type="checkbox"
                         checked={pedirAnticipo}
@@ -983,13 +1440,24 @@ export default function ServiciosPanel() {
                   <label>Gabinetes a utilizar</label>
                   <div className="service-gabinetes">
                     {gabinetes.map((g) => (
-                      <label key={g.id} className="gabinete-checkbox">
+                      <label
+                        key={g.id}
+                        className="gabinete-checkbox gabinete-checkbox-card"
+                      >
                         <input
                           type="checkbox"
                           checked={seleccionados.includes(g.id)}
                           onChange={() => toggleGabinete(g.id)}
                         />
-                        {g.nombreGabinete}
+
+                        <div className="gabinete-checkbox-content">
+                          <span className="gabinete-checkbox-title">
+                            {g.nombreGabinete}
+                          </span>
+                          <span className="gabinete-checkbox-sub">
+                            {getResumenHorarioGabinete(g)}
+                          </span>
+                        </div>
                       </label>
                     ))}
                   </div>
@@ -1048,7 +1516,9 @@ export default function ServiciosPanel() {
                               <ServicioItem
                                 key={s.id}
                                 servicio={s}
+                                servicios={servicios}
                                 gabinetes={gabinetes}
+                                empleados={empleados}
                               />
                             ))}
                         </div>

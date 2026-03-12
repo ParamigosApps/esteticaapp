@@ -5,7 +5,8 @@ const { HttpsError } = require('firebase-functions/v2/https')
 async function setAdminClaimHandler(request) {
   const { auth, data } = request
 
-  const callerIsAdmin = auth?.token?.admin === true
+  const nivelSolicitante = Number(auth?.token?.nivel || 0)
+  const callerIsAdmin = Boolean(auth?.token?.admin) || nivelSolicitante >= 3
 
   if (!callerIsAdmin) {
     const targetUid = data?.uid

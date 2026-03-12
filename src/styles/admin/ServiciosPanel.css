@@ -140,7 +140,8 @@
 select,
 input[type="time"] {
   width: 100%;
-  min-width: 0;
+  min-width: 100px;
+  max-width: 280px;
   padding: 10px 6px;
   border-radius: 10px;
   border: 1px solid #d1d5db;
@@ -171,25 +172,42 @@ input[type="time"]:focus {
   max-width: 260px;
 }
 
+.checkbox-inline {
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.checkbox-inline input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+}
 /* =========================
    RESERVA Y PAGO
 ========================= */
 
 .service-sena-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
   align-items: end;
-  border: 1px solid #edf1f5;
-  border-radius: 14px;
-  background: #f8fafc;
-  padding: 14px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.service-sena-row .field-group {
+  flex: 1;
+  min-width: 220px;
+  max-width: 300px;
 }
 
 .servicios-form-actions-wrap,
 .button-field {
   display: flex;
   justify-content: flex-end;
+  padding: 0 8px 12px 0 ;
 }
 
 /* =========================
@@ -205,15 +223,23 @@ input[type="time"]:focus {
 .gabinete-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   border: 1px solid #e5e7eb;
   background: #fff;
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
+  cursor: pointer;
 }
 
+.gabinete-checkbox input[type="checkbox"] {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
 /* =========================
    LISTADO POR CATEGORÍA
 ========================= */
@@ -237,18 +263,59 @@ input[type="time"]:focus {
 }
 
 .servicios-categoria-count {
-  min-width: 28px;
-  height: 28px;
+  min-width: 36px;
+  height: 36px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
-  background: #111827;
+  background: #f11eb9a2;
   color: #fff;
 }
 
+
+.service-gabinetes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gabinete-checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+}
+
+.gabinete-checkbox-card input[type="checkbox"] {
+  margin: 2px 0 0 0;
+  flex-shrink: 0;
+  accent-color: var(--primary-color);
+}
+
+.gabinete-checkbox-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gabinete-checkbox-title {
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.gabinete-checkbox-sub {
+  font-size: 0.84rem;
+  opacity: 0.72;
+  line-height: 1.2;
+}
 /* =========================
    CARD SERVICIO
 ========================= */
@@ -257,7 +324,7 @@ input[type="time"]:focus {
   border: 1px solid #e7ecf1;
   border-radius: 16px;
   background: #fff;
-  padding: 16px;
+  padding: 24px !important;
   margin-bottom: 12px !important;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
@@ -444,6 +511,7 @@ input[type="time"]:focus {
 }
 
 .horario-dia-card {
+  width: 260px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 14px;
@@ -484,9 +552,6 @@ input[type="time"]:focus {
   align-items: center;
 }
 
-.horario-franja-input {
-  min-width: 0;
-}
 
 .btn-editar-nombre,
 .btn-desactivar {
@@ -501,7 +566,7 @@ input[type="time"]:focus {
 }
 
 .horario-btn-quitar {
-  min-width: 80px;
+  min-width: 40px;
   font-size: 0.8rem;
   padding: 7px 8px !important;
   white-space: nowrap;
@@ -516,31 +581,26 @@ input[type="time"]:focus {
    CATEGORIAS SERVICIOS PANEL
 ========================= */
 
-.admin-categorias-panel .categorias-panel-card {
-  max-width: 1300px;
-  margin-inline: auto;
-}
-
-.admin-categorias-panel .categorias-create-row {
+ .categorias-create-row {
   display: grid;
   grid-template-columns: 1fr 120px;
   gap: 12px;
   margin-bottom: 14px;
 }
 
-.admin-categorias-panel .categorias-create-input {
+ .categorias-create-input {
   min-width: 0;
 }
 
-.admin-categorias-panel .categorias-create-btn {
+ .categorias-create-btn {
   width: 100%;
 }
 
-.admin-categorias-panel .categorias-subheader {
+ .categorias-subheader {
   margin-bottom: 14px;
 }
 
-.admin-categorias-panel .admin-loading {
+ .admin-loading {
   margin: 6px 0 0;
   color: #6b7280;
   font-size: 14px;
@@ -548,7 +608,7 @@ input[type="time"]:focus {
 
 
 
-.admin-categorias-panel .categoria-card {
+ .categoria-card {
   width: 100%;
   min-height: 110px;
   display: flex;
@@ -562,22 +622,20 @@ input[type="time"]:focus {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
 }
 
-.admin-categorias-panel .categoria-card.inactive {
+ .categoria-card.inactive {
   opacity: 0.72;
   background: #fafafa;
 }
 
-.admin-categorias-panel .categoria-card-top {
+ .categoria-card-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
 
-.categoria-card{
-  max-width: 400px !important;
-}
-.admin-categorias-panel .categoria-nombre-pro {
+
+ .categoria-nombre-pro {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -587,7 +645,7 @@ input[type="time"]:focus {
   font-weight: 700;
 }
 
-.admin-categorias-panel .categoria-badge {
+ .categoria-badge {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
@@ -598,13 +656,13 @@ input[type="time"]:focus {
   color: #b91c1c;
 }
 
-.admin-categorias-panel .categoria-actions-pro {
+ .categoria-actions-pro {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.admin-categorias-panel .categoria-btn-delete {
+ .categoria-btn-delete {
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #b91c1c;
@@ -615,7 +673,7 @@ input[type="time"]:focus {
   cursor: pointer;
 }
 
-.admin-categorias-panel .categoria-btn-delete:hover {
+ .categoria-btn-delete:hover {
   background: #ffe4e6;
 }
 
@@ -697,17 +755,17 @@ input[type="time"]:focus {
 }
 
 @media (max-width: 640px) {
-  .admin-categorias-panel .categorias-create-row {
+   .categorias-create-row {
     grid-template-columns: 1fr;
   }
 
-  .admin-categorias-panel .categoria-actions-pro {
+   .categoria-actions-pro {
     flex-direction: column;
   }
 
-  .admin-categorias-panel .categoria-actions-pro button,
-  .admin-categorias-panel .categoria-btn-delete,
-  .admin-categorias-panel .categorias-create-btn {
+   .categoria-actions-pro button,
+   .categoria-btn-delete,
+   .categorias-create-btn {
     width: 100%;
   }
 }
@@ -749,6 +807,7 @@ input[type="time"]:focus {
   .horario-btn-quitar,
   .gabinete-checkbox {
     width: 100%;
+    
   }
 
   .horario-dia-check {

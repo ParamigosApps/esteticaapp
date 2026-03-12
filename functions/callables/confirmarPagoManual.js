@@ -2,6 +2,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { FieldValue } = require('firebase-admin/firestore')
 const { getAdmin } = require('../_lib/firebaseAdmin.js')
+const { assertAdmin } = require('../admin/adminTurnosShared')
 
 exports.confirmarPagoManual = onCall(async request => {
   const { auth, data } = request
@@ -10,9 +11,7 @@ exports.confirmarPagoManual = onCall(async request => {
   // --------------------------------------------------
   // 🔐 Seguridad: solo admin
   // --------------------------------------------------
-  if (!auth?.token?.admin) {
-    throw new HttpsError('permission-denied', 'Solo admin')
-  }
+  assertAdmin(request)
 
   // --------------------------------------------------
   // Validaciones

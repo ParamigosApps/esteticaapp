@@ -94,6 +94,8 @@ exports.marcarTurnosFinalizados = onSchedule(
           estadoTurno: "finalizado",
           finalizadoAutomatico: true,
           finalizadoAt: admin.firestore.FieldValue.serverTimestamp(),
+          finalizadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          finalizadoPor: "sistema",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });

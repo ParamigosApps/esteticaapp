@@ -1,696 +1,1095 @@
-import { useEffect, useState, useMemo } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import {
-  swalElegirTipoPago,
-  swalInputNumber,
-  swalSuccess,
-  swalError,
-} from "../../../public/utils/swalUtils.js";
-
-import { db } from "../../../Firebase";
-import {
+  addDoc,
   collection,
   onSnapshot,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  query,
   orderBy,
+  query,
+  serverTimestamp,
 } from "firebase/firestore";
+import { db } from "../../../Firebase";
+import { calcularMontosTurno } from "../../../config/comisiones";
+import { generarSlotsDia } from "../../../public/utils/generarSlotsDia";
+import Swal from "sweetalert2";
+import { swalError, swalSuccess } from "../../../public/utils/swalUtils";
+import {
+  getEstadoPago,
+  getEstadoTurno,
+  getMetodoPagoEsperado,
+} from "./turnosAdmin/turnosAdminHelpers";
+import TurnosAdminTable from "./turnosAdmin/TurnosAdminTable";
 
-function getEstadoTurno(t) {
-  if (t?.estadoTurno) return t.estadoTurno;
-
-  switch (t?.estado) {
-    case "pendiente_pago":
-    case "pendiente_pago_mp":
-      return "pendiente";
-    case "pendiente_aprobacion":
-      return "pendiente_aprobacion";
-    case "señado":
-    case "confirmado":
-      return "confirmado";
-    case "cancelado":
-      return "cancelado";
-    case "rechazado":
-      return "rechazado";
-    case "vencido":
-    case "expirado":
-      return "cancelado";
-    default:
-      return "pendiente";
-  }
+function formatMoney(value) {
+  return `$${Number(value || 0).toLocaleString("es-AR")}`;
 }
 
-function getEstadoPago(t) {
-  if (t?.estadoPago) return t.estadoPago;
-
-  switch (t?.estado) {
-    case "pendiente_pago":
-    case "pendiente_pago_mp":
-      return "pendiente";
-    case "pendiente_aprobacion":
-      return "pendiente_aprobacion";
-    case "señado":
-      return "parcial";
-    case "confirmado": {
-      const total = Number(t?.montoTotal ?? t?.precioTotal ?? t?.total ?? 0);
-      const pagado = Number(t?.montoPagado ?? t?.pagadoTotal ?? 0);
-
-      if (total > 0 && pagado > 0 && pagado < total) return "parcial";
-      if (total > 0 && pagado >= total) return "abonado";
-      return total > 0 ? "pendiente" : "abonado";
-    }
-    case "rechazado":
-      return "rechazado";
-    case "vencido":
-    case "expirado":
-      return "expirado";
-    default:
-      return "pendiente";
-  }
-}
-
-function getMontoAValidarPago(t) {
-  const total = Number(t?.montoTotal ?? t?.precioTotal ?? t?.total ?? 0);
-
-  const anticipo = Number(
-    t?.montoAnticipo ?? t?.montoSena ?? t?.seña ?? t?.sena ?? 0,
+function sortServicios(a, b) {
+  return String(a?.nombreServicio || "").localeCompare(
+    String(b?.nombreServicio || ""),
+    "es",
   );
-
-  const pagado = Number(t?.montoPagado ?? t?.pagadoTotal ?? 0);
-
-  if (pagado > 0) return pagado;
-
-  if (anticipo > 0 && anticipo < total) return anticipo;
-
-  return total;
 }
 
-function getMetodoPagoEsperado(t) {
-  return t?.metodoPagoEsperado || t?.metodoPago || "manual";
+function sortClientes(a, b) {
+  const nombreA = a?.nombre || a?.email || "";
+  const nombreB = b?.nombre || b?.email || "";
+  return String(nombreA).localeCompare(String(nombreB), "es");
 }
 
-async function pedirConfirmacionPago(turno) {
-  const total = Number(
-    turno?.montoTotal ?? turno?.precioTotal ?? turno?.total ?? 0,
-  );
+function buildTurnoDate(fecha, hora) {
+  return new Date(`${fecha}T${hora}:00`);
+}
 
-  const anticipo = Number(
-    turno?.montoAnticipo ?? turno?.montoSena ?? turno?.seña ?? turno?.sena ?? 0,
-  );
-
-  const pagadoActual = Number(turno?.montoPagado ?? turno?.pagadoTotal ?? 0);
-
-  const montoSugeridoParcial =
-    pagadoActual > 0 ? pagadoActual : anticipo > 0 ? anticipo : 0;
-
-  const resTipo = await swalElegirTipoPago({
-    title: "Confirmar pago",
-    html: `
-      <div style="text-align:left;font-size:14px;">
-        <div><b>Servicio:</b> ${turno?.nombreServicio || "-"}</div>
-        <div><b>Total:</b> $${total.toLocaleString("es-AR")}</div>
-        ${
-          anticipo > 0
-            ? `<div><b>Seña sugerida:</b> $${anticipo.toLocaleString("es-AR")}</div>`
-            : ""
-        }
-      </div>
-    `,
-    confirmText: "Pago total",
-    denyText: "Pago parcial / seña",
-    cancelText: "Cancelar",
+function formatHourLocal(timestamp) {
+  return new Date(timestamp).toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
+}
 
-  if (resTipo.isDismissed) return null;
+function getDiaConfig(servicio, fechaIso) {
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  const diaSemana = fecha.getDay();
 
-  if (resTipo.isConfirmed) {
-    return {
-      estadoPago: "abonado",
-      montoPagado: total > 0 ? total : pagadoActual,
-    };
+  if (!Array.isArray(servicio?.horariosServicio) || !servicio.horariosServicio.length) {
+    return null;
   }
 
-  const resMonto = await swalInputNumber({
-    title: "Ingresá el monto parcial / seña",
-    inputValue: montoSugeridoParcial > 0 ? String(montoSugeridoParcial) : "",
-    placeholder: "Ej: 5000",
-    confirmText: "Guardar pago parcial",
-    cancelText: "Cancelar",
-    min: "0",
-    step: "1",
-    inputValidator: (value) => {
-      if (value === "" || value == null) return "Ingresá un monto";
+  return (
+    servicio.horariosServicio.find(
+      (item) => Number(item?.diaSemana) === Number(diaSemana),
+    ) || null
+  );
+}
 
-      const monto = Number(value);
+function estaDentroVentanaAgenda(servicio, fechaIso) {
+  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
-      if (Number.isNaN(monto) || monto <= 0) {
-        return "Ingresá un monto válido";
-      }
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  fecha.setHours(0, 0, 0, 0);
 
-      if (total > 0 && monto > total) {
-        return "No puede ser mayor al total";
-      }
+  const limite = new Date(hoy);
+  limite.setDate(limite.getDate() + (maxDias - 1));
 
-      return null;
-    },
+  return fecha >= hoy && fecha <= limite;
+}
+
+function horarioPermitidoPorServicio(servicio, fechaIso, inicioMs, finMs) {
+  const configDia = getDiaConfig(servicio, fechaIso);
+  if (!configDia) return true;
+  if (!configDia.activo) return false;
+
+  const inicioHora = formatHourLocal(inicioMs);
+  const finHora = formatHourLocal(finMs);
+  const franjas = Array.isArray(configDia.franjas) ? configDia.franjas : [];
+
+  return franjas.some((franja) => {
+    if (!franja?.desde || !franja?.hasta) return false;
+    return inicioHora >= franja.desde && finHora <= franja.hasta;
   });
-
-  if (!resMonto.isConfirmed) return null;
-
-  const monto = Number(resMonto.value);
-
-  return {
-    estadoPago: total > 0 && monto >= total ? "abonado" : "parcial",
-    montoPagado: monto,
-  };
 }
 
 export default function TurnosAdminPanel() {
   const [turnos, setTurnos] = useState([]);
   const [clientes, setClientes] = useState({});
   const [gabinetes, setGabinetes] = useState({});
+  const [servicios, setServicios] = useState([]);
+  const [creandoTurno, setCreandoTurno] = useState(false);
+  const [gabineteHorarios, setGabineteHorarios] = useState([]);
+  const [cargandoGabineteHorarios, setCargandoGabineteHorarios] = useState(false);
+
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [fechaFiltro, setFechaFiltro] = useState("");
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState("todos");
+  const [filtroMetodoPago, setFiltroMetodoPago] = useState("todos");
+  const [busqueda, setBusqueda] = useState("");
+  const [soloSaldoPendiente, setSoloSaldoPendiente] = useState(false);
 
-  // ==============================
-  // TURNOS
-  // ==============================
+  const [nuevoTurno, setNuevoTurno] = useState({
+    clienteId: "",
+    servicioId: "",
+    gabineteId: "",
+    nombreCliente: "",
+    clienteTelefono: "",
+    clienteEmail: "",
+    fecha: "",
+    horaInicio: "",
+    metodoPagoEsperado: "manual",
+    montoPagado: "",
+    notas: "",
+  });
+
   useEffect(() => {
-    const q = query(
+    return onSnapshot(
       collection(db, "turnos"),
-      orderBy("fecha", "asc"),
-      orderBy("horaInicio", "asc"),
+      (snap) => {
+        setTurnos(
+          snap.docs
+            .map((d) => ({
+              id: d.id,
+              ...d.data(),
+            }))
+            .sort((a, b) => {
+              const fechaA = String(a?.fecha || "");
+              const fechaB = String(b?.fecha || "");
+              if (fechaA !== fechaB) return fechaA.localeCompare(fechaB, "es");
+              return Number(a?.horaInicio || 0) - Number(b?.horaInicio || 0);
+            }),
+        );
+      },
+      (error) => {
+        console.error("Error leyendo collection(turnos) en TurnosAdminPanel", error);
+        setTurnos([]);
+      },
     );
-
-    return onSnapshot(q, (snap) => {
-      setTurnos(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })),
-      );
-    });
   }, []);
 
-  // ==============================
-  // CLIENTES
-  // ==============================
   useEffect(() => {
-    return onSnapshot(collection(db, "usuarios"), (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => {
-        map[d.id] = d.data();
-      });
-      setClientes(map);
-    });
+    return onSnapshot(
+      collection(db, "usuarios"),
+      (snap) => {
+        const map = {};
+        snap.docs.forEach((d) => {
+          map[d.id] = d.data();
+        });
+        setClientes(map);
+      },
+      (error) => {
+        console.error("Error leyendo collection(usuarios) en TurnosAdminPanel", error);
+        setClientes({});
+      },
+    );
   }, []);
 
-  // ==============================
-  // GABINETES
-  // ==============================
   useEffect(() => {
-    return onSnapshot(collection(db, "gabinetes"), (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => {
-        map[d.id] = d.data();
-      });
-      setGabinetes(map);
-    });
+    return onSnapshot(
+      collection(db, "gabinetes"),
+      (snap) => {
+        const map = {};
+        snap.docs.forEach((d) => {
+          map[d.id] = d.data();
+        });
+        setGabinetes(map);
+      },
+      (error) => {
+        console.error("Error leyendo collection(gabinetes) en TurnosAdminPanel", error);
+        setGabinetes({});
+      },
+    );
   }, []);
 
-  function formatearDuracion(inicio, fin) {
-    const minutos = Math.round((Number(fin) - Number(inicio)) / 60000);
+  useEffect(() => {
+    return onSnapshot(
+      collection(db, "servicios"),
+      (snap) => {
+        setServicios(
+          snap.docs
+            .map((d) => ({
+              id: d.id,
+              ...d.data(),
+            }))
+            .filter((servicio) => servicio.activo !== false)
+            .sort(sortServicios),
+        );
+      },
+      (error) => {
+        console.error("Error leyendo collection(servicios) en TurnosAdminPanel", error);
+        setServicios([]);
+      },
+    );
+  }, []);
 
-    if (minutos >= 60) {
-      const horas = Math.floor(minutos / 60);
-      const resto = minutos % 60;
-      return resto > 0 ? `${horas}h ${resto}m` : `${horas}h`;
+  useEffect(() => {
+    if (!nuevoTurno.gabineteId) {
+      setGabineteHorarios([]);
+      return undefined;
     }
 
-    return `${minutos} min`;
-  }
+    setCargandoGabineteHorarios(true);
 
-  function formatearHora(timestamp) {
-    if (!timestamp) return "-";
+    const horariosQuery = query(
+      collection(db, "gabinetes", nuevoTurno.gabineteId, "horarios"),
+      orderBy("diaSemana"),
+    );
 
-    return new Date(Number(timestamp)).toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
+    return onSnapshot(
+      horariosQuery,
+      (snap) => {
+        setGabineteHorarios(
+          snap.docs
+            .map((d) => ({
+              id: d.id,
+              ...d.data(),
+            }))
+            .filter((horario) => horario.activo !== false),
+        );
+        setCargandoGabineteHorarios(false);
+      },
+      (error) => {
+        console.error(
+          "Error leyendo subcollection(gabinetes/{id}/horarios) en TurnosAdminPanel",
+          error,
+        );
+        setGabineteHorarios([]);
+        setCargandoGabineteHorarios(false);
+      },
+    );
+  }, [nuevoTurno.gabineteId]);
+
+  const servicioSeleccionado = useMemo(
+    () => servicios.find((servicio) => servicio.id === nuevoTurno.servicioId) || null,
+    [servicios, nuevoTurno.servicioId],
+  );
+
+  const gabinetesDisponibles = useMemo(() => {
+    if (!servicioSeleccionado?.gabinetes?.length) {
+      return Object.entries(gabinetes)
+        .map(([id, value]) => ({
+          id,
+          ...value,
+        }))
+        .filter((gabinete) => gabinete.activo !== false)
+        .sort((a, b) =>
+          String(a?.nombreGabinete || "").localeCompare(
+            String(b?.nombreGabinete || ""),
+            "es",
+          ),
+        );
+    }
+
+    return servicioSeleccionado.gabinetes
+      .map((gabinete) => ({
+        id: gabinete.id,
+        nombreGabinete:
+          gabinetes[gabinete.id]?.nombreGabinete || gabinete.nombreGabinete || "-",
+        activo: gabinetes[gabinete.id]?.activo ?? true,
+      }))
+      .filter((gabinete) => gabinete.activo !== false);
+  }, [gabinetes, servicioSeleccionado]);
+
+  const previewMontos = useMemo(() => {
+    if (!servicioSeleccionado) return null;
+
+    return calcularMontosTurno({
+      precioServicio: Number(servicioSeleccionado.precio || 0),
+      porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
+        ? Number(servicioSeleccionado.porcentajeAnticipo || 0)
+        : 0,
+      cobrarComision: true,
     });
-  }
+  }, [servicioSeleccionado]);
 
-  function formatearFecha(fechaISO) {
-    if (!fechaISO) return "-";
+  const montoSugerido = useMemo(() => {
+    if (!previewMontos || !servicioSeleccionado) return 0;
+    return servicioSeleccionado.pedirAnticipo
+      ? previewMontos.montoAnticipoTotal
+      : previewMontos.montoTotal;
+  }, [previewMontos, servicioSeleccionado]);
 
-    const [year, month, day] = fechaISO.split("-");
-    return `${day}/${month}/${year}`;
-  }
+  const clientesOptions = useMemo(() => {
+    return Object.entries(clientes)
+      .map(([id, value]) => ({
+        id,
+        ...value,
+      }))
+      .sort(sortClientes);
+  }, [clientes]);
 
-  // ==============================
-  // FILTROS
-  // ==============================
+  const slotsDisponibles = useMemo(() => {
+    if (!servicioSeleccionado || !nuevoTurno.fecha || !nuevoTurno.gabineteId) {
+      return [];
+    }
+
+    if (!estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha)) {
+      return [];
+    }
+
+    const agenda = {
+      horarios: gabineteHorarios.map((horario) => ({
+        ...horario,
+        gabineteId: nuevoTurno.gabineteId,
+      })),
+      turnos: turnos.filter((turno) => {
+        if (turno.fecha !== nuevoTurno.fecha) return false;
+        if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
+
+        const estadoTurno = getEstadoTurno(turno);
+        return !["cancelado", "rechazado", "finalizado", "perdido"].includes(
+          estadoTurno,
+        );
+      }),
+      bloqueos: [],
+    };
+
+    return generarSlotsDia(
+      agenda,
+      servicioSeleccionado,
+      new Date(`${nuevoTurno.fecha}T00:00:00`),
+    ).filter((slot) => !slot.ocupado);
+  }, [
+    gabineteHorarios,
+    nuevoTurno.fecha,
+    nuevoTurno.gabineteId,
+    servicioSeleccionado,
+    turnos,
+  ]);
+
   const turnosFiltrados = useMemo(() => {
-    return turnos.filter((t) => {
-      const estadoTurno = getEstadoTurno(t);
+    const texto = busqueda.trim().toLowerCase();
 
-      if (filtroEstado !== "todos" && estadoTurno !== filtroEstado)
-        return false;
-      if (fechaFiltro && t.fecha !== fechaFiltro) return false;
+    return turnos.filter((turno) => {
+      const estadoTurno = getEstadoTurno(turno);
+      const estadoPago = getEstadoPago(turno);
+
+      const metodoPagoReal = turno?.metodoPagoUsado || null;
+      const metodoPagoEsperado = getMetodoPagoEsperado(turno);
+      const metodoPagoBase = metodoPagoReal || metodoPagoEsperado || "sin_pago";
+
+      const cliente = clientes[turno.clienteId || turno.usuarioId || turno.uid];
+      const nombreCliente =
+        cliente?.nombre || cliente?.email || turno.nombreCliente || turno.email || "";
+      const telefonoCliente =
+        cliente?.telefono || turno.clienteTelefono || turno.telefonoCliente || "";
+      const emailCliente =
+        cliente?.email || turno.clienteEmail || turno.email || "";
+
+      const nombreServicio = turno.nombreServicio || "";
+      const nombreGabinete =
+        gabinetes[turno.gabineteId]?.nombreGabinete || turno.nombreGabinete || "";
+
+      const montoTotal = Number(turno?.montoTotal ?? turno?.precioTotal ?? 0);
+      const montoPagado = Number(turno?.montoPagado ?? 0);
+      const saldoPendiente = Math.max(0, montoTotal - montoPagado);
+
+      if (filtroEstado !== "todos" && estadoTurno !== filtroEstado) return false;
+      if (fechaFiltro && turno.fecha !== fechaFiltro) return false;
+      if (filtroEstadoPago !== "todos" && estadoPago !== filtroEstadoPago) return false;
+      if (filtroMetodoPago !== "todos" && metodoPagoBase !== filtroMetodoPago) return false;
+      if (soloSaldoPendiente && saldoPendiente <= 0) return false;
+
+      if (texto) {
+        const bloqueTexto = `
+          ${nombreCliente}
+          ${telefonoCliente}
+          ${emailCliente}
+          ${nombreServicio}
+          ${nombreGabinete}
+          ${turno.id}
+        `.toLowerCase();
+
+        if (!bloqueTexto.includes(texto)) return false;
+      }
 
       return true;
     });
-  }, [turnos, filtroEstado, fechaFiltro]);
+  }, [
+    turnos,
+    clientes,
+    gabinetes,
+    filtroEstado,
+    fechaFiltro,
+    filtroEstadoPago,
+    filtroMetodoPago,
+    busqueda,
+    soloSaldoPendiente,
+  ]);
 
-  // ==============================
-  // ACCIONES
-  // ==============================
-  async function aprobarPago(turno) {
-    try {
-      const pago = await pedirConfirmacionPago(turno);
-      if (!pago) return;
+  const resumen = useMemo(() => {
+    return turnosFiltrados.reduce(
+      (acc, turno) => {
+        const estadoTurno = getEstadoTurno(turno);
+        const montoTotal = Number(turno?.montoTotal ?? turno?.precioTotal ?? 0);
+        const montoPagado = Number(turno?.montoPagado ?? 0);
+        const saldoPendiente = Math.max(0, montoTotal - montoPagado);
 
-      await updateDoc(doc(db, "turnos", turno.id), {
-        estadoTurno: "confirmado",
-        estadoPago: pago.estadoPago,
-        montoPagado: pago.montoPagado,
-        metodoPagoUsado: turno?.metodoPagoEsperado || "manual",
-        aprobadoEn: serverTimestamp(),
-        pagoAprobadoEn: serverTimestamp(),
-        confirmadoAt: serverTimestamp(),
-        venceEn: null,
-        updatedAt: serverTimestamp(),
-      });
+        acc.total += 1;
+        if (estadoTurno === "pendiente" || estadoTurno === "pendiente_aprobacion") {
+          acc.porConfirmar += 1;
+        }
+        if (estadoTurno === "confirmado") {
+          acc.confirmados += 1;
+        }
+        if (saldoPendiente > 0) {
+          acc.conSaldo += 1;
+          acc.saldoTotal += saldoPendiente;
+        }
 
-      await swalSuccess({
-        title: "Pago confirmado",
-        text:
-          pago.estadoPago === "parcial"
-            ? "Se registró un pago parcial / seña."
-            : "Se registró el pago total.",
-      });
-    } catch (error) {
-      console.error("Error aprobando pago:", error);
-      await swalError({
-        title: "No se pudo confirmar el pago",
-        text: "Ocurrió un error al actualizar el turno.",
-      });
-    }
+        return acc;
+      },
+      {
+        total: 0,
+        porConfirmar: 0,
+        confirmados: 0,
+        conSaldo: 0,
+        saldoTotal: 0,
+      },
+    );
+  }, [turnosFiltrados]);
+
+  function limpiarFiltros() {
+    setFiltroEstado("todos");
+    setFechaFiltro("");
+    setFiltroEstadoPago("todos");
+    setFiltroMetodoPago("todos");
+    setBusqueda("");
+    setSoloSaldoPendiente(false);
   }
 
-  async function aprobarTurnoYMarcarPago(turno) {
-    try {
-      const pago = await pedirConfirmacionPago(turno);
-      if (!pago) return;
-
-      await updateDoc(doc(db, "turnos", turno.id), {
-        estadoTurno: "confirmado",
-        estadoPago: pago.estadoPago,
-        montoPagado: pago.montoPagado,
-        metodoPagoUsado: turno?.metodoPagoEsperado || "manual",
-        aprobadoEn: serverTimestamp(),
-        pagoAprobadoEn: serverTimestamp(),
-        confirmadoAt: serverTimestamp(),
-        venceEn: null,
-        updatedAt: serverTimestamp(),
-      });
-
-      await swalSuccess({
-        title: "Turno aprobado",
-        text:
-          pago.estadoPago === "parcial"
-            ? "El turno quedó confirmado con pago parcial / seña."
-            : "El turno quedó confirmado con pago total.",
-      });
-    } catch (error) {
-      console.error("Error aprobando turno y pago:", error);
-      await swalError({
-        title: "No se pudo aprobar el turno",
-        text: "Ocurrió un error al actualizar el turno.",
-      });
-    }
-  }
-
-  async function rechazarTurno(turnoId) {
-    await updateDoc(doc(db, "turnos", turnoId), {
-      estadoTurno: "rechazado",
-      estadoPago: "rechazado",
-      rechazadoEn: serverTimestamp(),
-      venceEn: null,
-      updatedAt: serverTimestamp(),
+  function resetNuevoTurno() {
+    setNuevoTurno({
+      clienteId: "",
+      servicioId: "",
+      gabineteId: "",
+      nombreCliente: "",
+      clienteTelefono: "",
+      clienteEmail: "",
+      fecha: "",
+      horaInicio: "",
+      metodoPagoEsperado: "manual",
+      montoPagado: "",
+      notas: "",
     });
   }
 
-  // ==============================
-  // UI
-  // ==============================
-  function badgeEstadoTurno(estado) {
-    const config = {
-      pendiente: {
-        texto: "Pendiente",
-        color: "#546e7a",
-      },
-      pendiente_aprobacion: {
-        texto: "Pendiente aprobación",
-        color: "#ef6c00",
-      },
-      confirmado: {
-        texto: "Confirmado",
-        color: "#2e7d32",
-      },
-      rechazado: {
-        texto: "Rechazado",
-        color: "#c62828",
-      },
-      cancelado: {
-        texto: "Cancelado",
-        color: "#6d4c41",
-      },
-      perdido: {
-        texto: "Perdido",
-        color: "#8d6e63",
-      },
-      finalizado: {
-        texto: "Finalizado",
-        color: "#1565c0",
-      },
-    };
-
-    const data = config[estado] || {
-      texto: estado || "Desconocido",
-      color: "#999",
-    };
-
-    return (
-      <span
-        style={{
-          display: "inline-block",
-          padding: "4px 8px",
-          borderRadius: 6,
-          fontSize: 12,
-          backgroundColor: data.color,
-          color: "white",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {data.texto}
-      </span>
-    );
+  function updateNuevoTurno(field, value) {
+    setNuevoTurno((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   }
 
-  function badgeEstadoPago(turno) {
-    const estado = getEstadoPago(turno);
-    const metodo = getMetodoPagoEsperado(turno);
+  useEffect(() => {
+    if (!servicioSeleccionado) return;
 
-    let data;
+    const gabineteDisponible = servicioSeleccionado.gabinetes?.[0]?.id || "";
+    setNuevoTurno((prev) => ({
+      ...prev,
+      gabineteId:
+        prev.servicioId === servicioSeleccionado.id && prev.gabineteId
+          ? prev.gabineteId
+          : gabineteDisponible,
+      montoPagado: montoSugerido ? String(montoSugerido) : "",
+    }));
+  }, [montoSugerido, servicioSeleccionado]);
 
-    if (estado === "pendiente" && metodo === "mercadopago") {
-      data = {
-        texto: "Esperando MercadoPago",
-        color: "#6f42c1",
-      };
-    } else if (estado === "pendiente" && metodo === "manual") {
-      data = {
-        texto: "Pago pendiente",
-        color: "#fb8c00",
-      };
-    } else if (estado === "pendiente_aprobacion" && metodo === "manual") {
-      data = {
-        texto: "Comprobante recibido",
-        color: "#fb8c00",
-      };
-    } else {
-      const config = {
-        pendiente: {
-          texto: "Pago pendiente",
-          color: "#fb8c00",
-        },
-        pendiente_aprobacion: {
-          texto: "Falta confirmar pago",
-          color: "#fb8c00",
-        },
-        parcial: {
-          texto: "Seña abonada",
-          color: "#3949ab",
-        },
-        abonado: {
-          texto: "Abonado",
-          color: "#2e7d32",
-        },
-        rechazado: {
-          texto: "Rechazado",
-          color: "#c62828",
-        },
-        expirado: {
-          texto: "Expirado",
-          color: "#757575",
-        },
-        reembolsado: {
-          texto: "Reembolsado",
-          color: "#00897b",
-        },
-      };
+  useEffect(() => {
+    if (!nuevoTurno.clienteId) return;
 
-      data = config[estado] || {
-        texto: estado || "Desconocido",
-        color: "#999",
-      };
+    const cliente = clientes[nuevoTurno.clienteId];
+    if (!cliente) return;
+
+    setNuevoTurno((prev) => ({
+      ...prev,
+      nombreCliente: cliente.nombre || prev.nombreCliente,
+      clienteTelefono:
+        cliente.telefono || cliente.telefonoCliente || prev.clienteTelefono,
+      clienteEmail: cliente.email || prev.clienteEmail,
+    }));
+  }, [clientes, nuevoTurno.clienteId]);
+
+  useEffect(() => {
+    if (!nuevoTurno.horaInicio) return;
+
+    const sigueDisponible = slotsDisponibles.some(
+      (slot) => formatHourLocal(slot.inicio) === nuevoTurno.horaInicio,
+    );
+
+    if (!sigueDisponible) {
+      setNuevoTurno((prev) => ({
+        ...prev,
+        horaInicio: "",
+      }));
+    }
+  }, [nuevoTurno.horaInicio, slotsDisponibles]);
+
+  async function crearTurnoManual() {
+    if (creandoTurno) return;
+    if (!servicioSeleccionado) {
+      await swalError({
+        title: "Falta el servicio",
+        text: "Selecciona un servicio para crear el turno.",
+      });
+      return;
+    }
+    if (!nuevoTurno.gabineteId) {
+      await swalError({
+        title: "Falta el gabinete",
+        text: "Selecciona un gabinete para continuar.",
+      });
+      return;
+    }
+    if (!nuevoTurno.nombreCliente.trim()) {
+      await swalError({
+        title: "Falta el cliente",
+        text: "Ingresa o selecciona el cliente del turno.",
+      });
+      return;
+    }
+    if (!nuevoTurno.fecha || !nuevoTurno.horaInicio) {
+      await swalError({
+        title: "Falta fecha u horario",
+        text: "Selecciona una fecha y uno de los horarios disponibles.",
+      });
+      return;
     }
 
-    return (
-      <span
-        style={{
-          display: "inline-block",
-          padding: "4px 8px",
-          borderRadius: 6,
-          fontSize: 12,
-          backgroundColor: data.color,
-          color: "white",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {data.texto}
-      </span>
-    );
+    const inicio = buildTurnoDate(nuevoTurno.fecha, nuevoTurno.horaInicio);
+    const inicioMs = inicio.getTime();
+
+    if (Number.isNaN(inicioMs)) {
+      await swalError({
+        title: "Fecha u hora invalida",
+        text: "Revisa la fecha y el horario elegidos.",
+      });
+      return;
+    }
+
+    const duracionMin = Math.max(1, Number(servicioSeleccionado.duracionMin || 0));
+    const finMs = inicioMs + duracionMin * 60000;
+    const montoPagado = Math.max(0, Number(nuevoTurno.montoPagado || 0));
+    const montos = calcularMontosTurno({
+      precioServicio: Number(servicioSeleccionado.precio || 0),
+      porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
+        ? Number(servicioSeleccionado.porcentajeAnticipo || 0)
+        : 0,
+      cobrarComision: true,
+    });
+
+    if (montoPagado > montos.montoTotal) {
+      await swalError({
+        title: "Monto invalido",
+        text: "El monto pagado no puede ser mayor al total.",
+      });
+      return;
+    }
+
+    if (!estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha)) {
+      await swalError({
+        title: "Fecha fuera de agenda",
+        text: "La fecha elegida queda fuera de la agenda abierta para este servicio.",
+      });
+      return;
+    }
+
+    if (
+      !horarioPermitidoPorServicio(
+        servicioSeleccionado,
+        nuevoTurno.fecha,
+        inicioMs,
+        finMs,
+      )
+    ) {
+      await swalError({
+        title: "Horario no disponible",
+        text: "El horario elegido no esta disponible en la agenda del servicio.",
+      });
+      return;
+    }
+
+    const conflicto = turnos.some((turno) => {
+      if (turno.fecha !== nuevoTurno.fecha) return false;
+      if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
+
+      const estadoTurno = getEstadoTurno(turno);
+      if (["cancelado", "rechazado", "finalizado", "perdido"].includes(estadoTurno)) {
+        return false;
+      }
+
+      const inicioExistente = Number(turno.horaInicio || 0);
+      const finExistente = Number(turno.horaFin || 0);
+
+      return inicioMs < finExistente && finMs > inicioExistente;
+    });
+
+    if (conflicto) {
+      await swalError({
+        title: "Horario ocupado",
+        text: "Ya existe un turno en ese gabinete y horario.",
+      });
+      return;
+    }
+
+    const gabineteSeleccionado =
+      gabinetes[nuevoTurno.gabineteId] ||
+      gabinetesDisponibles.find((gabinete) => gabinete.id === nuevoTurno.gabineteId);
+
+    const montoAnticipo = montos.montoAnticipoTotal;
+    const saldoPendiente = Math.max(0, montos.montoTotal - montoPagado);
+    const estadoPago =
+      montoPagado <= 0
+        ? montos.montoTotal > 0
+          ? "pendiente"
+          : "abonado"
+        : montoPagado >= montos.montoTotal
+          ? "abonado"
+          : "parcial";
+
+    setCreandoTurno(true);
+
+    try {
+      await Swal.fire({
+        title: "Guardando turno",
+        text: "Estamos registrando la reserva manual.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      await addDoc(collection(db, "turnos"), {
+        servicioId: servicioSeleccionado.id,
+        categoriaId: servicioSeleccionado.categoriaId || "",
+        categoriaNombre: servicioSeleccionado.categoriaNombre || "",
+        nombreServicio: servicioSeleccionado.nombreServicio || "",
+        profesionalId: servicioSeleccionado.profesionalId || null,
+        nombreProfesional: servicioSeleccionado.nombreProfesional || "",
+        responsableGestion: servicioSeleccionado.responsableGestion || "admin",
+        descripcionServicio: servicioSeleccionado.descripcion || "",
+        gabineteId: nuevoTurno.gabineteId,
+        nombreGabinete: gabineteSeleccionado?.nombreGabinete || "",
+        fecha: nuevoTurno.fecha,
+        horaInicio: inicioMs,
+        horaFin: finMs,
+        duracionMin,
+        nombreCliente: nuevoTurno.nombreCliente.trim(),
+        clienteTelefono: nuevoTurno.clienteTelefono.trim(),
+        telefonoCliente: nuevoTurno.clienteTelefono.trim(),
+        clienteEmail: nuevoTurno.clienteEmail.trim(),
+        email: nuevoTurno.clienteEmail.trim(),
+        clienteId: nuevoTurno.clienteId || null,
+        usuarioId: nuevoTurno.clienteId || null,
+        uid: nuevoTurno.clienteId || null,
+        metodoPagoEsperado: nuevoTurno.metodoPagoEsperado,
+        metodoPagoUsado:
+          montoPagado > 0 && nuevoTurno.metodoPagoEsperado !== "sin_pago"
+            ? nuevoTurno.metodoPagoEsperado
+            : null,
+        modoReserva: servicioSeleccionado.modoReserva || "reserva",
+        pedirAnticipo: Boolean(servicioSeleccionado.pedirAnticipo),
+        porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
+          ? Number(servicioSeleccionado.porcentajeAnticipo || 0)
+          : 0,
+        montoServicio: montos.precioServicio,
+        precioServicio: montos.precioServicio,
+        comisionTurno: montos.comisionTurno,
+        montoComision: montos.comisionTurno,
+        montoAnticipoServicio: montos.montoAnticipoServicio,
+        montoAnticipo,
+        montoTotal: montos.montoTotal,
+        precioTotal: montos.montoTotal,
+        montoPagado,
+        saldoPendiente,
+        estadoTurno: "confirmado",
+        estadoPago,
+        creadoPorAdmin: true,
+        origenTurno: "admin_manual",
+        notasAdmin: nuevoTurno.notas.trim(),
+        createdAt: serverTimestamp(),
+        creadoEn: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      resetNuevoTurno();
+      Swal.close();
+      await swalSuccess({
+        title: "Turno agregado",
+        text: "La reserva manual se guardo correctamente.",
+      });
+    } catch (error) {
+      console.error("Error creando turno manual", error);
+      Swal.close();
+      await swalError({
+        title: "No se pudo crear el turno",
+        text: "Ocurrio un error al guardar la reserva manual.",
+      });
+    } finally {
+      setCreandoTurno(false);
+    }
   }
 
   return (
-    <div className="admin-panel">
-      <h2>Turnos / Reservas</h2>
+    <div className="admin-panel turnos-admin-page">
+      <section className="turnos-admin-hero">
+        <div className="turnos-admin-hero-copy">
+          <p className="turnos-admin-eyebrow">Panel operativo</p>
+          <h2 className="turnos-admin-title">Turnos y reservas</h2>
+          <p className="turnos-admin-subtitle">
+            Revisa agenda, estado del pago y acciones operativas desde una vista mas
+            clara en desktop y mobile.
+          </p>
+        </div>
 
-      {/* FILTROS */}
-      <div style={{ marginBottom: 16 }}>
-        <select
-          value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value)}
-        >
-          <option value="todos">Todos</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="pendiente_aprobacion">Pendiente aprobación</option>
-          <option value="confirmado">Confirmados</option>
-          <option value="rechazado">Rechazados</option>
-          <option value="cancelado">Cancelados</option>
-          <option value="perdido">Perdidos</option>
-          <option value="finalizado">Finalizados</option>
-        </select>
+        <div className="turnos-admin-summary">
+          <article className="turnos-summary-card">
+            <span>Turnos visibles</span>
+            <strong>{resumen.total}</strong>
+          </article>
+          <article className="turnos-summary-card">
+            <span>Por confirmar</span>
+            <strong>{resumen.porConfirmar}</strong>
+          </article>
+          <article className="turnos-summary-card">
+            <span>Confirmados</span>
+            <strong>{resumen.confirmados}</strong>
+          </article>
+          <article className="turnos-summary-card">
+            <span>Saldo pendiente</span>
+            <strong>{formatMoney(resumen.saldoTotal)}</strong>
+          </article>
+        </div>
+      </section>
 
-        <input
-          className="input-admin"
-          type="date"
-          value={fechaFiltro}
-          onChange={(e) => setFechaFiltro(e.target.value)}
-        />
-      </div>
+      <section className="turnos-create-box">
+        <div className="turnos-create-header">
+          <div>
+            <h3 className="turnos-filtros-title">Agregar turno manual</h3>
+            <p className="turnos-filtros-desc">
+              Crea reservas desde admin con servicio real, calculo de montos y chequeo
+              basico de solapamientos.
+            </p>
+          </div>
 
-      {/* TABLA */}
-      <div className="tabla-turnos-wrapper">
-        <table className="tabla-turnos">
-          <colgroup>
-            <col style={{ width: "90px" }} />
-            <col style={{ width: "100px" }} />
-            <col style={{ width: "60px" }} />
-            <col style={{ width: "160px" }} />
-            <col style={{ width: "200px" }} />
-            <col style={{ width: "100px" }} />
-            <col style={{ width: "140px" }} />
-            <col style={{ width: "140px" }} />
-            <col style={{ width: "180px" }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Horario</th>
-              <th>Duración</th>
-              <th>Cliente</th>
-              <th>Servicio</th>
-              <th>Gabinete</th>
-              <th>Estado turno</th>
-              <th>Estado pago</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
+          {previewMontos ? (
+            <div className="turnos-create-pricing">
+              <span>Total {formatMoney(previewMontos.montoTotal)}</span>
+              <small>Anticipo {formatMoney(previewMontos.montoAnticipoTotal)}</small>
+            </div>
+          ) : null}
+        </div>
 
-          <tbody>
-            {turnosFiltrados.map((t) => {
-              const cliente = clientes[t.clienteId || t.usuarioId || t.uid];
-              const gabinete = gabinetes[t.gabineteId];
+        <div className="turnos-create-grid">
+          <div className="turnos-filtro-item">
+            <label>Cliente registrado</label>
+            <select
+              className="turnos-filtro-control"
+              value={nuevoTurno.clienteId}
+              onChange={(e) => updateNuevoTurno("clienteId", e.target.value)}
+            >
+              <option value="">Seleccionar del listado</option>
+              {clientesOptions.map((cliente) => (
+                <option key={cliente.id} value={cliente.id}>
+                  {cliente.nombre || cliente.email || cliente.id}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              const ahora = new Date().getTime();
-              const estadoTurno = getEstadoTurno(t);
-              const estadoPago = getEstadoPago(t);
+          <div className="turnos-filtro-item">
+            <label>Servicio</label>
+            <select
+              className="turnos-filtro-control"
+              value={nuevoTurno.servicioId}
+              onChange={(e) => updateNuevoTurno("servicioId", e.target.value)}
+            >
+              <option value="">Elegi un servicio</option>
+              {servicios.map((servicio) => (
+                <option key={servicio.id} value={servicio.id}>
+                  {servicio.nombreServicio} {servicio.nombreProfesional ? `• ${servicio.nombreProfesional}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              const metodoPagoEsperado = getMetodoPagoEsperado(t);
-              const esPagoMP = metodoPagoEsperado === "mercadopago";
-              const esPagoManual = metodoPagoEsperado === "manual";
+          <div className="turnos-filtro-item">
+            <label>Gabinete</label>
+            <select
+              className="turnos-filtro-control"
+              value={nuevoTurno.gabineteId}
+              onChange={(e) => updateNuevoTurno("gabineteId", e.target.value)}
+            >
+              <option value="">Elegi un gabinete</option>
+              {gabinetesDisponibles.map((gabinete) => (
+                <option key={gabinete.id} value={gabinete.id}>
+                  {gabinete.nombreGabinete}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              const mostrarChequeoManual =
-                esPagoManual &&
-                ["pendiente", "pendiente_aprobacion"].includes(estadoPago);
+          <div className="turnos-filtro-item">
+            <label>Cliente</label>
+            <input
+              className="turnos-filtro-control"
+              type="text"
+              placeholder="Nombre y apellido"
+              value={nuevoTurno.nombreCliente}
+              onChange={(e) => updateNuevoTurno("nombreCliente", e.target.value)}
+            />
+          </div>
 
-              const puedeAprobarPagoManual =
-                esPagoManual && estadoPago === "pendiente_aprobacion";
+          <div className="turnos-filtro-item">
+            <label>Telefono</label>
+            <input
+              className="turnos-filtro-control"
+              type="text"
+              placeholder="Ej: 11 5555 5555"
+              value={nuevoTurno.clienteTelefono}
+              onChange={(e) => updateNuevoTurno("clienteTelefono", e.target.value)}
+            />
+          </div>
 
-              const puedeAprobarTurnoYMarcarPago =
-                esPagoManual && estadoPago === "pendiente";
+          <div className="turnos-filtro-item">
+            <label>Email</label>
+            <input
+              className="turnos-filtro-control"
+              type="email"
+              placeholder="cliente@email.com"
+              value={nuevoTurno.clienteEmail}
+              onChange={(e) => updateNuevoTurno("clienteEmail", e.target.value)}
+            />
+          </div>
 
-              return (
-                <tr key={t.id}>
-                  <td>{formatearFecha(t.fecha)}</td>
+          <div className="turnos-filtro-item">
+            <label>Fecha</label>
+            <input
+              className="turnos-filtro-control"
+              type="date"
+              value={nuevoTurno.fecha}
+              onChange={(e) => updateNuevoTurno("fecha", e.target.value)}
+            />
+          </div>
 
-                  <td>
-                    {formatearHora(t.horaInicio)} - {formatearHora(t.horaFin)}
-                  </td>
+          <div className="turnos-filtro-item">
+            <label>Horario elegido</label>
+            <input
+              className="turnos-filtro-control"
+              type="text"
+              readOnly
+              placeholder="Selecciona un horario disponible"
+              value={nuevoTurno.horaInicio}
+            />
+          </div>
 
-                  <td>{formatearDuracion(t.horaInicio, t.horaFin)}</td>
+          <div className="turnos-filtro-item">
+            <label>Metodo esperado</label>
+            <select
+              className="turnos-filtro-control"
+              value={nuevoTurno.metodoPagoEsperado}
+              onChange={(e) => updateNuevoTurno("metodoPagoEsperado", e.target.value)}
+            >
+              <option value="manual">Manual</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mercadopago">MercadoPago</option>
+              <option value="sin_pago">Sin pago</option>
+            </select>
+          </div>
 
-                  <td>
-                    {cliente?.nombre ||
-                      cliente?.email ||
-                      t.nombreCliente ||
-                      t.email ||
-                      (t.clienteId || t.usuarioId || t.uid || "").slice(0, 8)}
-                  </td>
+          <div className="turnos-filtro-item">
+            <label>Monto pagado</label>
+            <input
+              className="turnos-filtro-control"
+              type="number"
+              min="0"
+              step="1"
+              placeholder={montoSugerido ? String(montoSugerido) : "0"}
+              value={nuevoTurno.montoPagado}
+              onChange={(e) => updateNuevoTurno("montoPagado", e.target.value)}
+            />
+            {montoSugerido ? (
+              <small className="turnos-create-field-hint">
+                Sugerido: {formatMoney(montoSugerido)}{" "}
+                {servicioSeleccionado?.pedirAnticipo ? "(sena + comision)" : "(total)"}
+              </small>
+            ) : null}
+          </div>
 
-                  <td>{t.nombreServicio}</td>
+          <div className="turnos-filtro-item turnos-filtro-item--buscar">
+            <label>Notas internas</label>
+            <input
+              className="turnos-filtro-control"
+              type="text"
+              placeholder="Observaciones para el equipo"
+              value={nuevoTurno.notas}
+              onChange={(e) => updateNuevoTurno("notas", e.target.value)}
+            />
+          </div>
+        </div>
 
-                  <td>
-                    {gabinete?.nombreGabinete ||
-                      t.nombreGabinete ||
-                      t.gabineteId}
-                  </td>
+        <div className="turnos-slots-box">
+          <div className="turnos-slots-head">
+            <strong>Horarios disponibles</strong>
+            <span>
+              {cargandoGabineteHorarios
+                ? "Cargando agenda..."
+                : `${slotsDisponibles.length} opcion(es) disponibles`}
+            </span>
+          </div>
 
-                  <td>
-                    {badgeEstadoTurno(estadoTurno)}
-                    {t.venceEn &&
-                      t.venceEn < ahora &&
-                      estadoTurno !== "confirmado" && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: "#c62828",
-                            marginTop: 4,
-                          }}
-                        >
-                          Vencido
-                        </div>
-                      )}
-                  </td>
+          {!nuevoTurno.fecha || !servicioSeleccionado || !nuevoTurno.gabineteId ? (
+            <div className="turnos-slots-empty">
+              Selecciona servicio, gabinete y fecha para ver la agenda simplificada.
+            </div>
+          ) : !estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha) ? (
+            <div className="turnos-slots-empty">
+              La fecha elegida queda fuera de la agenda abierta del servicio.
+            </div>
+          ) : cargandoGabineteHorarios ? (
+            <div className="turnos-slots-empty">Cargando horarios del gabinete...</div>
+          ) : slotsDisponibles.length === 0 ? (
+            <div className="turnos-slots-empty">
+              No hay horarios disponibles para esa combinacion.
+            </div>
+          ) : (
+            <div className="turnos-slots-grid">
+              {slotsDisponibles.map((slot) => {
+                const hora = formatHourLocal(slot.inicio);
+                const isActive = nuevoTurno.horaInicio === hora;
 
-                  <td>
-                    {badgeEstadoPago(t)}
+                return (
+                  <button
+                    key={slot.inicio}
+                    type="button"
+                    className={`turnos-slot-btn ${isActive ? "is-active" : ""}`}
+                    onClick={() => updateNuevoTurno("horaInicio", hora)}
+                  >
+                    {hora}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                    {metodoPagoEsperado && (
-                      <div
-                        style={{ fontSize: 11, marginTop: 4, opacity: 0.75 }}
-                      >
-                        Método: {metodoPagoEsperado}
-                      </div>
-                    )}
+        <div className="turnos-create-footer">
+          <div className="turnos-create-hint">
+            El turno se crea como <strong>confirmado</strong> y con estado de pago
+            calculado segun el monto ingresado.
+          </div>
 
-                    {t.metodoPagoUsado && (
-                      <div
-                        style={{ fontSize: 11, marginTop: 2, opacity: 0.75 }}
-                      >
-                        Cobrado por: {t.metodoPagoUsado}
-                      </div>
-                    )}
+          <div className="turnos-create-actions">
+            <button
+              type="button"
+              className="turnos-filtros-clear"
+              onClick={resetNuevoTurno}
+            >
+              Limpiar formulario
+            </button>
+            <button
+              type="button"
+              className="swal-btn-guardar"
+              onClick={crearTurnoManual}
+              disabled={creandoTurno}
+            >
+              {creandoTurno ? "Guardando..." : "Agregar turno"}
+            </button>
+          </div>
+        </div>
+      </section>
 
-                    {typeof t.montoTotal !== "undefined" && (
-                      <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
-                        ${Number(t.montoPagado || 0).toLocaleString("es-AR")} /
-                        ${Number(t.montoTotal || 0).toLocaleString("es-AR")}
-                      </div>
-                    )}
+      <section className="turnos-filtros-box">
+        <div className="turnos-filtros-header">
+          <div>
+            <h3 className="turnos-filtros-title">Filtros</h3>
+            <p className="turnos-filtros-desc">
+              Combina estado, fecha, metodo y busqueda libre para encontrar rapido cada
+              turno.
+            </p>
+          </div>
 
-                    {mostrarChequeoManual && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          marginTop: 4,
-                          color: "#ef6c00",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Chequear recibido: $
-                        {Number(getMontoAValidarPago(t)).toLocaleString(
-                          "es-AR",
-                        )}
-                      </div>
-                    )}
+          <button
+            type="button"
+            className="turnos-filtros-clear"
+            onClick={limpiarFiltros}
+          >
+            Limpiar
+          </button>
+        </div>
 
-                    {esPagoMP && estadoPago === "pendiente" && (
-                      <div
-                        style={{ fontSize: 11, marginTop: 4, color: "#6f42c1" }}
-                      >
-                        Esperando acreditación o webhook de MP
-                      </div>
-                    )}
-                  </td>
+        <div className="turnos-filtros-grid">
+          <div className="turnos-filtro-item">
+            <label>Estado del turno</label>
+            <select
+              className="turnos-filtro-control"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="pendiente_aprobacion">Pendiente aprobacion</option>
+              <option value="confirmado">Confirmados</option>
+              <option value="rechazado">Rechazados</option>
+              <option value="cancelado">Cancelados</option>
+              <option value="perdido">Perdidos</option>
+              <option value="finalizado">Finalizados</option>
+            </select>
+          </div>
 
-                  <td>
-                    {![
-                      "cancelado",
-                      "rechazado",
-                      "perdido",
-                      "finalizado",
-                    ].includes(estadoTurno) && (
-                      <>
-                        {puedeAprobarPagoManual && (
-                          <>
-                            <button
-                              className="swal-btn-aprobar"
-                              onClick={() => aprobarPago(t)}
-                            >
-                              Aprobar pago
-                            </button>
+          <div className="turnos-filtro-item">
+            <label>Fecha</label>
+            <input
+              className="turnos-filtro-control"
+              type="date"
+              value={fechaFiltro}
+              onChange={(e) => setFechaFiltro(e.target.value)}
+            />
+          </div>
 
-                            <button
-                              className="swal-btn-rechazar"
-                              onClick={() => rechazarTurno(t.id)}
-                            >
-                              Rechazar
-                            </button>
-                          </>
-                        )}
+          <div className="turnos-filtro-item">
+            <label>Estado del pago</label>
+            <select
+              className="turnos-filtro-control"
+              value={filtroEstadoPago}
+              onChange={(e) => setFiltroEstadoPago(e.target.value)}
+            >
+              <option value="todos">Todos los pagos</option>
+              <option value="pendiente">Pago pendiente</option>
+              <option value="pendiente_aprobacion">Pendiente aprobacion pago</option>
+              <option value="parcial">Pago parcial</option>
+              <option value="abonado">Abonado</option>
+              <option value="reembolsado">Reembolsado</option>
+              <option value="rechazado">Pago rechazado</option>
+            </select>
+          </div>
 
-                        {puedeAprobarTurnoYMarcarPago && (
-                          <button
-                            className="swal-btn-aprobar"
-                            onClick={() => aprobarTurnoYMarcarPago(t)}
-                          >
-                            Aprobar turno + marcar pago
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+          <div className="turnos-filtro-item">
+            <label>Metodo de pago</label>
+            <select
+              className="turnos-filtro-control"
+              value={filtroMetodoPago}
+              onChange={(e) => setFiltroMetodoPago(e.target.value)}
+            >
+              <option value="todos">Todos los metodos</option>
+              <option value="mercadopago">MercadoPago</option>
+              <option value="manual">Manual</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="sin_pago">Sin pago</option>
+            </select>
+          </div>
+
+          <div className="turnos-filtro-item turnos-filtro-item--buscar">
+            <label>Busqueda</label>
+            <input
+              className="turnos-filtro-control"
+              type="text"
+              placeholder="Cliente, telefono, email, servicio, gabinete o ID"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
+
+          <div className="turnos-filtro-item turnos-filtro-item--check">
+            <label className="turnos-filtro-check">
+              <input
+                type="checkbox"
+                checked={soloSaldoPendiente}
+                onChange={(e) => setSoloSaldoPendiente(e.target.checked)}
+              />
+              <span>Solo saldo pendiente</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <TurnosAdminTable
+        turnos={turnosFiltrados}
+        clientes={clientes}
+        gabinetes={gabinetes}
+      />
     </div>
   );
 }

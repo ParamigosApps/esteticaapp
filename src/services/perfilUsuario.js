@@ -1,7 +1,7 @@
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../Firebase.js'
-import { swalEditarPerfil } from '../utils/swalUtils'
-import { toastSuccess } from '../utils/toastifyUtils'
+import { swalEditarPerfil } from "../public/utils/swalUtils"
+import { toastSuccess } from '../public/utils/toastifyUtils'
 
 export async function editarPerfilUsuario({
   uid,

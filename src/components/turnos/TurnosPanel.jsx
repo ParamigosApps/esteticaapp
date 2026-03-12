@@ -13,7 +13,9 @@ import {
   swalRequiereLogin,
   swalResumenTurno,
 } from "../../public/utils/swalUtils";
+import { formatearSoloFecha } from "../../public/utils/utils";
 import { showLoading, hideLoading } from "../../services/loadingService";
+import { calcularMontosTurno } from "../../config/comisiones.js";
 
 import SlotHora from "./panels/SlotHora";
 
@@ -77,15 +79,6 @@ function getFechaMaxReservable(servicio) {
   return max;
 }
 
-function calcularMontoAnticipo(servicio) {
-  const precio = Number(servicio?.precio || 0);
-  const porcentaje = Number(servicio?.porcentajeAnticipo || 0);
-
-  if (precio <= 0 || porcentaje <= 0) return 0;
-
-  return Math.round((precio * porcentaje) / 100);
-}
-
 function buscarPrimerDiaDisponible(dias, agenda, servicio) {
   for (const d of dias) {
     const diaSemana = d.getDay();
@@ -107,6 +100,17 @@ function buscarPrimerDiaDisponible(dias, agenda, servicio) {
   return null;
 }
 
+function getPrecioEfectivo(servicio) {
+  const precio = Number(servicio?.precio || 0);
+  const precioEfectivo = Number(servicio?.precioEfectivo || 0);
+
+  if (precioEfectivo > 0 && precioEfectivo < precio) {
+    return precioEfectivo;
+  }
+
+  return 0;
+}
+
 export default function TurnosPanel({ servicio }) {
   const { user, loading: authLoading } = useAuth();
 
@@ -119,16 +123,34 @@ export default function TurnosPanel({ servicio }) {
 
   const fn = httpsCallable(getFunctions(), "crearTurnoInteligente");
 
-  const precioTotal = Number(servicio?.precio || 0);
-  const porcentajeAnticipo = Number(servicio?.porcentajeAnticipo || 0);
-  const montoAnticipo = calcularMontoAnticipo(servicio);
+  const pricingTurno = calcularMontosTurno({
+    precioServicio: Number(servicio?.precio || 0),
+    porcentajeAnticipo: servicio?.pedirAnticipo
+      ? Number(servicio?.porcentajeAnticipo || 0)
+      : 0,
+    cobrarComision: true,
+  });
+  const precioServicio = pricingTurno.precioServicio;
+  const precioTotal = pricingTurno.montoTotal;
+  const comisionTurno = pricingTurno.comisionTurno;
+  const montoAnticipoServicio = pricingTurno.montoAnticipoServicio;
+  const montoAnticipo = pricingTurno.montoAnticipoTotal;
   const saldoPendiente = Math.max(0, precioTotal - montoAnticipo);
-
+  const requiereAnticipoTurno = montoAnticipo > 0;
+  const precioEfectivo = getPrecioEfectivo(servicio);
+  const ahorroEfectivo = Math.max(0, precioServicio - precioEfectivo);
+  const saldoServicioEfectivo = Math.max(
+    0,
+    precioEfectivo - montoAnticipoServicio,
+  );
+  const saldoServicioTransferencia = Math.max(
+    0,
+    precioServicio - montoAnticipoServicio,
+  );
   const esReservaManual = servicio?.modoReserva === "reserva";
 
   const requierePagoOnline =
-    servicio?.pedirAnticipo &&
-    montoAnticipo > 0 &&
+    requiereAnticipoTurno &&
     (servicio?.tipoAnticipo || "online") === "online" &&
     !esReservaManual;
 
@@ -215,7 +237,7 @@ export default function TurnosPanel({ servicio }) {
     setSlotSeleccionado(null);
   }
 
-  async function reservarTurno() {
+  async function reservarTurno(metodoPagoSolicitado = null) {
     if (!slotSeleccionado) return;
 
     const fecha = toISODateLocal(fechaSeleccionada);
@@ -237,14 +259,80 @@ export default function TurnosPanel({ servicio }) {
         horaInicio: inicio,
         horaFin: fin,
         modoAsignacion: servicio.modoAsignacion || "auto",
+        metodoPagoSolicitado,
       });
 
       if (servicio.modoReserva === "reserva") {
+        const fechaTurno = new Date(
+          slotSeleccionado.horaInicio,
+        ).toLocaleDateString("es-AR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        });
+
+        const horaDesde = new Date(
+          slotSeleccionado.horaInicio,
+        ).toLocaleTimeString("es-AR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        const horaHasta = new Date(slotSeleccionado.horaFin).toLocaleTimeString(
+          "es-AR",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          },
+        );
+
         Swal.fire({
           icon: "success",
           title: "Solicitud enviada",
-          text: "Espera la confirmación por Whatsapp",
+          width: 520,
+          html: `
+            <div class="swal-reserva-ok">
+              <div class="swal-reserva-ok-copy">
+                <p class="swal-reserva-ok-lead">
+                  Recibimos tu solicitud para <strong>${servicio.nombreServicio}</strong>.
+                </p>
+                <p class="swal-reserva-ok-text">
+                  Te responderemos por WhatsApp para confirmar el turno y coordinar los pasos siguientes.
+                </p>
+              </div>
+
+              <div class="swal-reserva-ok-card">
+                <div class="swal-reserva-ok-row">
+                  <span>Fecha</span>
+                  <strong>${fechaTurno}</strong>
+                </div>
+                <div class="swal-reserva-ok-row">
+                  <span>Horario</span>
+                  <strong>${horaDesde} - ${horaHasta}</strong>
+                </div>
+                <div class="swal-reserva-ok-row">
+                  <span>Profesional</span>
+                  <strong>${servicio.nombreProfesional || "-"}</strong>
+                </div>
+              </div>
+
+              ${
+                saldoPendiente > 0
+                  ? `
+                    <div class="swal-reserva-ok-note">
+                      Espera la confirmacion por WhatsApp antes de transferir la sena. Una vez confirmado, el saldo restante se abona el dia del turno.
+                    </div>
+                  `
+                  : ""
+              }
+            </div>
+          `,
           confirmButtonText: "Aceptar",
+          customClass: {
+            popup: "swal-popup-custom",
+            confirmButton: "swal-btn-confirm",
+          },
+          buttonsStyling: false,
         });
       }
 
@@ -267,8 +355,11 @@ export default function TurnosPanel({ servicio }) {
 
       Swal.fire({
         icon: "warning",
-        title: "Horario ocupado",
-        text: "Ese turno ya fue reservado por otro cliente",
+        title: "No se pudo reservar",
+        text:
+          err?.message ||
+          err?.details ||
+          "Ocurrio un problema al intentar reservar el turno.",
       });
     } finally {
       setLoadingReserva(false);
@@ -276,11 +367,11 @@ export default function TurnosPanel({ servicio }) {
   }
 
   async function handleReservaManual() {
-    const data = await reservarTurno();
+    const data = await reservarTurno("manual");
     if (!data?.turnoId) return;
 
     const mensaje = encodeURIComponent(`
-Hola! Me gustaria reserva el siguiente turno:
+Hola! Me gustaria reservar el siguiente turno:
 
 Servicio: ${servicio.nombreServicio}
 Fecha: ${fechaFormateada}
@@ -292,7 +383,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
   }
 
   async function handleReservaAutomaticaMP() {
-    const data = await reservarTurno();
+    const data = await reservarTurno("mercadopago");
     if (!data?.turnoId) return;
 
     const iniciarPagoFn = httpsCallable(getFunctions(), "iniciarPagoTurnoMP");
@@ -321,8 +412,11 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaInicio: horaInicioFormateada,
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
-      precio: servicio.precio,
+      precio: precioServicio,
+      precioTotal,
       precioAnticipo: montoAnticipo || null,
+      comisionTurno,
+      anticipoServicio: montoAnticipoServicio,
       modoReserva: servicio.modoReserva,
     });
 
@@ -341,7 +435,9 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         hideLoading();
       }
     } else {
-      await reservarTurno(); // confirmación directa
+      await reservarTurno(
+        (servicio?.tipoAnticipo || "online") === "manual" ? "manual" : null,
+      );
     }
   }
 
@@ -357,7 +453,6 @@ Turno ID: ${data.turnoId.slice(0, 8)}
   if (!agenda) return null;
 
   const dias = generarDiasDelMes(fechaSeleccionada);
-
   const slots = generarSlotsDia(agenda, servicio, fechaSeleccionada);
 
   const fechaFormateada = slotSeleccionado
@@ -426,15 +521,61 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       }}
     >
       <div className="agenda-header">
-        {" "}
         <small className="agenda-disponibilidad">
           Agenda abierta hasta el{" "}
-          <b>{fechaMaxReservable.toLocaleDateString("es-AR")}</b>
+          <b>{formatearSoloFecha(fechaMaxReservable)}</b>
         </small>
       </div>
+
       <h5 className="agenda-titulo">
         <b>{servicio.nombreServicio.toUpperCase()}</b>
       </h5>
+
+      {precioEfectivo > 0 && (
+        <div className="agenda-cash-note">
+          {requierePagoOnline ? (
+            <div className="agenda-cash-copy">
+              <div>
+                Señas por transferencia con:{" "}
+                <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
+              </div>
+              <div>
+                El dia del turno podes abonar lo restante en efectivo por{" "}
+                <strong>
+                  ${saldoServicioEfectivo.toLocaleString("es-AR")}
+                </strong>
+                {ahorroEfectivo > 0 ? (
+                  <>
+                    {" "}
+                    y ahorrar{" "}
+                    <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+                  </>
+                ) : null}
+                .
+              </div>
+              <div>
+                O abonando por transferencia:{" "}
+                <strong>
+                  ${saldoServicioTransferencia.toLocaleString("es-AR")}
+                </strong>
+                .
+              </div>
+            </div>
+          ) : (
+            <>
+              En efectivo abonas{" "}
+              <strong>${precioEfectivo.toLocaleString("es-AR")}</strong>
+              {ahorroEfectivo > 0 ? (
+                <span>
+                  {" "}
+                  y ahorras ${ahorroEfectivo.toLocaleString("es-AR")}.
+                </span>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
         <div className="text-center mb-2"></div>
         <button
@@ -443,7 +584,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           onClick={() => cambiarMes(-1)}
           disabled={!puedeIrMesAnterior}
         >
-          ← Mes anterior
+          {"<-"} Mes anterior
         </button>
 
         <div style={{ fontWeight: 700 }}>
@@ -459,17 +600,15 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           onClick={() => cambiarMes(1)}
           disabled={!puedeIrMesSiguiente}
         >
-          Mes siguiente →
+          Mes siguiente {"->"}
         </button>
       </div>
-      {/* CALENDARIO HORIZONTAL */}
+
       <div className="calendario-horizontal">
         {dias.map((d) => {
           const activo = d.toDateString() === fechaSeleccionada.toDateString();
-
           const pasado = d < hoy;
           const fueraDeAgenda = d > fechaMaxReservable;
-
           const diaSemana = d.getDay();
 
           const hayHorarioEseDia = agenda.horarios?.some(
@@ -484,6 +623,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             hayHorarioEseDia && slotsDelDia.some((s) => !s.ocupado);
 
           const deshabilitado = pasado || fueraDeAgenda || !tieneDisponibilidad;
+
           return (
             <button
               key={d.toISOString()}
@@ -493,7 +633,6 @@ Turno ID: ${data.turnoId.slice(0, 8)}
               }`}
               onClick={() => {
                 if (deshabilitado) return;
-
                 setFechaSeleccionada(d);
                 setSlotSeleccionado(null);
               }}
@@ -508,6 +647,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           );
         })}
       </div>
+
       <div className="mb-2 mt-4 text-center">
         <h5>
           {fechaSeleccionada.toLocaleDateString("es-AR", {
@@ -517,14 +657,12 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           })}
         </h5>
       </div>
-      {/* SLOTS DEL DÍA SELECCIONADO */}
+
       <div className="slots-grid">
         {slots.length === 0 && (
-          <>
-            <div className="w-100 text-center">
-              <p className="text-muted mb-0">No hay horarios disponibles.</p>
-            </div>
-          </>
+          <div className="w-100 text-center">
+            <p className="text-muted mb-0">No hay horarios disponibles.</p>
+          </div>
         )}
 
         {slots.map((s) => (
@@ -546,67 +684,96 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         ))}
       </div>
 
-      {/* BOTÓN CONFIRMAR */}
       {slotSeleccionado && (
         <div className="resumen-turno mt-4 p-3 ">
           <h6 className="fw-bold mb-2">Resumen del turno</h6>
 
-          <div>
+          <div className="resumen-turno-row">
             <strong>Servicio:</strong> {servicio.nombreServicio}
           </div>
-          <div>
+          <div className="resumen-turno-row">
             <strong>Profesional:</strong> {servicio.nombreProfesional}
           </div>
-          <div>
+          <div className="resumen-turno-row">
             <strong>Fecha:</strong> {fechaFormateada}
           </div>
-
-          <div>
+          <div className="resumen-turno-row">
             <strong>Horario:</strong> {horaInicioFormateada} -{" "}
             {horaFinFormateada}
           </div>
-
-          <div>
-            <strong>Duración:</strong> {servicio.duracionMin} min
+          <div className="resumen-turno-row">
+            <strong>Duracion:</strong> {servicio.duracionMin} min
           </div>
 
           {precioTotal > 0 && (
-            <>
-              <div>
-                <strong>Costo servicio:</strong> $
-                {precioTotal.toLocaleString("es-AR")}
+            <div className="resumen-turno-pricing">
+              <div className="resumen-turno-row">
+                <strong>Valor del servicio:</strong> $
+                {precioServicio.toLocaleString("es-AR")}
               </div>
-            </>
+              {precioEfectivo > 0 && (
+                <div className="resumen-turno-row resumen-turno-row-cash">
+                  <strong>Valor abonando en efectivo:</strong> $
+                  {precioEfectivo.toLocaleString("es-AR")}
+                </div>
+              )}
+              {requierePagoOnline && montoAnticipoServicio > 0 && (
+                <div className="resumen-turno-row resumen-turno-row-muted">
+                  <strong>Seña del servicio:</strong> $
+                  {montoAnticipoServicio.toLocaleString("es-AR")}
+                </div>
+              )}
+              {requierePagoOnline && comisionTurno > 0 && (
+                <div className="resumen-turno-row resumen-turno-row-muted">
+                  <strong>Cargo de reserva online:</strong> $
+                  {comisionTurno.toLocaleString("es-AR")}
+                </div>
+              )}
+              <div className="resumen-turno-row resumen-turno-total">
+                <strong>
+                  {requierePagoOnline ? "Total a abonar online:" : "Total:"}
+                </strong>{" "}
+                ${precioTotal.toLocaleString("es-AR")}
+              </div>
+            </div>
           )}
 
           {requierePagoOnline && (
             <div className="mb-3 mt-1">
-              <span className="total-seña text-success fw-semibold">
+              <span className="total-sena text-success fw-semibold">
                 Abonas <b>${montoAnticipo.toLocaleString("es-AR")}</b> para
-                confirmar el turno.{" "}
-                {montoAnticipo != precioTotal && (
-                  <span className=" ">
-                    ¡El valor restante se abona el día del servicio!
-                  </span>
+                confirmar el turno online.{" "}
+                {montoAnticipo !== precioTotal && (
+                  <span>El dia del servicio abonas el saldo restante.</span>
                 )}
               </span>
             </div>
           )}
 
-          {esReservaManual && servicio.pedirAnticipo && montoAnticipo > 0 && (
+          {esReservaManual && requiereAnticipoTurno && montoAnticipo > 0 && (
             <div className="mb-3 mt-1">
-              <span className="total-seña text-danger fw-semibold">
+              <span className="total-sena text-danger fw-semibold">
                 Este turno se solicita por WhatsApp. Reservas este servicio con
                 <b> ${montoAnticipo.toLocaleString("es-AR")}</b>.
               </span>
+              <div className="resumen-turno-meta">
+                Anticipo del servicio: $
+                {montoAnticipoServicio.toLocaleString("es-AR")}
+              </div>
+              {comisionTurno > 0 && (
+                <div className="resumen-turno-meta-muted">
+                  Cargo de reserva online: $
+                  {comisionTurno.toLocaleString("es-AR")}.
+                </div>
+              )}
             </div>
           )}
 
           {esReservaManual &&
-            (!servicio.pedirAnticipo || montoAnticipo <= 0) && (
+            (!requiereAnticipoTurno || montoAnticipo <= 0) && (
               <div className="mb-3 mt-1">
-                <span className="total-seña text-danger fw-semibold">
-                  ¡Este turno se confirma por WhatsApp!
+                <span className="total-sena text-danger fw-semibold">
+                  Este turno se confirma por WhatsApp.
                 </span>
               </div>
             )}

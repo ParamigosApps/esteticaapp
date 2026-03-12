@@ -6,6 +6,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { defineSecret } = require("firebase-functions/params");
 const { FieldValue } = require("firebase-admin/firestore");
+const { desglosarPagoTurno, normalizarMontosTurno } = require("../config/comisiones");
 
 const MP_ACCESS_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const FRONT_URL = defineSecret("FRONT_URL");
@@ -114,13 +115,14 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("internal", "MP no configurado");
     }
 
-    const montoAnticipo = Number(turno.montoAnticipo || 0);
-    const montoTotal = Number(
-      turno.montoTotal ??
-      turno.precioTotal ??
-      turno.total ??
-      0
-    );
+    const montosTurno = normalizarMontosTurno(turno);
+    const montoAnticipo = montosTurno.montoAnticipo;
+    const montoTotal = montosTurno.montoTotal;
+    const desglosePago = desglosarPagoTurno({
+      turno,
+      montoPago: montoAnticipo,
+      montoPagadoPrevio: Number(turno.montoPagado ?? 0),
+    });
 
     const pagoRef = db.collection("pagos").doc();
 
@@ -135,6 +137,10 @@ await pagoRef.set({
 
   monto: montoAnticipo,
   montoTotal,
+  montoServicio: montosTurno.montoServicio,
+  montoServicioPagado: desglosePago.montoLiquidable,
+  montoComision: desglosePago.montoComision,
+  montoLiquidable: desglosePago.montoLiquidable,
   tipoPago: "sena",
 
   mpPreferenceId: null,

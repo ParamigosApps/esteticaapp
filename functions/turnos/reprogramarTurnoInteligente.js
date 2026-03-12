@@ -221,7 +221,9 @@ exports.reprogramarTurnoInteligente = onCall(
 
         reprogramado: true,
         reprogramadoAt: FieldValue.serverTimestamp(),
+        reprogramadoEn: FieldValue.serverTimestamp(),
         reprogramadoPor: "cliente",
+        motivoReprogramacion: "reprogramacion_cliente",
 
         reprogramacionesCount: FieldValue.increment(1),
 

@@ -1,4 +1,3 @@
-// src/pages/MisTurnos.jsx
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
@@ -7,6 +6,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { useAuth } from "../../context/AuthContext";
 import { generarSlotsDia } from "../../public/utils/generarSlotsDia";
+import { normalizarMontosTurno } from "../../config/comisiones.js";
 
 import {
   collection,
@@ -26,7 +26,7 @@ const functions = getFunctions(undefined, "us-central1");
 const ESTADO_TURNO_LABEL = {
   confirmado: "Confirmado",
   pendiente: "Pendiente",
-  pendiente_aprobacion: "Pendiente de aprobación",
+  pendiente_aprobacion: "Pendiente de aprobacion",
   cancelado: "Cancelado por usuario",
   rechazado: "Rechazado",
   perdido: "Perdido",
@@ -35,7 +35,7 @@ const ESTADO_TURNO_LABEL = {
 
 const ESTADO_PAGO_LABEL = {
   pendiente: "Pago no realizado",
-  pendiente_aprobacion: "Pago en revisión",
+  pendiente_aprobacion: "Pago en revision",
   parcial: "Pago parcial",
   abonado: "Abonado",
   rechazado: "Pago rechazado",
@@ -152,13 +152,13 @@ function humanizeDiff(msDiff) {
   const h = Math.floor(min / 60);
   const d = Math.floor(h / 24);
 
-  if (d >= 2) return `${d} días`;
-  if (d === 1) return `1 día`;
+  if (d >= 2) return `${d} dias`;
+  if (d === 1) return "1 dia";
   if (h >= 2) return `${h} horas`;
-  if (h === 1) return `1 hora`;
+  if (h === 1) return "1 hora";
   if (min >= 2) return `${min} min`;
-  if (min === 1) return `1 min`;
-  return `menos de 1 min`;
+  if (min === 1) return "1 min";
+  return "menos de 1 min";
 }
 
 function buildGoogleCalendarUrl({ title, details, location, startMs, endMs }) {
@@ -224,18 +224,33 @@ function canReprogramTurno(turno) {
   return count < 1;
 }
 
+function getTurnoTone(estadoTurno) {
+  if (estadoTurno === "confirmado") return "success";
+  if (estadoTurno === "pendiente" || estadoTurno === "pendiente_aprobacion") {
+    return "warning";
+  }
+  if (estadoTurno === "finalizado") return "info";
+  return "danger";
+}
+
+function getPagoTone(estadoPago) {
+  if (estadoPago === "abonado") return "success";
+  if (estadoPago === "parcial") return "info";
+  if (estadoPago === "pendiente" || estadoPago === "pendiente_aprobacion") {
+    return "warning";
+  }
+  return "danger";
+}
+
 export default function MisTurnos() {
   const { user } = useAuth();
 
   const [turnos, setTurnos] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [social, setSocial] = useState(null);
   const [ubicacion, setUbicacion] = useState(null);
-
   const [expanded, setExpanded] = useState({});
 
-  // -------- turnos del cliente --------
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -266,14 +281,10 @@ export default function MisTurnos() {
     return () => unsub();
   }, [user?.uid]);
 
-  // -------- config del negocio --------
   useEffect(() => {
-    const unsubSocial = onSnapshot(
-      doc(db, "configuracion", "social"),
-      (snap) => {
-        if (snap.exists()) setSocial(snap.data());
-      },
-    );
+    const unsubSocial = onSnapshot(doc(db, "configuracion", "social"), (snap) => {
+      if (snap.exists()) setSocial(snap.data());
+    });
 
     const unsubUbic = onSnapshot(
       doc(db, "configuracion", "ubicacion"),
@@ -290,12 +301,9 @@ export default function MisTurnos() {
 
   const { proximos, historial } = useMemo(() => {
     const now = Date.now();
-
-    const sorted = [...turnos].sort((a, b) => {
-      const aa = Number(a.horaInicio || 0);
-      const bb = Number(b.horaInicio || 0);
-      return bb - aa;
-    });
+    const sorted = [...turnos].sort(
+      (a, b) => Number(b.horaInicio || 0) - Number(a.horaInicio || 0),
+    );
 
     const prox = [];
     const hist = [];
@@ -329,12 +337,11 @@ export default function MisTurnos() {
   async function cancelarTurno(turno) {
     if (!turno?.id) return;
 
-    const ok = canCancelTurno(turno);
-    if (!ok) {
+    if (!canCancelTurno(turno)) {
       Swal.fire({
         icon: "warning",
         title: "No se puede cancelar",
-        text: `Solo se puede cancelar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipación.`,
+        text: `Solo se puede cancelar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion.`,
         confirmButtonText: "Entendido",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
@@ -359,7 +366,7 @@ export default function MisTurnos() {
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: "Sí, cancelar",
+      confirmButtonText: "Si, cancelar",
       cancelButtonText: "Volver",
       customClass: {
         confirmButton: "swal-btn-confirm",
@@ -372,7 +379,9 @@ export default function MisTurnos() {
     await updateDoc(doc(db, "turnos", turno.id), {
       estadoTurno: "cancelado",
       canceladoAt: serverTimestamp(),
+      canceladoEn: serverTimestamp(),
       canceladoPor: "cliente",
+      motivoCancelacion: "cancelacion_cliente",
       anticipoPerdido: anticipo > 0,
       montoAnticipoPerdido: anticipo,
       updatedAt: serverTimestamp(),
@@ -390,12 +399,11 @@ export default function MisTurnos() {
   async function reprogramarTurno(turno) {
     if (!turno?.id || !turno?.servicioId) return;
 
-    const ok = canReprogramTurno(turno);
-    if (!ok) {
+    if (!canReprogramTurno(turno)) {
       Swal.fire({
         icon: "warning",
         title: "No se puede reprogramar",
-        text: `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipación y máximo 1 vez.`,
+        text: `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion y maximo 1 vez.`,
         confirmButtonText: "Entendido",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
@@ -410,9 +418,7 @@ export default function MisTurnos() {
       title: "Elegí una nueva fecha",
       input: "date",
       inputValue: turno.fecha || "",
-      inputAttributes: {
-        min: fechaMin,
-      },
+      inputAttributes: { min: fechaMin },
       showCancelButton: true,
       confirmButtonText: "Ver horarios",
       cancelButtonText: "Volver",
@@ -435,11 +441,7 @@ export default function MisTurnos() {
         throw new Error("Servicio no encontrado");
       }
 
-      const servicio = {
-        id: servicioSnap.id,
-        ...servicioSnap.data(),
-      };
-
+      const servicio = { id: servicioSnap.id, ...servicioSnap.data() };
       const gabineteIds = Array.isArray(servicio.gabinetes)
         ? servicio.gabinetes
             .map((g) => String(g?.id || "").trim())
@@ -451,7 +453,6 @@ export default function MisTurnos() {
       }
 
       const getAgenda = httpsCallable(functions, "getAgendaGabinete");
-
       const agendaResp = await getAgenda({
         gabineteIds,
         fecha: fechaElegida,
@@ -519,7 +520,7 @@ export default function MisTurnos() {
           </div>
         `,
         showCancelButton: true,
-        confirmButtonText: "Confirmar reprogramación",
+        confirmButtonText: "Confirmar reprogramacion",
         cancelButtonText: "Volver",
         customClass: {
           confirmButton: "swal-btn-confirm",
@@ -559,7 +560,6 @@ export default function MisTurnos() {
       if (!seleccion.isConfirmed || !seleccion.value) return;
 
       const callable = httpsCallable(functions, "reprogramarTurnoInteligente");
-
       const resp = await callable({
         turnoId: turno.id,
         fecha: fechaElegida,
@@ -605,7 +605,7 @@ export default function MisTurnos() {
     const estadoPago = getEstadoPago(turno);
 
     const msg = [
-      "Hola! Quería consultar por mi turno:",
+      "Hola! Queria consultar por mi turno:",
       `• Servicio: ${turno?.nombreServicio || "-"}`,
       `• Fecha: ${formatFechaISO(turno?.fecha)}`,
       `• Hora: ${formatHora(turno?.horaInicio)}`,
@@ -645,29 +645,6 @@ export default function MisTurnos() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  function badgeClassTurno(estadoTurno) {
-    if (estadoTurno === "confirmado") return "badge bg-success";
-    if (estadoTurno === "pendiente") return "badge bg-warning text-dark";
-    if (estadoTurno === "pendiente_aprobacion")
-      return "badge bg-info text-dark";
-    if (estadoTurno === "cancelado") return "badge bg-danger";
-    if (estadoTurno === "rechazado") return "badge bg-danger";
-    if (estadoTurno === "perdido") return "badge bg-secondary";
-    if (estadoTurno === "finalizado") return "badge bg-primary";
-    return "badge bg-secondary";
-  }
-
-  function badgeClassPago(estadoPago) {
-    if (estadoPago === "abonado") return "badge bg-success";
-    if (estadoPago === "parcial") return "badge bg-primary";
-    if (estadoPago === "pendiente") return "badge bg-warning text-dark";
-    if (estadoPago === "pendiente_aprobacion") return "badge bg-info text-dark";
-    if (estadoPago === "rechazado") return "badge bg-danger";
-    if (estadoPago === "expirado") return "badge bg-secondary";
-    if (estadoPago === "reembolsado") return "badge bg-dark";
-    return "badge bg-secondary";
-  }
-
   function TurnoCard({ t, isProximo }) {
     const start = Number(t.horaInicio || 0);
     const diff = start ? start - Date.now() : null;
@@ -675,203 +652,190 @@ export default function MisTurnos() {
     const estadoTurno = getEstadoTurno(t);
     const estadoPago = getEstadoPago(t);
     const { total, anticipo, pagado, saldoPendiente } = getMontos(t);
-
+    const montosTurno = normalizarMontosTurno(t);
     const isExpanded = !!expanded[t.id];
 
     return (
-      <div className="card mb-3">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-start gap-3">
-            <div style={{ minWidth: 0 }}>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <strong style={{ fontSize: 16 }}>
-                  {t.nombreServicio || "Servicio"}
-                </strong>
-
-                <span className={badgeClassTurno(estadoTurno)}>
-                  {ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "—"}
-                </span>
-
-                <span className={badgeClassPago(estadoPago)}>
-                  {ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "—"}
-                </span>
-              </div>
-
-              <div className="text-muted" style={{ fontSize: 14 }}>
-                {t.fecha ? formatFechaISO(t.fecha) : "Fecha —"}{" "}
-                {start ? `· ${formatHora(t.horaInicio)}` : ""}
-                {isProximo && diff !== null && diff > 0 && (
-                  <span>
-                    {" "}
-                    · <b>En {humanizeDiff(diff)}</b>
-                  </span>
-                )}
-              </div>
-
-              {!!ubicacion?.mapsDireccion && (
-                <div className="text-muted" style={{ fontSize: 13 }}>
-                  📍 {ubicacion.mapsDireccion}
-                </div>
-              )}
-            </div>
-
-            <div className="text-end" style={{ whiteSpace: "nowrap" }}>
-              {total > 0 && (
-                <div style={{ fontSize: 14 }}>
-                  <div>
-                    Total: <b>${total.toLocaleString("es-AR")}</b>
-                  </div>
-                  {anticipo > 0 && (
-                    <div>
-                      Seña: <b>${anticipo.toLocaleString("es-AR")}</b>
-                    </div>
-                  )}
-                  <div>
-                    Pagado: <b>${pagado.toLocaleString("es-AR")}</b>
-                  </div>
-                  <div className="text-muted" style={{ fontSize: 13 }}>
-                    Saldo: ${saldoPendiente.toLocaleString("es-AR")}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="d-flex flex-wrap gap-2 mt-3">
-            {ubicacion?.mapsLink && (
-              <a
-                href={ubicacion.mapsLink}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-outline-secondary btn-sm"
-              >
-                Cómo llegar
-              </a>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => addToCalendar(t)}
-              disabled={!t.horaInicio}
-            >
-              Agregar a calendario
-            </button>
-
-            {social?.whatsappContacto && (
-              <button
-                type="button"
-                className="btn btn-outline-success btn-sm"
-                onClick={() => abrirWhatsappTurno(t)}
-              >
-                WhatsApp
-              </button>
-            )}
-
-            {isProximo && (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => reprogramarTurno(t)}
-                  disabled={!canReprogramTurno(t)}
-                  title={
-                    canReprogramTurno(t)
-                      ? ""
-                      : `Reprogramable con ${HORA_CANCELACION_MINIMA}h de anticipación y máximo 1 vez`
-                  }
-                >
-                  Reprogramar
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => cancelarTurno(t)}
-                  disabled={!canCancelTurno(t)}
-                  title={
-                    canCancelTurno(t)
-                      ? ""
-                      : `Cancelable con ${HORA_CANCELACION_MINIMA}h de anticipación`
-                  }
-                >
-                  Cancelar turno
-                </button>
-              </>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-link btn-sm"
-              onClick={() => setExpanded((p) => ({ ...p, [t.id]: !p[t.id] }))}
-            >
-              {isExpanded ? "Ocultar detalle" : "Ver detalle"}
-            </button>
-          </div>
-
-          {isExpanded && (
-            <div
-              className="mt-3 p-3"
-              style={{
-                background: "#f8f9fa",
-                borderRadius: 10,
-                fontSize: 13,
-              }}
-            >
-              <div>
-                <b>ID turno:</b> {t.id}
-              </div>
-              <div>
-                <b>Estado turno:</b>{" "}
+      <article className={`turno-card ${isProximo ? "is-upcoming" : ""}`}>
+        <div className="turno-card-top">
+          <div className="turno-card-main">
+            <div className="turno-card-badges">
+              <span className={`turno-pill ${getTurnoTone(estadoTurno)}`}>
                 {ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}
-              </div>
-              <div>
-                <b>Estado pago:</b>{" "}
+              </span>
+              <span className={`turno-pill ${getPagoTone(estadoPago)}`}>
                 {ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}
+              </span>
+              {isProximo && diff !== null && diff > 0 && (
+                <span className="turno-pill neutral">
+                  En {humanizeDiff(diff)}
+                </span>
+              )}
+            </div>
+
+            <h3 className="turno-card-title">{t.nombreServicio || "Servicio"}</h3>
+
+            <div className="turno-card-meta">
+              <span>{t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}</span>
+              {start ? <span>{formatHora(t.horaInicio)}</span> : null}
+              {!!ubicacion?.mapsDireccion && (
+                <span>{ubicacion.mapsDireccion}</span>
+              )}
+            </div>
+          </div>
+
+          {total > 0 && (
+            <div className="turno-card-price">
+              <div className="turno-price-total">
+                ${total.toLocaleString("es-AR")}
               </div>
-              {!!t.metodoPago && (
-                <div>
-                  <b>Método pago:</b> {t.metodoPago}
-                </div>
-              )}
-              {!!t.tipoAnticipo && (
-                <div>
-                  <b>Tipo anticipo:</b> {t.tipoAnticipo}
-                </div>
-              )}
-              {!!(t.nombreGabinete || t.gabineteId) && (
-                <div>
-                  <b>Gabinete:</b> {t.nombreGabinete || t.gabineteId}
-                </div>
-              )}
-              {!!t.servicioId && (
-                <div>
-                  <b>Servicio ID:</b> {t.servicioId}
-                </div>
-              )}
-              {!!t.pagoId && (
-                <div>
-                  <b>Pago ID:</b> {t.pagoId}
-                </div>
-              )}
-              {typeof t.montoTotal !== "undefined" && (
-                <>
-                  <div>
-                    <b>Monto total:</b> ${total.toLocaleString("es-AR")}
-                  </div>
-                  <div>
-                    <b>Monto pagado:</b> ${pagado.toLocaleString("es-AR")}
-                  </div>
-                  <div>
-                    <b>Saldo pendiente:</b> $
-                    {saldoPendiente.toLocaleString("es-AR")}
-                  </div>
-                </>
-              )}
+              <div className="turno-price-caption">Total del servicio</div>
             </div>
           )}
         </div>
-      </div>
+
+        <div className="turno-card-stats">
+          <div className="turno-stat">
+            <span>Servicio</span>
+            <strong>
+              ${montosTurno.montoServicio.toLocaleString("es-AR")}
+            </strong>
+          </div>
+          <div className="turno-stat">
+            <span>Comision</span>
+            <strong>
+              ${montosTurno.comisionTurno.toLocaleString("es-AR")}
+            </strong>
+          </div>
+          <div className="turno-stat">
+            <span>Pagado</span>
+            <strong>${pagado.toLocaleString("es-AR")}</strong>
+          </div>
+          <div className="turno-stat">
+            <span>Saldo</span>
+            <strong>${saldoPendiente.toLocaleString("es-AR")}</strong>
+          </div>
+          {anticipo > 0 && (
+            <div className="turno-stat">
+              <span>Seña</span>
+              <strong>${anticipo.toLocaleString("es-AR")}</strong>
+            </div>
+          )}
+        </div>
+
+        <div className="turno-card-actions">
+          {ubicacion?.mapsLink && (
+            <a
+              href={ubicacion.mapsLink}
+              target="_blank"
+              rel="noreferrer"
+              className="btn turno-action-btn"
+            >
+              Como llegar
+            </a>
+          )}
+
+          <button
+            type="button"
+            className="btn turno-action-btn"
+            onClick={() => addToCalendar(t)}
+            disabled={!t.horaInicio}
+          >
+            Agregar al calendario
+          </button>
+
+          {social?.whatsappContacto && (
+            <button
+              type="button"
+              className="btn turno-action-btn success"
+              onClick={() => abrirWhatsappTurno(t)}
+            >
+              WhatsApp
+            </button>
+          )}
+
+          {isProximo && (
+            <>
+              <button
+                type="button"
+                className="btn turno-action-btn info"
+                onClick={() => reprogramarTurno(t)}
+                disabled={!canReprogramTurno(t)}
+                title={
+                  canReprogramTurno(t)
+                    ? ""
+                    : `Reprogramable con ${HORA_CANCELACION_MINIMA}h de anticipacion y maximo 1 vez`
+                }
+              >
+                Reprogramar
+              </button>
+
+              <button
+                type="button"
+                className="btn turno-action-btn danger"
+                onClick={() => cancelarTurno(t)}
+                disabled={!canCancelTurno(t)}
+                title={
+                  canCancelTurno(t)
+                    ? ""
+                    : `Cancelable con ${HORA_CANCELACION_MINIMA}h de anticipacion`
+                }
+              >
+                Cancelar turno
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            className="btn turno-action-btn ghost"
+            onClick={() => setExpanded((p) => ({ ...p, [t.id]: !p[t.id] }))}
+          >
+            {isExpanded ? "Ocultar detalle" : "Ver detalle"}
+          </button>
+        </div>
+
+        {isExpanded && (
+          <div className="turno-card-detail">
+            <div>
+              <b>ID turno:</b> {t.id}
+            </div>
+            <div>
+              <b>Estado turno:</b>{" "}
+              {ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}
+            </div>
+            <div>
+              <b>Estado pago:</b>{" "}
+              {ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}
+            </div>
+            {!!t.metodoPago && (
+              <div>
+                <b>Metodo de pago:</b> {t.metodoPago}
+              </div>
+            )}
+            {!!t.tipoAnticipo && (
+              <div>
+                <b>Tipo anticipo:</b> {t.tipoAnticipo}
+              </div>
+            )}
+            {!!(t.nombreGabinete || t.gabineteId) && (
+              <div>
+                <b>Gabinete:</b> {t.nombreGabinete || t.gabineteId}
+              </div>
+            )}
+            {!!t.servicioId && (
+              <div>
+                <b>Servicio ID:</b> {t.servicioId}
+              </div>
+            )}
+            {!!t.pagoId && (
+              <div>
+                <b>Pago ID:</b> {t.pagoId}
+              </div>
+            )}
+          </div>
+        )}
+      </article>
     );
   }
 
@@ -894,36 +858,74 @@ export default function MisTurnos() {
   }
 
   return (
-    <div className="container py-4">
-      <h4 className="mb-3">Mis turnos</h4>
+    <div className="account-shell container py-4">
+      <section className="turnos-page-hero">
+        <div>
+          <p className="profile-eyebrow">Agenda personal</p>
+          <h1 className="profile-title">Mis turnos</h1>
+          <p className="profile-subtitle">
+            Tené a mano próximos turnos, historial y acciones rápidas desde una
+            vista más ordenada.
+          </p>
+        </div>
 
-      <div className="d-flex align-items-center justify-content-between mb-2">
-        <h6 className="mb-0">Próximos</h6>
-        <span className="text-muted" style={{ fontSize: 13 }}>
-          {proximos.length} turno(s)
-        </span>
-      </div>
+        <div className="turnos-hero-stats">
+          <article className="turnos-hero-stat">
+            <span>Proximos</span>
+            <strong>{proximos.length}</strong>
+          </article>
+          <article className="turnos-hero-stat">
+            <span>Historial</span>
+            <strong>{historial.length}</strong>
+          </article>
+        </div>
+      </section>
 
-      {proximos.length === 0 ? (
-        <p className="text-muted">No tenés turnos próximos.</p>
-      ) : (
-        proximos.map((t) => <TurnoCard key={t.id} t={t} isProximo />)
-      )}
+      <section className="turnos-section">
+        <div className="turnos-section-head">
+          <div>
+            <h2>Próximos</h2>
+            <p>Turnos activos con opciones para reprogramar o cancelar.</p>
+          </div>
+          <span className="turnos-counter">
+            {proximos.length} turno{proximos.length === 1 ? "" : "s"}
+          </span>
+        </div>
 
-      <hr className="my-4" />
+        {proximos.length === 0 ? (
+          <div className="turnos-empty-state">No tenés turnos próximos.</div>
+        ) : (
+          <div className="turnos-card-list">
+            {proximos.map((t) => (
+              <TurnoCard key={t.id} t={t} isProximo />
+            ))}
+          </div>
+        )}
+      </section>
 
-      <div className="d-flex align-items-center justify-content-between mb-2">
-        <h6 className="mb-0">Historial</h6>
-        <span className="text-muted" style={{ fontSize: 13 }}>
-          {historial.length} turno(s)
-        </span>
-      </div>
+      <section className="turnos-section">
+        <div className="turnos-section-head">
+          <div>
+            <h2>Historial</h2>
+            <p>Resumen de tus turnos anteriores y estados registrados.</p>
+          </div>
+          <span className="turnos-counter">
+            {historial.length} turno{historial.length === 1 ? "" : "s"}
+          </span>
+        </div>
 
-      {historial.length === 0 ? (
-        <p className="text-muted">Todavía no tenés turnos en el historial.</p>
-      ) : (
-        historial.map((t) => <TurnoCard key={t.id} t={t} isProximo={false} />)
-      )}
+        {historial.length === 0 ? (
+          <div className="turnos-empty-state">
+            Todavía no tenés turnos en el historial.
+          </div>
+        ) : (
+          <div className="turnos-card-list">
+            {historial.map((t) => (
+              <TurnoCard key={t.id} t={t} isProximo={false} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

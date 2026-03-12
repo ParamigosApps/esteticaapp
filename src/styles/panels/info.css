@@ -4,31 +4,14 @@
   background: #ffffff;
   border-radius: 16px;
   padding: 8px;
+  overflow: visible;
   box-shadow: 0 8px 25px rgba(0,0,0,0.06);
   border: 1px solid #eee;
 }
 
 /* MAPA */
 
-.contacto-map-link {
-  display: block;
-  overflow: hidden;
-  border-radius: 12px;
-}
-
-.home-map {
-  width: 100%;
-  height: 220px;
-  border: 0;
-  border-radius: 12px;
-  transition: transform .25s ease;
-}
-
-.contacto-map-link:hover .home-map {
-  transform: scale(1.03);
-}
-
-/* DIRECCION */
+/* MAPA + INFO UBICACIÓN */
 
 .home-contacto {
   display: flex;
@@ -36,23 +19,212 @@
   margin-top: 4px;
 }
 
-.home-contacto p {
-    
-  text-align: center;
-  margin: 0;
-  font-size: 14px;
-  color: #555;
-  font-weight: 500;
+.section-mapa{
+  background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  border: 1px solid #ececec;
+  border-radius: 16px;
+  padding: 0px;
+  overflow: visible;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
 }
 
-#titulo-ubicacion{
-  font-size: 13px;
-  margin-bottom: 0px;
-  opacity: 0.5;
-  padding-left: 12px
+.contacto-map-link {
+  display: block;
+  overflow: hidden;
+  border-radius: 14px;
 }
-#p-ubicacion{font-size: 1.2rem;
-  opacity: 0.8;}
+
+.home-map {
+  width: 100%;
+  height: 220px;
+  border: 0;
+  border-radius: 14px;
+  transition: transform .25s ease;
+}
+
+.contacto-map-link:hover .home-map {
+  transform: scale(1.02);
+}
+
+.ubicacion-info-card{
+  margin-top: 10px;
+  background: #fff;
+  border: 1px solid #efefef;
+  border-radius: 14px;
+  padding: 14px;
+  overflow: visible;
+}
+
+.ubicacion-info-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ubicacion-badge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #555;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.ubicacion-link-maps{
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  text-decoration: none;
+  transition: color .15s ease, opacity .15s ease;
+}
+
+.ubicacion-link-maps:hover{
+  color: #111;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ubicacion-titulo{
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #8a8a8a;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+}
+
+.ubicacion-direccion-box{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8f8f8;
+  border: 1px solid #eeeeee;
+}
+
+.ubicacion-contact{
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.ubicacion-direccion-texto{
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.ubicacion-direccion-texto b{
+  font-weight: 700;
+}
+
+.horarios-popover-wrap{
+  position: relative;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.btn-ver-horarios{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 8px 12px;
+  border: 1px solid #ece3f7;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff, #f7f1fc);
+  color: #4a4a4a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color .15s ease, opacity .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.btn-ver-horarios:hover{
+  color: #222;
+  opacity: .95;
+  box-shadow: 0 10px 20px rgba(112, 85, 145, 0.10);
+  transform: translateY(-1px);
+}
+
+.btn-ver-horarios:focus,
+.btn-ver-horarios:focus-visible{
+  outline: none;
+  color: #111;
+}
+
+.horarios-popover{
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 260px;
+  max-width: 320px;
+  width: max-content;
+  background: #fff;
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  padding: 12px;
+  z-index: 30;
+}
+
+.horarios-popover-wrap:last-child .horarios-popover {
+  z-index: 40;
+}
+
+.horarios-popover-title{
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+}
+
+.horario-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.horario-row:last-child{
+  border-bottom: none;
+}
+
+.horario-dia{
+  font-weight: 600;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.horario-valor{
+  color: #666;
+  text-align: right;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* BOTON WHATSAPP */
 
 .wsp-contact-btn{
@@ -103,11 +275,8 @@
 
 .contacto-redes a {
   font-size: 12px;
-  text-decoration: none;
-  color: #666;
-  padding: 6px 12px;
   border-radius: 20px;
-  border: 1px solid #eee;
+  border: 1.5px solid #eee;
   transition: all .2s ease;
 }
 
@@ -189,7 +358,7 @@
 .prof-title{
   font-size: 1.2rem;
   opacity: 0.8;
-   margin: 24px 0px 16px 0;
+   margin: 6px 0px 16px 0;
 }
 
 .prof-card{
@@ -214,4 +383,140 @@ object-fit:cover;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   justify-items: center;
+}
+
+
+
+@media (max-width: 480px){
+  .section-mapa{
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .home-map{
+    height: 200px;
+    border-radius: 12px;
+  }
+
+  .ubicacion-info-card{
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .ubicacion-info-header{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .ubicacion-direccion-box{
+    align-items: flex-start;
+  }
+
+  .ubicacion-direccion-texto{
+    font-size: 0.95rem;
+  }
+
+  .horarios-popover{
+    left: 0;
+    right: auto;
+    min-width: 100%;
+    max-width: calc(100vw - 70px);
+  }
+}
+
+@media (max-width: 400px){
+  .contacto-panel{
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .section-mapa{
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .contacto-map-link{
+    border-radius: 12px;
+  }
+
+  .home-map{
+    height: 168px;
+    border-radius: 12px;
+  }
+
+  .ubicacion-info-card{
+    margin-top: 8px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .ubicacion-info-header{
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .ubicacion-badge{
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .ubicacion-link-maps{
+    font-size: 12px;
+  }
+
+  .ubicacion-titulo{
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .ubicacion-direccion-box{
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .ubicacion-direccion-texto{
+    font-size: 0.88rem;
+    line-height: 1.28;
+  }
+
+  .horarios-popover-wrap{
+    margin-top: 10px;
+  }
+
+  .btn-ver-horarios{
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .horarios-popover{
+    top: calc(100% + 8px);
+    padding: 10px;
+    min-width: 100%;
+    max-width: calc(100vw - 52px);
+  }
+
+  .horarios-popover-title{
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .horario-row{
+    gap: 8px;
+    padding: 5px 0;
+  }
+
+  .horario-dia,
+  .horario-valor{
+    font-size: 12px;
+  }
+
+  .wsp-contact-btn{
+    width: 100%;
+    margin: 8px 0 18px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
 }

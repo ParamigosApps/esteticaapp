@@ -5,6 +5,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { FieldValue } = require('firebase-admin/firestore')
 const { getAdmin } = require('../_lib/firebaseAdmin')
+const { desglosarPagoTurno, normalizarMontosTurno } = require('../config/comisiones')
 
 exports.crearPagoTurnoTransferencia = onCall(
   { region: 'us-central1' },
@@ -32,9 +33,9 @@ exports.crearPagoTurnoTransferencia = onCall(
 
     const turno = turnoSnap.data() || {}
 
-if ((turno.usuarioId || turno.clienteId) !== uid) {
-  throw new HttpsError('permission-denied', 'No autorizado')
-}
+    if ((turno.usuarioId || turno.clienteId) !== uid) {
+      throw new HttpsError('permission-denied', 'No autorizado')
+    }
 
     const estadoTurnoActual =
       turno.estadoTurno ||
@@ -48,27 +49,18 @@ if ((turno.usuarioId || turno.clienteId) !== uid) {
     if (['cancelado', 'perdido', 'finalizado', 'rechazado'].includes(estadoTurnoActual)) {
       throw new HttpsError(
         'failed-precondition',
-        `El turno no admite pago en estado ${estadoTurnoActual}`
+        `El turno no admite pago en estado ${estadoTurnoActual}`,
       )
     }
 
-    const montoTotal = Number(
-      turno.montoTotal ??
-      turno.total ??
-      0
-    )
-
-    const montoSena = Number(
-      turno.montoSena ??
-      turno.seña ??
-      turno.sena ??
-      0
-    )
+    const montosTurno = normalizarMontosTurno(turno)
+    const montoTotal = montosTurno.montoTotal
+    const montoSena = montosTurno.montoAnticipo
 
     if (!turno.pedirAnticipo || !Number.isFinite(montoSena) || montoSena <= 0) {
       throw new HttpsError(
         'failed-precondition',
-        'Este turno no requiere seña'
+        'Este turno no requiere seña',
       )
     }
 
@@ -82,9 +74,15 @@ if ((turno.usuarioId || turno.clienteId) !== uid) {
     ) {
       throw new HttpsError(
         'failed-precondition',
-        `El turno ya tiene un pago en estado ${estadoPagoActual}`
+        `El turno ya tiene un pago en estado ${estadoPagoActual}`,
       )
     }
+
+    const desglosePago = desglosarPagoTurno({
+      turno,
+      montoPago: montoSena,
+      montoPagadoPrevio: Number(turno.montoPagado ?? 0),
+    })
 
     const pagoRef = db.collection('pagos').doc()
 
@@ -97,10 +95,18 @@ if ((turno.usuarioId || turno.clienteId) !== uid) {
 
       monto: montoSena,
       montoTotal,
+      montoServicio: montosTurno.montoServicio,
+      montoServicioPagado: desglosePago.montoLiquidable,
+      montoComision: desglosePago.montoComision,
+      montoLiquidable: desglosePago.montoLiquidable,
       tipoPago: 'sena',
+      tipo: 'sena',
+      esperadoSegunTurno: turno.metodoPagoEsperado || 'transferencia',
+      registradoPor: uid,
 
       comprobanteUrl: null,
 
+      createdAt: FieldValue.serverTimestamp(),
       creadoEn: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     })
@@ -108,15 +114,21 @@ if ((turno.usuarioId || turno.clienteId) !== uid) {
     await turnoRef.update({
       pagoId: pagoRef.id,
       metodoPago: 'transferencia',
+      metodoPagoEsperado: turno.metodoPagoEsperado || 'transferencia',
       estadoPago: 'pendiente_aprobacion',
       estadoTurno: ['pendiente_aprobacion', 'confirmado'].includes(estadoTurnoActual)
         ? estadoTurnoActual
         : 'pendiente_aprobacion',
       montoTotal,
       montoPagado: Number(turno.montoPagado ?? 0),
+      senaRequerida: Number(turno.senaRequerida ?? turno.montoAnticipo ?? montoSena),
+      senaPagada: Math.min(
+        Number(turno.senaRequerida ?? turno.montoAnticipo ?? montoSena),
+        Number(turno.montoPagado ?? 0),
+      ),
       saldoPendiente: Math.max(
         0,
-        montoTotal - Number(turno.montoPagado ?? 0)
+        montoTotal - Number(turno.montoPagado ?? 0),
       ),
       venceEn: null,
       updatedAt: FieldValue.serverTimestamp(),
@@ -130,5 +142,5 @@ if ((turno.usuarioId || turno.clienteId) !== uid) {
         ? estadoTurnoActual
         : 'pendiente_aprobacion',
     }
-  }
+  },
 )

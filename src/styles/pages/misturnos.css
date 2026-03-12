@@ -1,9 +1,378 @@
-/* opcional: hace que el link btn-link se vea más prolijo */
+.account-shell {
+  max-width: 1120px;
+}
+
+.turnos-page-hero,
+.profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: 26px 28px;
+  border: 1px solid #ece6f5;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.14), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 247, 255, 0.98));
+  box-shadow: 0 18px 42px rgba(40, 27, 57, 0.08);
+}
+
+.profile-eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8b5fbf;
+}
+
+.profile-title {
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  line-height: 1.02;
+  color: #24192f;
+}
+
+.profile-subtitle {
+  margin: 12px 0 0;
+  max-width: 58ch;
+  color: #6b6178;
+  line-height: 1.65;
+}
+
+.turnos-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.turnos-hero-stat {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(219, 206, 238, 0.7);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.turnos-hero-stat span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7d718b;
+}
+
+.turnos-hero-stat strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: #24192f;
+}
+
+.turnos-section {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.turnos-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+}
+
+.turnos-section-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #24192f;
+}
+
+.turnos-section-head p {
+  margin: 6px 0 0;
+  color: #6f647c;
+}
+
+.turnos-counter {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f4eeff;
+  color: #744db3;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.turnos-card-list {
+  display: grid;
+  gap: 16px;
+}
+
+.turno-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #ece6f5;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 249, 255, 0.98));
+  box-shadow: 0 14px 34px rgba(29, 21, 40, 0.06);
+}
+
+.turno-card.is-upcoming {
+  border-color: rgba(177, 137, 237, 0.45);
+  box-shadow: 0 18px 38px rgba(126, 91, 177, 0.12);
+}
+
+.turno-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+}
+
+.turno-card-main {
+  min-width: 0;
+}
+
+.turno-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.turno-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.turno-pill.success {
+  background: #e9f8ef;
+  color: #18794e;
+}
+
+.turno-pill.warning {
+  background: #fff4d7;
+  color: #9a6700;
+}
+
+.turno-pill.info {
+  background: #e7f0ff;
+  color: #2453b3;
+}
+
+.turno-pill.danger {
+  background: #fee7e7;
+  color: #b42318;
+}
+
+.turno-pill.neutral {
+  background: #f1ecf8;
+  color: #5a4d6d;
+}
+
+.turno-card-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #251b30;
+}
+
+.turno-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  color: #6d6479;
+}
+
+.turno-card-meta span {
+  position: relative;
+}
+
+.turno-card-meta span:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #c6b7da;
+  transform: translateY(-50%);
+}
+
+.turno-card-price {
+  min-width: 190px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(225, 216, 240, 0.8);
+  background: #fcf9ff;
+  text-align: right;
+}
+
+.turno-price-total {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #24192f;
+}
+
+.turno-price-caption {
+  margin-top: 4px;
+  color: #7a7088;
+  font-size: 0.9rem;
+}
+
+.turno-card-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.turno-stat {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid #eee7f7;
+  background: #fff;
+}
+
+.turno-stat span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #7e738d;
+}
+
+.turno-stat strong {
+  color: #261d30;
+}
+
+.turno-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.turno-action-btn {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid #ddd2ec;
+  background: linear-gradient(180deg, #ffffff, #f7f2fd);
+  color: #332742;
+  font-weight: 700;
+  box-shadow: 0 10px 20px rgba(90, 59, 130, 0.06);
+}
+
+.turno-action-btn.success {
+  border-color: rgba(24, 121, 78, 0.22);
+  background: linear-gradient(180deg, #f7fffb, #eaf8f0);
+  color: #176843;
+}
+
+.turno-action-btn.info {
+  border-color: rgba(36, 83, 179, 0.18);
+  background: linear-gradient(180deg, #f7faff, #edf4ff);
+  color: #224ca3;
+}
+
+.turno-action-btn.danger {
+  border-color: rgba(180, 35, 24, 0.16);
+  background: linear-gradient(180deg, #fff9f9, #fff0f0);
+  color: #a62d23;
+}
+
+.turno-action-btn.ghost {
+  background: transparent;
+  box-shadow: none;
+}
+
+.turno-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.turno-card-detail {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #f9f6fe;
+  border: 1px solid #ece5f8;
+  color: #4c4259;
+  font-size: 0.94rem;
+}
+
+.turnos-empty-state {
+  padding: 28px;
+  border: 1px dashed #d9c9ef;
+  border-radius: 24px;
+  background: #fbf8ff;
+  color: #70667d;
+  text-align: center;
+}
+
 .btn-link.btn-sm {
   padding-left: 0;
   padding-right: 0;
   text-decoration: none;
 }
+
 .btn-link.btn-sm:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .turnos-page-hero,
+  .profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .turno-card-top,
+  .turnos-section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .turno-card-price {
+    min-width: 0;
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .turnos-page-hero,
+  .profile-hero,
+  .turno-card {
+    padding: 18px 16px;
+    border-radius: 22px;
+  }
+
+  .turnos-hero-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .turno-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .turno-action-btn {
+    width: 100%;
+  }
 }

@@ -4,6 +4,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { FieldValue } = require('firebase-admin/firestore')
 const { getAdmin } = require('../_lib/firebaseAdmin')
+const { assertAdmin } = require('./adminTurnosShared')
 
 function calcularEstadoPago(montoTotal = 0, montoPagado = 0) {
   const total = Number(montoTotal || 0)
@@ -21,14 +22,7 @@ function calcularEstadoPago(montoTotal = 0, montoPagado = 0) {
 exports.confirmarPagoTurno = onCall(
   { region: 'us-central1' },
   async request => {
-    if (!request.auth?.uid) {
-      throw new HttpsError('unauthenticated', 'No autenticado')
-    }
-
-    // Ajustá esto si usás otro esquema de claims/permisos
-    if (!request.auth?.token?.admin) {
-      throw new HttpsError('permission-denied', 'Solo admin')
-    }
+    assertAdmin(request)
 
     const { turnoId, montoPagado } = request.data || {}
 
@@ -123,17 +117,25 @@ exports.confirmarPagoTurno = onCall(
         montoTotal: total,
         montoPagado: nuevoMontoPagado,
         saldoPendiente,
+        senaPagada: Math.min(
+          Number(turno.senaRequerida ?? turno.montoAnticipo ?? 0),
+          nuevoMontoPagado,
+        ),
+        pagosCount: Number(turno.pagosCount || 0) + 1,
+        ultimoPagoEn: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       }
 
-      if (nuevoEstadoTurno === 'confirmado' && !turno.confirmadoAt) {
+      if (nuevoEstadoTurno === 'confirmado' && !turno.confirmadoAt && !turno.confirmadoEn) {
         updateData.confirmadoAt = FieldValue.serverTimestamp()
+        updateData.confirmadoEn = FieldValue.serverTimestamp()
       }
 
       // opcional: trazabilidad manual/admin
       updateData.pagoConfirmadoManual = true
       updateData.pagoConfirmadoPorUid = request.auth.uid
       updateData.pagoConfirmadoAt = FieldValue.serverTimestamp()
+      updateData.updatedBy = request.auth.uid
 
       tx.update(turnoRef, updateData)
 

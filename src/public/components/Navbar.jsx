@@ -9,37 +9,70 @@ export default function Navbar() {
   const { user, logout, loginEnProceso } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const userName = user?.nombre || user?.displayName || "Mi cuenta";
+  const userInitial = userName.trim().charAt(0).toUpperCase();
+  const nivel = Number(user?.nivel || 0);
+  const esAdmin = nivel >= 3;
 
   return (
     <header className="app-header">
       <Link className="navbar-brand" to="/">
         <img src={logo} alt="Logo" className="header-logo-img" />
       </Link>
+
       {!user && !loginEnProceso && (
         <button className="nav-login" onClick={() => setLoginOpen(true)}>
-          Iniciar sesión
+          Iniciar sesion
         </button>
       )}
 
       {!user && loginEnProceso && (
         <button className="nav-login" onClick={() => setLoginOpen(true)}>
-          Logeando..
+          Logeando...
         </button>
       )}
+
       {user && (
         <div className="user-dropdown">
-          <button className="nav-user" onClick={() => setMenuOpen(!menuOpen)}>
-            Hola, <b>{user.nombre || user.displayName}</b>
+          <button
+            type="button"
+            className={`nav-user ${menuOpen ? "nav-user-open" : ""}`}
+            onClick={() => setMenuOpen((prev) => !prev)}
+          >
+            <span className="nav-user-avatar" aria-hidden="true">
+              {userInitial}
+            </span>
+            <span className="nav-user-copy">
+              <span className="nav-user-label">Mi cuenta</span>
+              <b className="nav-user-name">{userName}</b>
+            </span>
+            <span className="nav-user-caret" aria-hidden="true">
+              {menuOpen ? "^" : "v"}
+            </span>
           </button>
 
           {menuOpen && (
             <div className="dropdown-menu-custom">
+              {esAdmin ? (
+                <Link
+                  className="dropdown-item"
+                  to="/admin/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="dropdown-item-title">Ir al panel</span>
+                  <span className="dropdown-item-copy">
+                    Entrar a la administracion del sistema
+                  </span>
+                </Link>
+              ) : null}
+
               <Link
                 className="dropdown-item"
                 to="/mis-turnos"
                 onClick={() => setMenuOpen(false)}
               >
-                Mis turnos
+                <span className="dropdown-item-title">Mis turnos</span>
+                <span className="dropdown-item-copy">Ver reservas y estados</span>
               </Link>
 
               <Link
@@ -47,24 +80,28 @@ export default function Navbar() {
                 to="/mi-perfil"
                 onClick={() => setMenuOpen(false)}
               >
-                Mi perfil
+                <span className="dropdown-item-title">Mi perfil</span>
+                <span className="dropdown-item-copy">Editar datos personales</span>
               </Link>
 
-              <hr />
+              <div className="dropdown-divider" />
 
               <button
-                className="dropdown-item text-danger"
+                type="button"
+                className="dropdown-item dropdown-item-danger"
                 onClick={async () => {
                   setMenuOpen(false);
                   await logout();
                 }}
               >
-                Cerrar sesión
+                <span className="dropdown-item-title">Cerrar sesion</span>
+                <span className="dropdown-item-copy">Salir de esta cuenta</span>
               </button>
             </div>
           )}
         </div>
       )}
+
       {loginOpen && (
         <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
       )}

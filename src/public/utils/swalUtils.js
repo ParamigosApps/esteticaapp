@@ -163,6 +163,7 @@ export async function swalRequiereLogin() {
 // =====================================================
 export function swalEditarPerfil({
   nombreActual = "",
+  apodoActual = "",
   emailActual = "",
   telefono = "",
   bloquearEmail = false,
@@ -176,7 +177,12 @@ export function swalEditarPerfil({
         placeholder="Nombre y apellido"
         value="${nombreActual}"
       />
-
+      <input
+        id="swal-apodo"
+        class="swal2-input"
+        placeholder="Apodo (opcional)"
+        value="${apodoActual}"
+      />
       ${
         bloquearEmail
           ? `
@@ -226,27 +232,29 @@ export function swalEditarPerfil({
     reverseButtons: true,
     focusConfirm: false,
 
-    preConfirm: () => {
-      const nombre = document.getElementById("swal-nombre").value.trim();
+preConfirm: () => {
+  const nombre = document.getElementById("swal-nombre").value.trim();
+  const apodo = document.getElementById("swal-apodo")?.value.trim() || "";
 
-      const emailInput = document.getElementById("swal-email");
-      const email = emailInput ? emailInput.value.trim() : null;
+  const emailInput = document.getElementById("swal-email");
+  const email = emailInput ? emailInput.value.trim() : null;
 
-      if (!nombre || nombre.length < 2) {
-        Swal.showValidationMessage("Ingresá un nombre válido");
-        return false;
-      }
+  if (!nombre || nombre.length < 2) {
+    Swal.showValidationMessage("Ingresá un nombre válido");
+    return false;
+  }
 
-      if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-        Swal.showValidationMessage("Email inválido");
-        return false;
-      }
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+    Swal.showValidationMessage("Email inválido");
+    return false;
+  }
 
-      return {
-        nombre,
-        email: email || null,
-      };
-    },
+  return {
+    nombre,
+    apodo: apodo || null,
+    email: email || null,
+  };
+},
   });
 }
 
@@ -613,6 +621,9 @@ export function swalElegirTipoPago({
   denyText = "Pago parcial / seña",
   cancelText = "Cancelar",
   width = 520,
+  customClass = {},
+  buttonsStyling = false,
+  reverseButtons = true,
 }) {
   return Swal.fire({
     title,
@@ -632,14 +643,17 @@ export function swalElegirTipoPago({
     allowEnterKey: false,
 
     customClass: {
-      popup: "swal-popup-custom",
-      confirmButton: "swal-btn-confirm",
-      denyButton: "swal-btn-dark",
-      cancelButton: "swal-btn-cancel",
+      popup: customClass.popup || "swal-popup-custom",
+      confirmButton: customClass.confirmButton || "swal-btn-confirm",
+      denyButton:  "swal-btn-alt",
+      cancelButton: customClass.cancelButton || "swal-btn-cancel",
+      actions: customClass.actions || "",
+      title: customClass.title || "",
+      htmlContainer: customClass.htmlContainer || "",
     },
 
-    buttonsStyling: false,
-    reverseButtons: true,
+    buttonsStyling,
+    reverseButtons,
   });
 }
 
@@ -683,5 +697,100 @@ export function swalInputNumber({
     buttonsStyling: false,
     reverseButtons: true,
     inputValidator,
+  });
+}
+
+// =====================================================
+// ✅ CONFIRMACIÓN ADMIN GENÉRICA
+// =====================================================
+export function swalConfirmAdmin({
+  title = "Confirmar acción",
+  text = "",
+  html = "",
+  icon = "question",
+  confirmText = "Confirmar",
+  cancelText = "Volver",
+  confirmButtonClass = "swal-btn-confirm",
+  cancelButtonClass = "swal-btn-cancel",
+  width = 520,
+}) {
+  return Swal.fire({
+    title,
+    ...(text ? { text } : {}),
+    ...(html ? { html } : {}),
+    icon,
+    width,
+
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+
+    customClass: {
+      popup: "swal-popup-custom",
+      confirmButton: confirmButtonClass,
+      cancelButton: cancelButtonClass,
+    },
+
+    buttonsStyling: false,
+    reverseButtons: true,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    allowEnterKey: false,
+  });
+}
+
+// =====================================================
+// 🗓 REPROGRAMAR TURNO
+// =====================================================
+export function swalReprogramarTurno({
+  title = "Reprogramar turno",
+  fecha = "",
+  horaInicio = "",
+  horaFin = "",
+} = {}) {
+  return Swal.fire({
+    title,
+    html: `
+      <input id="swal-fecha" type="date" class="swal2-input" value="${fecha}">
+      <input id="swal-hora-inicio" type="time" class="swal2-input" value="${horaInicio}">
+      <input id="swal-hora-fin" type="time" class="swal2-input" value="${horaFin}">
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: "Guardar cambio",
+    cancelButtonText: "Volver",
+
+    customClass: {
+      popup: "swal-popup-custom",
+      confirmButton: "swal-btn-confirm",
+      cancelButton: "swal-btn-cancel",
+    },
+
+    buttonsStyling: false,
+    reverseButtons: true,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+
+    preConfirm: () => {
+      const fechaValue = document.getElementById("swal-fecha")?.value;
+      const horaInicioValue = document.getElementById("swal-hora-inicio")?.value;
+      const horaFinValue = document.getElementById("swal-hora-fin")?.value;
+
+      if (!fechaValue || !horaInicioValue || !horaFinValue) {
+        Swal.showValidationMessage("Completá fecha y horario");
+        return false;
+      }
+
+      if (horaInicioValue >= horaFinValue) {
+        Swal.showValidationMessage("La hora fin debe ser mayor a la hora inicio");
+        return false;
+      }
+
+      return {
+        fecha: fechaValue,
+        horaInicio: horaInicioValue,
+        horaFin: horaFinValue,
+      };
+    },
   });
 }

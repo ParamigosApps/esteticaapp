@@ -3,7 +3,10 @@
 // --------------------------------------------------
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAdmin } = require("../_lib/firebaseAdmin");
-const { FieldValue } = require("firebase-admin/firestore");
+const { buildTurnoBaseCompat } = require("./turnoSchema");
+const { calcularMontosTurno } = require("../config/comisiones");
+
+const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 2;
 
 function normalizarEstadoTurno(turno = {}) {
   if (turno.estadoTurno) return turno.estadoTurno;
@@ -41,6 +44,17 @@ function esTurnoActivoYBloqueante(turno, ahora) {
 
   // si tiene vencimiento y ya venció, no debe bloquear
   if (estadoTurno !== "confirmado" && turno.venceEn && Number(turno.venceEn) <= ahora) {
+    return false;
+  }
+
+  return true;
+}
+
+function puedeContarParaLimiteCliente(turno, ahora) {
+  if (!esTurnoActivoYBloqueante(turno, ahora)) return false;
+
+  const inicio = Number(turno?.horaInicio || 0);
+  if (Number.isFinite(inicio) && inicio > 0 && inicio < ahora) {
     return false;
   }
 
@@ -183,6 +197,7 @@ const {
 
     let nombreCliente = null;
     let telefonoCliente = null;
+    let emailCliente = request.auth.token?.email || null;
 
     if (clienteSnap.exists) {
       const cliente = clienteSnap.data() || {};
@@ -192,6 +207,7 @@ const {
         cliente.phone ||
         cliente.celular ||
         null;
+      emailCliente = cliente.email || request.auth.token?.email || null;
     }
 
     // ============================================
@@ -289,6 +305,33 @@ const {
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((t) => esTurnoActivoYBloqueante(t, ahora));
 
+      const turnosClienteSnap = await tx.get(
+        db.collection("turnos").where("clienteId", "==", clienteId)
+      );
+
+      const turnosClienteActivos = turnosClienteSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((t) => puedeContarParaLimiteCliente(t, ahora));
+
+      const turnosClienteConfirmados = turnosClienteActivos.filter(
+        (t) => normalizarEstadoTurno(t) === "confirmado"
+      );
+
+      const turnosClienteSinConfirmar = turnosClienteActivos.filter((t) =>
+        ["pendiente", "pendiente_aprobacion"].includes(normalizarEstadoTurno(t))
+      );
+
+      if (
+        turnosClienteConfirmados.length === 0 &&
+        turnosClienteSinConfirmar.length >=
+          MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS
+      ) {
+        throw new HttpsError(
+          "failed-precondition",
+          `Alcanaste el limite de ${MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS} solicitudes activas sin turnos confirmados. Espera una confirmacion antes de reservar otro turno.`,
+        );
+      }
+
       console.log("Turnos activos encontrados:", turnosActivos.length);
       console.log("Intentando reservar:", {
         fecha,
@@ -358,14 +401,17 @@ const {
       // ============================================
       // 📌 ESTADOS INICIALES
       // ============================================
-      const montoTotal = Number(servicio.precio || 0);
+      const pricing = calcularMontosTurno({
+        precioServicio: Number(servicio.precio || 0),
+        porcentajeAnticipo: pedirAnticipoServicio ? porcentajeAnticipo : 0,
+        cobrarComision: true,
+      });
 
-      let montoAnticipoCalculado = 0;
-      if (pedirAnticipoServicio) {
-        montoAnticipoCalculado =
-          (montoTotal * porcentajeAnticipo) / 100;
-      }
-
+      const montoServicio = pricing.precioServicio;
+      const comisionTurno = pricing.comisionTurno;
+      const montoAnticipoServicio = pricing.montoAnticipoServicio;
+      const montoAnticipoCalculado = pricing.montoAnticipoTotal;
+      const montoTotal = pricing.montoTotal;
       const requiereAnticipo = montoAnticipoCalculado > 0;
 
       let estadoTurnoInicial;
@@ -411,44 +457,40 @@ const {
       const ref = db.collection("turnos").doc();
 
       tx.set(ref, {
-        servicioId,
-        nombreServicio: nombreServicioFinal,
-
-        clienteId,
-        usuarioId: clienteId, // compatibilidad con lógica vieja
-        nombreCliente,
-        telefonoCliente,
-
-        gabineteId: gabineteElegido.id,
-        nombreGabinete:
-          gabineteElegido.nombreGabinete || gabineteElegido.nombre || "",
-
-        fecha,
-        horaInicio: inicioNum,
-        horaFin: finNum,
-
-        estadoTurno: estadoTurnoInicial,
-        estadoPago: estadoPagoInicial,
-
-        origenSolicitud,
-        metodoPagoEsperado,
-        metodoPagoUsado: null,
-
-        tipoAnticipo,
-        pedirAnticipo: requiereAnticipo,
-        montoAnticipo: montoAnticipoCalculado,
-
-        montoTotal,
-        precioTotal: montoTotal, // compatibilidad
-        montoPagado,
-        saldoPendiente,
-
+        ...buildTurnoBaseCompat({
+          clienteId,
+          nombreCliente,
+          telefonoCliente,
+          emailCliente,
+          servicioId,
+          nombreServicio: nombreServicioFinal,
+          profesionalId: servicio.profesionalId || null,
+          profesionalNombre: servicio.nombreProfesional || null,
+          responsableGestion: servicio.responsableGestion || "admin",
+          gabineteId: gabineteElegido.id,
+          nombreGabinete:
+            gabineteElegido.nombreGabinete || gabineteElegido.nombre || "",
+          fecha,
+          horaInicio: inicioNum,
+          horaFin: finNum,
+          estadoTurno: estadoTurnoInicial,
+          estadoPago: estadoPagoInicial,
+          origenTurno: origenSolicitud,
+          metodoPagoEsperado,
+          metodoPagoUsado: null,
+          requiereAnticipo,
+          tipoAnticipo,
+          montoServicio,
+          comisionTurno,
+          montoAnticipoServicio,
+          montoAnticipo: montoAnticipoCalculado,
+          montoTotal,
+          montoPagado,
+          saldoPendiente,
+          venceEn: venceTurno,
+        }),
         recordatorio24Enviado: false,
         recordatorio24Procesando: false,
-
-        creadoEn: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        venceEn: venceTurno,
       });
 
       return {

@@ -4,13 +4,13 @@ import { db } from "../../../Firebase";
 import { useServicios } from "../../../context/ServiciosContext";
 
 export default function CategoriasServicios({
+  categoriaSeleccionada,
   setBusqueda,
   setCategoriaSeleccionada,
 }) {
   const { servicios, loadingServicios } = useServicios();
   const [categorias, setCategorias] = useState([]);
 
-  // 1) Leer categorias_servicio
   useEffect(() => {
     const ref = collection(db, "categorias_servicio");
 
@@ -18,25 +18,21 @@ export default function CategoriasServicios({
       setCategorias(
         snap.docs.map((d) => ({
           id: d.id,
-          ...d.data(), // { nombre, activo, ... }
+          ...d.data(),
         })),
       );
     });
   }, []);
 
-  // 2) Contar servicios activos por categoriaId
   const conteoPorCategoriaId = useMemo(() => {
     const map = {};
     (servicios || []).forEach((s) => {
-      if (!s?.activo) return;
-      if (!s.categoriaId) return;
-
+      if (!s?.activo || !s.categoriaId) return;
       map[s.categoriaId] = (map[s.categoriaId] || 0) + 1;
     });
     return map;
   }, [servicios]);
 
-  // 3) Categorías visibles: activas y con al menos 1 servicio activo
   const categoriasVisibles = useMemo(() => {
     return (categorias || [])
       .filter((c) => c?.activo)
@@ -52,19 +48,33 @@ export default function CategoriasServicios({
 
   return (
     <div className="categorias-servicios">
-      {categoriasVisibles.map((c) => (
-        <div
-          key={c.id}
-          className="categoria-card"
-          onClick={() => {
-            setBusqueda("");
-            setCategoriaSeleccionada(c.id);
-          }}
-        >
-          <h4>{c.nombre}</h4>
-          <p>{c.cantidad} servicios</p>
-        </div>
-      ))}
+      {categoriasVisibles.map((c) => {
+        const activa = categoriaSeleccionada === c.id;
+
+        return (
+          <div
+            key={c.id}
+            className={`categoria-card ${activa ? "categoria-card-active" : ""}`}
+            onClick={() => {
+              setBusqueda("");
+              setCategoriaSeleccionada(c.id);
+            }}
+          >
+            <div className="categoria-card-top">
+              <span className="categoria-pill">
+                {activa ? "Activa" : "Categoria"}
+              </span>
+              <span className="categoria-count">{c.cantidad} servicios</span>
+            </div>
+            <h4>{c.nombre}</h4>
+            <p className="categoria-card-copy">
+              {activa
+                ? "Mostrando servicios de esta categoria"
+                : "Explorar tratamientos disponibles"}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }

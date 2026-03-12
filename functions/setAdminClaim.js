@@ -7,7 +7,8 @@ async function setAdminClaimHandler(request) {
   const { auth, data } = request
 
   // 🔒 Seguridad
-  const callerIsAdmin = auth?.token?.admin === true
+  const nivelSolicitante = Number(auth?.token?.nivel || 0)
+  const callerIsAdmin = Boolean(auth?.token?.admin) || nivelSolicitante >= 3
 
   if (!callerIsAdmin) {
     // 🔓 bootstrap: permitir si el UID objetivo ya es nivel 4

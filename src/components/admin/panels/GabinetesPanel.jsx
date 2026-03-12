@@ -1,48 +1,44 @@
-// --------------------------------------------------
-// GabinetesPanel.jsx — MODELO SUBCOLECCIONES
-// --------------------------------------------------
-
-import { db } from "../../../Firebase";
+import { useEffect, useState } from "react";
 import {
-  collection,
   addDoc,
-  onSnapshot,
-  serverTimestamp,
-  query,
-  orderBy,
-  updateDoc,
+  collection,
   deleteDoc,
   doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
-import { useEffect, useState } from "react";
-
+import { db } from "../../../Firebase";
 import TimeRangeSelector from "../../common/TimeRangeSelector";
-import { esRangoValido } from "../../../public/utils/timeUtils";
 import HorariosBadges from "../../common/HorariosBadges";
+import { esRangoValido } from "../../../public/utils/timeUtils";
+import {
+  swalConfirmDanger,
+  swalError,
+} from "../../../public/utils/swalUtils.js";
+
+const DIAS = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
 
 function normalizar(str) {
   return str.trim().toLowerCase();
 }
 
-// ==================================================
-// ITEM GABINETE
-// ==================================================
 function GabineteItem({ gabinete }) {
   const [horarios, setHorarios] = useState([]);
   const [editando, setEditando] = useState(false);
-
   const [diaInicio, setDiaInicio] = useState(1);
   const [diaFin, setDiaFin] = useState(6);
   const [modoCarga, setModoCarga] = useState("semana");
 
-  // 🔥 SUBCOLECCIÓN horarios
   useEffect(() => {
-    const q = query(
+    const horariosQuery = query(
       collection(db, "gabinetes", gabinete.id, "horarios"),
       orderBy("diaSemana"),
     );
 
-    return onSnapshot(q, (snap) => {
+    return onSnapshot(horariosQuery, (snap) => {
       setHorarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   }, [gabinete.id]);
@@ -51,20 +47,17 @@ function GabineteItem({ gabinete }) {
     if (modoCarga === "semana") {
       setDiaInicio(1);
       setDiaFin(6);
-    } else if (modoCarga === "dia") {
-      setDiaFin(diaInicio);
+      return;
     }
-  }, [modoCarga]);
 
-  useEffect(() => {
-    if (modoCarga === "dia") {
-      setDiaFin(diaInicio);
-    }
-  }, [diaInicio, modoCarga]);
+    setDiaFin(diaInicio);
+  }, [modoCarga, diaInicio]);
 
   async function agregarRango({ desde, hasta }) {
     if (!esRangoValido(desde, hasta)) {
-      alert("La hora 'hasta' debe ser mayor que 'desde'");
+      await swalError({
+        text: "La hora 'hasta' debe ser mayor que 'desde'.",
+      });
       return;
     }
 
@@ -73,17 +66,17 @@ function GabineteItem({ gabinete }) {
     if (modoCarga === "dia") {
       dias.push(diaInicio);
     } else {
-      let d = diaInicio;
+      let diaActual = diaInicio;
       while (true) {
-        dias.push(d);
-        if (d === diaFin) break;
-        d = (d + 1) % 7;
+        dias.push(diaActual);
+        if (diaActual === diaFin) break;
+        diaActual = (diaActual + 1) % 7;
       }
     }
 
     for (const dia of dias) {
       await addDoc(collection(db, "gabinetes", gabinete.id, "horarios"), {
-        gabineteId: gabinete.id, // 🔥 agregar esto
+        gabineteId: gabinete.id,
         diaSemana: dia,
         desde,
         hasta,
@@ -101,128 +94,163 @@ function GabineteItem({ gabinete }) {
     await deleteDoc(doc(db, "gabinetes", gabinete.id, "horarios", id));
   }
 
+  async function toggleActivo() {
+    await updateDoc(doc(db, "gabinetes", gabinete.id), {
+      activo: !gabinete.activo,
+    });
+  }
+
   async function eliminarGabinete() {
-    const confirmar = window.confirm(
-      `¿Eliminar el gabinete "${gabinete.nombreGabinete}"?\n\nSe borrarán también todos sus horarios.`,
-    );
-    if (!confirmar) return;
+    const confirmar = await swalConfirmDanger({
+      title: "Eliminar gabinete",
+      html: `Se eliminara <b>${gabinete.nombreGabinete}</b> y tambien sus horarios.`,
+      confirmText: "Eliminar",
+    });
+    if (!confirmar?.isConfirmed) return;
 
     await deleteDoc(doc(db, "gabinetes", gabinete.id));
   }
 
   return (
-    <div className="service-card">
-      <div className="service-header">
-        <div className="service-title">{gabinete.nombreGabinete}</div>
+    <article className={`gabinete-card ${!gabinete.activo ? "gabinete-card-inactive" : ""}`}>
+      <div className="gabinete-card-head">
+        <div className="gabinete-card-copy">
+          <span className="gabinete-card-kicker">Gabinete</span>
+          <div className="gabinete-card-title-row">
+            <h3 className="gabinete-card-title">{gabinete.nombreGabinete}</h3>
+            <span className={`gabinete-status ${gabinete.activo ? "is-active" : "is-inactive"}`}>
+              {gabinete.activo ? "Activo" : "Inactivo"}
+            </span>
+          </div>
+          <div className="gabinete-card-meta">
+            <span>{horarios.length} rango(s) cargado(s)</span>
+            <span>
+              {editando ? "Modo edicion" : "Vista general"}
+            </span>
+          </div>
+        </div>
 
-        <div className="service-actions">
+        <div className="service-actions gabinete-card-actions">
           <button
+            type="button"
             className="swal-btn-editar"
-            onClick={() => setEditando(!editando)}
+            onClick={() => setEditando((prev) => !prev)}
           >
             {editando ? "Cerrar" : "Editar"}
           </button>
 
-          {gabinete.activo ? (
-            <button
-              className="swal-btn-desactivar"
-              onClick={() =>
-                updateDoc(doc(db, "gabinetes", gabinete.id), {
-                  activo: false,
-                })
-              }
-            >
-              Desactivar
-            </button>
-          ) : (
-            <button
-              className="swal-btn-desactivar"
-              onClick={() =>
-                updateDoc(doc(db, "gabinetes", gabinete.id), {
-                  activo: true,
-                })
-              }
-            >
-              Reactivar
-            </button>
-          )}
+          <button
+            type="button"
+            className="swal-btn-desactivar"
+            onClick={toggleActivo}
+          >
+            {gabinete.activo ? "Desactivar" : "Reactivar"}
+          </button>
 
           <button
+            type="button"
             className="swal-btn-eliminar"
             onClick={eliminarGabinete}
-            style={{ marginLeft: 8 }}
           >
-            X
+            Eliminar
           </button>
         </div>
       </div>
 
-      <div className="service-editor">
-        {editando && (
-          <>
-            <div className="admin-row mb-2">
-              <strong>Día:</strong>
+      {editando ? (
+        <div className="gabinete-editor-shell">
+          <div className="gabinete-editor-top">
+            <div className="field-group gabinete-field">
+              <label htmlFor={`modo-${gabinete.id}`}>Modo de carga</label>
               <select
+                id={`modo-${gabinete.id}`}
+                className="admin-input"
+                value={modoCarga}
+                onChange={(e) => setModoCarga(e.target.value)}
+              >
+                <option value="semana">Varios dias</option>
+                <option value="dia">Un dia</option>
+              </select>
+            </div>
+
+            <div className="field-group gabinete-field">
+              <label htmlFor={`dia-inicio-${gabinete.id}`}>Dia inicial</label>
+              <select
+                id={`dia-inicio-${gabinete.id}`}
+                className="admin-input"
                 value={diaInicio}
                 onChange={(e) => setDiaInicio(Number(e.target.value))}
               >
-                {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(
-                  (d, i) => (
-                    <option key={i} value={i}>
-                      {d}
-                    </option>
-                  ),
-                )}
+                {DIAS.map((dia, index) => (
+                  <option key={dia} value={index}>
+                    {dia}
+                  </option>
+                ))}
               </select>
-
-              {modoCarga === "semana" && (
-                <>
-                  a
-                  <select
-                    value={diaFin}
-                    onChange={(e) => setDiaFin(Number(e.target.value))}
-                  >
-                    {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(
-                      (d, i) => (
-                        <option key={i} value={i}>
-                          {d}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </>
-              )}
             </div>
 
-            <TimeRangeSelector onAdd={agregarRango} showDay={false} />
-          </>
-        )}
+            {modoCarga === "semana" && (
+              <div className="field-group gabinete-field">
+                <label htmlFor={`dia-fin-${gabinete.id}`}>Dia final</label>
+                <select
+                  id={`dia-fin-${gabinete.id}`}
+                  className="admin-input"
+                  value={diaFin}
+                  onChange={(e) => setDiaFin(Number(e.target.value))}
+                >
+                  {DIAS.map((dia, index) => (
+                    <option key={dia} value={index}>
+                      {dia}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
-        {horarios.length === 0 && !editando ? (
-          <div className="text-muted">No hay horarios añadidos.</div>
+          <div className="gabinete-time-shell">
+            <TimeRangeSelector onAdd={agregarRango} showDay={false} />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="gabinete-schedule-block">
+        <div className="gabinete-schedule-head">
+          <strong>Horarios cargados</strong>
+          <span>
+            {horarios.length
+              ? "Toca editar para quitar rangos"
+              : "Todavia no tiene disponibilidad"}
+          </span>
+        </div>
+
+        {horarios.length === 0 ? (
+          <div className="gabinete-empty">
+            Sin horarios cargados. Agrega rangos para habilitar este gabinete.
+          </div>
         ) : (
           <HorariosBadges
             horarios={horarios}
             diaKey="diaSemana"
-            onDelete={editando ? (h) => borrarHorario(h.id) : undefined}
+            onDelete={editando ? (horario) => borrarHorario(horario.id) : undefined}
           />
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
-// ==================================================
-// PANEL PRINCIPAL
-// ==================================================
 export default function GabinetesPanel() {
   const [gabinetes, setGabinetes] = useState([]);
   const [nombre, setNombre] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "gabinetes"), orderBy("creadoEn", "desc"));
+    const gabinetesQuery = query(
+      collection(db, "gabinetes"),
+      orderBy("creadoEn", "desc"),
+    );
 
-    return onSnapshot(q, (snap) => {
+    return onSnapshot(gabinetesQuery, (snap) => {
       setGabinetes(
         snap.docs.map((d) => ({
           id: d.id,
@@ -239,8 +267,12 @@ export default function GabinetesPanel() {
       (g) => g.activo && normalizar(g.nombreGabinete) === normalizar(nombre),
     );
 
-    if (yaExisteActivo)
-      return alert("Ya existe un gabinete activo con ese nombre");
+    if (yaExisteActivo) {
+      await swalError({
+        text: "Ya existe un gabinete activo con ese nombre.",
+      });
+      return;
+    }
 
     await addDoc(collection(db, "gabinetes"), {
       nombreGabinete: nombre.trim(),
@@ -253,26 +285,54 @@ export default function GabinetesPanel() {
   }
 
   return (
-    <div className="admin-panel">
-      <div className="admin-title">Gabinetes</div>
+    <div className="admin-panel gabinetes-admin-page">
+      <section className="gabinetes-hero">
+        <div className="gabinetes-hero-copy">
+          <span className="gabinetes-eyebrow">Agenda y espacios</span>
+          <div className="admin-title">Gabinetes</div>
+          <p>
+            Organiza los espacios disponibles, define sus horarios y mantiene una
+            lectura mas clara del estado de cada gabinete.
+          </p>
+        </div>
 
-      <div className="admin-card">
-        <div className="admin-row">
+        <div className="gabinetes-hero-stats">
+          <div className="gabinetes-stat">
+            <strong>{gabinetes.length}</strong>
+            <span>gabinetes totales</span>
+          </div>
+          <div className="gabinetes-stat gabinetes-stat-soft">
+            <strong>{gabinetes.filter((g) => g.activo).length}</strong>
+            <span>activos</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="gabinetes-create-card">
+        <div className="gabinetes-create-copy">
+          <span className="gabinetes-section-kicker">Alta rapida</span>
+          <h3>Crear nuevo gabinete</h3>
+          <p>Agrega un nombre y luego carga su disponibilidad por dia o por semana.</p>
+        </div>
+
+        <div className="gabinetes-create-form">
           <input
-            className="admin-input"
+            className="admin-input gabinete-input"
             placeholder="Nombre del gabinete"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />
-          <button className="swal-btn-guardar" onClick={crearGabinete}>
+          <button type="button" className="swal-btn-guardar" onClick={crearGabinete}>
             Crear gabinete
           </button>
         </div>
-      </div>
+      </section>
 
-      {gabinetes.map((g) => (
-        <GabineteItem key={g.id} gabinete={g} />
-      ))}
+      <section className="gabinetes-grid">
+        {gabinetes.map((gabinete) => (
+          <GabineteItem key={gabinete.id} gabinete={gabinete} />
+        ))}
+      </section>
     </div>
   );
 }

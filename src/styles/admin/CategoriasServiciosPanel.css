@@ -2,12 +2,8 @@
    CATEGORIAS SERVICIOS PANEL
 ========================= */
 
-.admin-categorias-panel .categorias-panel-card {
-  max-width: 1300px;
-  margin-inline: auto;
-}
 
-.admin-categorias-panel .admin-panel-container {
+ .admin-panel-container {
   border: 1px solid var(--border-soft, #e5e7eb);
   border-radius: 18px;
   background: #fff;
@@ -15,7 +11,7 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.04);
 }
 
-.admin-categorias-panel .admin-categorias-header {
+ .admin-categorias-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -26,22 +22,22 @@
   margin-bottom: 14px;
 }
 
-.admin-categorias-panel .categorias-create-row {
+ .categorias-create-row {
   display: grid;
   grid-template-columns: 1fr 120px;
   gap: 12px;
   margin-bottom: 14px;
 }
 
-.admin-categorias-panel .categorias-create-input {
+ .categorias-create-input {
   min-width: 0;
 }
 
-.admin-categorias-panel .categorias-create-btn {
+ .categorias-create-btn {
   width: 100%;
 }
 
-.admin-categorias-panel .admin-categorias-sub {
+ .admin-categorias-sub {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -54,26 +50,27 @@
   cursor: pointer;
 }
 
-.admin-categorias-panel .collapse-icon {
+ .collapse-icon {
   font-size: 14px;
   opacity: 0.7;
 }
 
-.admin-categorias-panel .admin-loading {
+ .admin-loading {
   margin: 6px 0 0;
   color: #6b7280;
   font-size: 14px;
 }
 
-.admin-categorias-panel .categorias-grid {
+ .categorias-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
-.admin-categorias-panel .categoria-card {
+ .categoria-card {
   width: 100%;
   min-height: 110px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -85,19 +82,19 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
 }
 
-.admin-categorias-panel .categoria-card.inactive {
+ .categoria-card.inactive {
   opacity: 0.72;
   background: #fafafa;
 }
 
-.admin-categorias-panel .categoria-card-top {
+ .categoria-card-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
 
-.admin-categorias-panel .categoria-nombre-pro {
+ .categoria-nombre-pro {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -107,7 +104,7 @@
   font-weight: 700;
 }
 
-.admin-categorias-panel .categoria-badge {
+ .categoria-badge {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
@@ -118,18 +115,18 @@
   color: #b91c1c;
 }
 
-.admin-categorias-panel .categoria-actions-pro {
+ .categoria-actions-pro {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.admin-categorias-panel .btn-editar-nombre,
-.admin-categorias-panel .btn-desactivar {
+ .btn-editar-nombre,
+ .btn-desactivar {
   min-width: 96px;
 }
 
-.admin-categorias-panel .categoria-btn-delete {
+ .categoria-btn-delete {
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #b91c1c;
@@ -140,40 +137,40 @@
   cursor: pointer;
 }
 
-.admin-categorias-panel .categoria-btn-delete:hover {
+ .categoria-btn-delete:hover {
   background: #ffe4e6;
 }
 @media (max-width: 900px) {
-  .admin-categorias-panel .categorias-grid {
+   .categorias-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .admin-categorias-panel .categorias-grid {
+   .categorias-grid {
     grid-template-columns: 1fr;
   }
 
-  .admin-categorias-panel .admin-panel-container {
+   .admin-panel-container {
     padding: 12px;
     border-radius: 14px;
   }
 
-  .admin-categorias-panel .categorias-create-row {
+   .categorias-create-row {
     grid-template-columns: 1fr;
   }
 
-  .admin-categorias-panel .categoria-actions-pro {
+   .categoria-actions-pro {
     flex-direction: column;
   }
 
-  .admin-categorias-panel .categoria-actions-pro button,
-  .admin-categorias-panel .categoria-btn-delete,
-  .admin-categorias-panel .categorias-create-btn {
+   .categoria-actions-pro button,
+   .categoria-btn-delete,
+   .categorias-create-btn {
     width: 100%;
   }
 
-  .admin-categorias-panel .categoria-card {
+   .categoria-card {
     padding: 14px;
   }
 }

@@ -1,356 +1,465 @@
-// --------------------------------------------------------------
-// AdminEmpleados.jsx — CRUD Empleados + Permisos (CORREGIDO)
-// --------------------------------------------------------------
-import { useEffect, useState } from "react";
-import {
-  collection,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
-
+import { useCallback, useEffect, useState } from "react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "../../../Firebase.js";
-
-const crearEmpleadoAdmin = httpsCallable(functions, "crearEmpleadoAdmin");
-
-import { db, auth } from "../../../Firebase.js";
+import { auth, db, functions } from "../../../Firebase.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import {
-  swalSuccess,
+  swalConfirmDanger,
   swalError,
   swalInfo,
-  swalConfirmDanger,
-} from "../../../utils/swalUtils.js";
+  swalSuccess,
+} from "../../../public/utils/swalUtils.js";
+import { hideLoading, showLoading } from "../../../services/loadingService.js";
 
-import { showLoading, hideLoading } from "../../../services/loadingService.js";
-// --------------------------------------------------------------
-// 🔐 MAPA DE ROLES
-// --------------------------------------------------------------
 const ROLES = {
   1: {
-    label: "Nivel 1 – Puerta",
-    desc: "Validar entradas",
-    badge: "secondary",
+    label: "Nivel 1 - Profesional",
+    desc: "Acceso al panel profesional y a sus servicios vinculados.",
   },
-  2: { label: "Nivel 2 – Caja", desc: "Cobros", badge: "info" },
-  3: { label: "Nivel 3 – Encargado", desc: "Gestión", badge: "warning" },
-  4: { label: "Nivel 4 – Dueño", desc: "Acceso total", badge: "danger" },
+  2: {
+    label: "Nivel 2 - Caja",
+    desc: "Gestion operativa y cobros.",
+  },
+  3: {
+    label: "Nivel 3 - Admin",
+    desc: "Acceso a todos los turnos e historiales.",
+  },
+  4: {
+    label: "Nivel 4 - Dueño",
+    desc: "Acceso total al sistema.",
+  },
 };
 
-export default function AdminEmpleados() {
+const crearEmpleadoAdmin = httpsCallable(functions, "crearEmpleadoAdmin");
+const actualizarEmpleadoAdmin = httpsCallable(
+  functions,
+  "actualizarEmpleadoAdmin",
+);
+const quitarEmpleadoAdmin = httpsCallable(functions, "quitarEmpleadoAdmin");
+const listarInvitacionesEmpleadoAdmin = httpsCallable(
+  functions,
+  "listarInvitacionesEmpleadoAdmin",
+);
+const eliminarInvitacionEmpleadoAdmin = httpsCallable(
+  functions,
+  "eliminarInvitacionEmpleadoAdmin",
+);
+
+function normalizarEmail(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+export default function EmpleadosPanel() {
   const { user, loading } = useAuth();
   const nivelActual = Number(user?.nivel || 0);
 
   const [empleados, setEmpleados] = useState([]);
+  const [invitados, setInvitados] = useState([]);
   const [modo, setModo] = useState("crear");
-  const [editId, setEditId] = useState(null);
-
+  const [editId, setEditId] = useState("");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [nivel, setNivel] = useState("");
-
   const [errores, setErrores] = useState({});
 
-  // --------------------------------------------------------------
-  // 🔒 PROTECCIÓN
-  // --------------------------------------------------------------
-  if (nivelActual !== 4) {
-    return (
-      <div className="alert alert-danger">
-        ⛔ Solo el dueño puede administrar empleados.
-      </div>
-    );
-  }
+  const cargarInvitaciones = useCallback(async () => {
+    if (!user?.uid || nivelActual !== 4) {
+      setInvitados([]);
+      return;
+    }
 
-  // --------------------------------------------------------------
-  // LISTENER
-  // --------------------------------------------------------------
+    try {
+      const result = await listarInvitacionesEmpleadoAdmin();
+      setInvitados(
+        Array.isArray(result?.data?.invitaciones)
+          ? result.data.invitaciones
+          : [],
+      );
+    } catch (error) {
+      console.error("Error cargando invitaciones", error);
+      setInvitados([]);
+    }
+  }, [nivelActual, user?.uid]);
+
   useEffect(() => {
-    if (loading) return;
-    if (!user?.uid) return;
-    if (nivelActual !== 4) return; // 🔒 MISMA REGLA QUE FIRESTORE
+    if (loading || !user?.uid || nivelActual !== 4) return undefined;
 
-    const q = query(
+    const empleadosQuery = query(
       collection(db, "usuarios"),
       where("esEmpleado", "==", true),
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setEmpleados(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-
-    return () => unsub();
-  }, [loading, user, nivelActual]);
-
-  // --------------------------------------------------------------
-  // VALIDACIONES
-  // --------------------------------------------------------------
-  function validarCampos(crear = true) {
-    const e = {
-      nombre: !nombre.trim(),
-      email: !email.trim(),
-      nivel: !nivel,
-    };
-    setErrores(e);
-    return !Object.values(e).some(Boolean);
-  }
-
-  // --------------------------------------------------------------
-  // CREAR EMPLEADO (CORREGIDO)
-  // --------------------------------------------------------------
-  async function crearEmpleado(e) {
-    e.preventDefault();
-    if (!validarCampos(true)) return;
-
-    try {
-      showLoading({
-        title: "Creando empleado",
-        text: "Aguarda unos instantes...",
-      });
-      // 🔄 FORZAR TOKEN NUEVO CON CLAIMS
-      const u = auth.currentUser;
-      if (!u) throw new Error("No autenticado");
-
-      await u.getIdToken(true);
-
-      // 🔥 RECIÉN AHORA llamar backend
-      await crearEmpleadoAdmin({
-        email,
-        nombre,
-        nivel: Number(nivel),
-      });
-      hideLoading();
-      swalSuccess({
-        title: "Empleado creado",
-        text: "El empleado fue creado correctamente",
-      });
-
-      limpiar();
-    } catch (err) {
-      hideLoading();
-      console.error(err);
-
-      const msg =
-        err?.message || err?.details || "No se pudo crear el empleado";
-
-      swalError({
-        title: "Error al crear empleado",
-        text: msg,
-      });
-    }
-  }
-
-  // --------------------------------------------------------------
-  // EDITAR
-  // --------------------------------------------------------------
-  function cargarEditar(emp) {
-    setModo("editar");
-    setEditId(emp.id);
-    setNombre(emp.nombre);
-    setEmail(emp.email);
-    setNivel(emp.nivel);
-  }
-
-  async function guardarEdicion(e) {
-    e.preventDefault();
-    if (!validarCampos(false)) return;
-
-    showLoading({
-      title: "Guardando cambios",
-      text: "Aguarda unos instantes...",
-    });
-    await updateDoc(doc(db, "usuarios", editId), {
-      nombre,
-      nivel: Number(nivel),
-    });
-    hideLoading();
-    swalSuccess({
-      title: "Empleado actualizado",
-      text: "Los datos fueron guardados correctamente",
-    });
-
-    limpiar();
-  }
-
-  // --------------------------------------------------------------
-  // BORRAR
-  // --------------------------------------------------------------
-  async function borrarEmpleado(emp) {
-    const admins = empleados.filter((e) => Number(e.nivel) === 4);
-    if (Number(emp.nivel) === 4 && admins.length <= 1) {
-      swalInfo({
-        title: "Acción no permitida",
-        text: "Debe existir al menos un dueño en el sistema.",
-        confirmText: "Entendido",
-      });
-
-      return;
-    }
-
-    const ok = await swalConfirmDanger({
-      title: "Eliminar empleado",
-      html: `¿Eliminar a <b>${emp.nombre}</b>?`,
-
-      confirmText: "Eliminar",
-    });
-
-    if (!ok.isConfirmed) return;
-
-    try {
-      showLoading({
-        title: "Eliminando empleado",
-        text: "Aguarda unos instantes...",
-      });
-      const quitarEmpleadoAdmin = httpsCallable(
-        functions,
-        "quitarEmpleadoAdmin",
+    return onSnapshot(empleadosQuery, (snap) => {
+      setEmpleados(
+        snap.docs
+          .map((item) => ({
+            id: item.id,
+            ...item.data(),
+          }))
+          .sort((a, b) =>
+            String(a.nombre || a.email || "").localeCompare(
+              String(b.nombre || b.email || ""),
+              "es",
+            ),
+          ),
       );
+    });
+  }, [loading, nivelActual, user?.uid]);
 
-      // 🔥 BACKEND = fuente de verdad
-      await quitarEmpleadoAdmin({ uid: emp.id });
-
-      // 🔥 Limpieza Firestore
-      await deleteDoc(doc(db, "usuarios", emp.id));
-
-      hideLoading();
-      swalSuccess({
-        title: "Empleado eliminado",
-        text: "El empleado fue eliminado correctamente",
-      });
-    } catch (err) {
-      console.error(err);
-      hideLoading();
-      swalError({
-        title: "Error al eliminar empleado",
-        text: err?.message || "No se pudo eliminar el empleado",
-      });
+  useEffect(() => {
+    if (loading || !user?.uid || nivelActual !== 4) {
+      setInvitados([]);
+      return undefined;
     }
-  }
 
-  function limpiar() {
+    cargarInvitaciones();
+    return undefined;
+  }, [cargarInvitaciones, loading, nivelActual, user?.uid]);
+
+  function limpiarFormulario() {
     setModo("crear");
-    setEditId(null);
+    setEditId("");
     setNombre("");
     setEmail("");
     setNivel("");
     setErrores({});
   }
 
-  // --------------------------------------------------------------
-  // UI
-  // --------------------------------------------------------------
+  function validarCampos() {
+    const nextErrores = {
+      nombre: !nombre.trim(),
+      email: !email.trim(),
+      nivel: !nivel,
+    };
+
+    setErrores(nextErrores);
+    return !Object.values(nextErrores).some(Boolean);
+  }
+
+  async function handleCrearEmpleado(event) {
+    event.preventDefault();
+    if (!validarCampos()) return;
+
+    try {
+      showLoading({
+        title: "Guardando empleado",
+        text: "Preparando acceso por Google...",
+      });
+
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("No autenticado");
+      await currentUser.getIdToken(true);
+
+      const result = await crearEmpleadoAdmin({
+        email: normalizarEmail(email),
+        nombre: nombre.trim(),
+        nivel: Number(nivel),
+      });
+
+      hideLoading();
+      swalSuccess({
+        title: result?.data?.invitado
+          ? "Invitacion creada"
+          : "Empleado habilitado",
+        text: result?.data?.invitado
+          ? "El empleado podra entrar con Google y se activara en su primer login."
+          : "El acceso del empleado fue habilitado correctamente.",
+      });
+      await cargarInvitaciones();
+      limpiarFormulario();
+    } catch (error) {
+      console.error("Error creando empleado", error);
+      hideLoading();
+      swalError({
+        title: "No se pudo guardar",
+        text:
+          error?.message ||
+          error?.details ||
+          "Ocurrio un error al crear el empleado.",
+      });
+    }
+  }
+
+  function cargarEdicion(empleado) {
+    setModo("editar");
+    setEditId(empleado.id);
+    setNombre(empleado.nombre || "");
+    setEmail(empleado.email || "");
+    setNivel(String(empleado.nivel || ""));
+    setErrores({});
+  }
+
+  async function handleGuardarEdicion(event) {
+    event.preventDefault();
+    if (!validarCampos() || !editId) return;
+
+    try {
+      showLoading({
+        title: "Guardando cambios",
+        text: "Actualizando datos del empleado...",
+      });
+
+      await actualizarEmpleadoAdmin({
+        uid: editId,
+        email: normalizarEmail(email),
+        nombre: nombre.trim(),
+        nivel: Number(nivel),
+      });
+
+      hideLoading();
+      swalSuccess({
+        title: "Empleado actualizado",
+        text: "Los cambios se guardaron correctamente y se actualizaron los servicios vinculados.",
+      });
+      limpiarFormulario();
+    } catch (error) {
+      console.error("Error actualizando empleado", error);
+      hideLoading();
+      swalError({
+        title: "No se pudo guardar",
+        text: error?.message || "Ocurrio un error al actualizar el empleado.",
+      });
+    }
+  }
+
+  async function handleEliminarEmpleado(empleado) {
+    const duenos = empleados.filter((item) => Number(item.nivel) === 4);
+    if (Number(empleado.nivel) === 4 && duenos.length <= 1) {
+      swalInfo({
+        title: "Accion no permitida",
+        text: "Debe existir al menos un dueño activo en el sistema.",
+        confirmText: "Entendido",
+      });
+      return;
+    }
+
+    const confirmacion = await swalConfirmDanger({
+      title: "Eliminar empleado",
+      html: `Se eliminara a <b>${empleado.nombre || empleado.email}</b>.`,
+      confirmText: "Eliminar",
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      showLoading({
+        title: "Eliminando empleado",
+        text: "Quitando acceso y perfil...",
+      });
+
+      await quitarEmpleadoAdmin({ uid: empleado.id });
+
+      hideLoading();
+      swalSuccess({
+        title: "Empleado eliminado",
+        text: "El acceso fue removido correctamente.",
+      });
+      if (editId === empleado.id) limpiarFormulario();
+    } catch (error) {
+      console.error("Error eliminando empleado", error);
+      hideLoading();
+      swalError({
+        title: "No se pudo eliminar",
+        text:
+          error?.message ||
+          error?.details ||
+          "Ocurrio un error al eliminar el empleado.",
+      });
+    }
+  }
+
+  async function handleEliminarInvitacion(invitado) {
+    const confirmacion = await swalConfirmDanger({
+      title: "Eliminar invitacion",
+      html: `Se eliminara la invitacion de <b>${invitado.email}</b>.`,
+      confirmText: "Eliminar",
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      await eliminarInvitacionEmpleadoAdmin({
+        id: invitado.id,
+      });
+      swalSuccess({
+        title: "Invitacion eliminada",
+      });
+      await cargarInvitaciones();
+    } catch (error) {
+      console.error("Error eliminando invitacion", error);
+      swalError({
+        title: "No se pudo eliminar",
+        text: "Ocurrio un error al eliminar la invitacion.",
+      });
+    }
+  }
+
+  if (nivelActual !== 4) {
+    return (
+      <div className="config-empty-state">
+        Solo el dueño puede administrar empleados.
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h3 className="fw-bold mb-3">Administración de empleados</h3>
+    <div className="config-team-shell">
+      <div className="config-note">
+        Crea empleados usando solo email y nivel. Si esa cuenta ya existe en
+        Firebase, se habilita al instante. Si todavia no entro, queda una
+        invitacion pendiente y se activa automaticamente cuando inicie sesion
+        con Google.
+      </div>
 
-      <form
-        onSubmit={modo === "crear" ? crearEmpleado : guardarEdicion}
-        className="card p-3 mb-4"
-      >
-        <div className="row g-3">
-          <div className="col-md-6">
-            <label>Nombre</label>
-            <input
-              className={`form-control ${errores.nombre ? "is-invalid" : ""}`}
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-            />
+      <div className="config-team-grid">
+        <form
+          onSubmit={
+            modo === "crear" ? handleCrearEmpleado : handleGuardarEdicion
+          }
+          className="config-subcard"
+        >
+          <div className="config-subcard-header">
+            <h3>{modo === "crear" ? "Nuevo empleado" : "Editar empleado"}</h3>
+            <span>{modo === "crear" ? "Alta" : "Edicion"}</span>
           </div>
 
-          <div className="col-md-6">
-            <label>Email</label>
-            <input
-              className={`form-control ${errores.email ? "is-invalid" : ""}`}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={modo === "editar"}
-            />
+          <div className="config-form-grid">
+            <label className="config-field">
+              <span>Nombre</span>
+              <input
+                className={`form-control ${errores.nombre ? "is-invalid" : ""}`}
+                value={nombre}
+                onChange={(event) => setNombre(event.target.value)}
+                placeholder="Ej: Paula Gomez"
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Email de Google</span>
+              <input
+                className={`form-control ${errores.email ? "is-invalid" : ""}`}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="empleado@estetica.com"
+                disabled={modo === "editar"}
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Nivel de permiso</span>
+              <select
+                className={`form-control ${errores.nivel ? "is-invalid" : ""}`}
+                value={nivel}
+                onChange={(event) => setNivel(event.target.value)}
+              >
+                <option value="">Seleccionar</option>
+                {Object.entries(ROLES).map(([key, role]) => (
+                  <option key={key} value={key}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+              {nivel ? <small>{ROLES[nivel]?.desc}</small> : null}
+            </label>
           </div>
 
-          <div className="col-md-6">
-            <label>Permiso</label>
-            <select
-              className={`form-select ${errores.nivel ? "is-invalid" : ""}`}
-              value={nivel}
-              onChange={(e) => setNivel(e.target.value)}
-            >
-              <option value="">Seleccionar</option>
-              {Object.entries(ROLES).map(([k, r]) => (
-                <option key={k} value={k}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-            {nivel && (
-              <small className="text-muted">{ROLES[nivel]?.desc}</small>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-3 text-center">
-          <button className="swal-btn-guardar">
-            {modo === "crear" ? "Crear empleado" : "Guardar cambios"}
-          </button>
-          {modo === "editar" && (
-            <button
-              type="button"
-              className="btn btn-secondary ms-2"
-              onClick={limpiar}
-            >
-              Cancelar
+          <div className="config-actions">
+            <button className="btn swal-btn-confirm" type="submit">
+              {modo === "crear" ? "Guardar empleado" : "Guardar cambios"}
             </button>
-          )}
-        </div>
-      </form>
+            {modo === "editar" ? (
+              <button
+                className="btn btn-outline-secondary"
+                type="button"
+                onClick={limpiarFormulario}
+              >
+                Cancelar
+              </button>
+            ) : null}
+          </div>
+        </form>
 
-      {/* LISTADO */}
-      <div className="table-responsive">
-        <table className="table table-bordered table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th className="d-none d-md-table-cell">Email</th>
-              <th>Rol</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {empleados.map((emp) => (
-              <tr key={emp.id}>
-                <td>{emp.nombre}</td>
-                <td className="d-none d-md-table-cell">{emp.email}</td>
-                <td>
-                  <span className={`badge bg-${ROLES[emp.nivel]?.badge}`}>
-                    {ROLES[emp.nivel]?.label}
-                  </span>
-                </td>
-                <td className="text-center" style={{ minWidth: 140 }}>
-                  <div className="d-inline-flex gap-2 flex-wrap justify-content-center">
-                    <button
-                      className="btn btn-sm swal-btn-alt"
-                      id="btn-borrar-empleados"
-                      onClick={() => borrarEmpleado(emp)}
-                    >
-                      Borrar
-                    </button>
+        <div className="config-subcard">
+          <div className="config-subcard-header">
+            <h3>Empleados activos</h3>
+            <span>{empleados.length} activos</span>
+          </div>
 
-                    <button
-                      className="btn btn-sm swal-btn-confirm"
-                      id="btn-editar-empleados"
-                      onClick={() => cargarEditar(emp)}
-                    >
-                      Editar
-                    </button>
-                  </div>
-                </td>
-              </tr>
+          <div className="config-team-list">
+            {empleados.map((empleado) => (
+              <article key={empleado.id} className="config-team-item">
+                <div className="config-team-copy">
+                  <strong>{empleado.nombre || "Sin nombre"}</strong>
+                  <span>{empleado.email || empleado.id}</span>
+                  <small>{ROLES[empleado.nivel]?.label || "Sin rol"}</small>
+                </div>
+
+                <div className="config-team-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => cargarEdicion(empleado)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm swal-btn-eliminar"
+                    onClick={() => handleEliminarEmpleado(empleado)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </article>
             ))}
-          </tbody>
-        </table>
+
+            {!empleados.length ? (
+              <div className="config-empty-state">
+                Todavia no hay empleados activos.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="config-subcard">
+        <div className="config-subcard-header">
+          <h3>Invitaciones pendientes</h3>
+          <span>{invitados.length} pendientes</span>
+        </div>
+
+        <div className="config-team-list">
+          {invitados.map((invitado) => (
+            <article key={invitado.id} className="config-team-item">
+              <div className="config-team-copy">
+                <strong>{invitado.nombre || "Sin nombre"}</strong>
+                <span>{invitado.email}</span>
+                <small>
+                  {ROLES[invitado.nivel]?.label || "Sin rol"} | pendiente de
+                  primer login
+                </small>
+              </div>
+
+              <div className="config-team-actions">
+                <button
+                  type="button"
+                  className="btn btn-sm swal-btn-eliminar"
+                  onClick={() => handleEliminarInvitacion(invitado)}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </article>
+          ))}
+
+          {!invitados.length ? (
+            <div className="config-empty-state">
+              No hay invitaciones pendientes.
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

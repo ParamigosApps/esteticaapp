@@ -1,4 +1,3 @@
-// src/pages/MiPerfil.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -8,19 +7,16 @@ import { useAuth } from "../../context/AuthContext";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import Swal from "sweetalert2";
 
-// Si ya tenés swalSuccess/swalError y querés usarlos, reemplazá los Swal.fire por tus helpers.
-
 const toStr = (v) => (typeof v === "string" ? v.trim() : "");
 
 const esTelValido = (v) => {
   const s = toStr(v);
   if (!s) return false;
-  // Acepta números, espacios, +, guiones (simple y tolerante)
   return /^[0-9+\-\s]{8,20}$/.test(s);
 };
 
 export default function MiPerfil() {
-  const { user, loading, logout } = useAuth(); // asumo que tu AuthContext expone logout()
+  const { user, loading, logout } = useAuth();
 
   const [perfil, setPerfil] = useState({
     nombre: "",
@@ -36,7 +32,6 @@ export default function MiPerfil() {
   const [saving, setSaving] = useState(false);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
 
-  // ---- cargar perfil (clientes/{uid}) ----
   useEffect(() => {
     async function cargar() {
       if (!user?.uid) return;
@@ -45,8 +40,6 @@ export default function MiPerfil() {
 
       const ref = doc(db, "usuarios", user.uid);
       const snap = await getDoc(ref);
-
-      // email lo tomamos siempre del auth si existe
       const emailAuth = toStr(user.email);
 
       if (snap.exists()) {
@@ -59,7 +52,6 @@ export default function MiPerfil() {
           updatedAt: data.updatedAt || null,
         });
       } else {
-        // crear base mínima
         const base = {
           nombre: toStr(user.displayName) || "",
           telefono: toStr(user.phoneNumber) || "",
@@ -82,16 +74,16 @@ export default function MiPerfil() {
       setLoadingPerfil(false);
     }
 
-    if (!loading) cargar();
-  }, [loading, user?.uid]);
+    if (!loading) void cargar();
+  }, [loading, user?.uid, user?.displayName, user?.phoneNumber, user?.email]);
 
-  // ---- cargar whatsapp negocio (configuracion/social) ----
   useEffect(() => {
     async function cargarSocial() {
       const snap = await getDoc(doc(db, "configuracion", "social"));
       if (snap.exists()) setSocial(snap.data());
     }
-    cargarSocial();
+
+    void cargarSocial();
   }, []);
 
   async function guardar() {
@@ -114,8 +106,8 @@ export default function MiPerfil() {
     if (telefono && !esTelValido(telefono)) {
       Swal.fire({
         icon: "error",
-        title: "Teléfono inválido",
-        text: "Usá un teléfono válido (solo números / + / espacios).",
+        title: "Telefono invalido",
+        text: "Usa un telefono valido (solo numeros, +, espacios o guiones).",
         confirmButtonText: "Ok",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
@@ -150,10 +142,10 @@ export default function MiPerfil() {
   async function salir() {
     const res = await Swal.fire({
       icon: "question",
-      title: "Cerrar sesión",
+      title: "Cerrar sesion",
       text: "¿Querés salir de tu cuenta?",
       showCancelButton: true,
-      confirmButtonText: "Sí, salir",
+      confirmButtonText: "Si, salir",
       cancelButtonText: "Cancelar",
       customClass: {
         confirmButton: "swal-btn-confirm",
@@ -170,7 +162,7 @@ export default function MiPerfil() {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo cerrar sesión.",
+        text: "No se pudo cerrar sesion.",
         confirmButtonText: "Ok",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
@@ -198,109 +190,154 @@ export default function MiPerfil() {
   }
 
   const whatsappNro = toStr(social?.whatsappContacto);
+  const inicialNombre = toStr(perfil.nombre || user?.displayName || user?.email)
+    .slice(0, 1)
+    .toUpperCase();
 
   return (
-    <div className="container py-4" style={{ maxWidth: 720 }}>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="mb-0">Mi perfil</h4>
-
-        {!edit ? (
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => setEdit(true)}
-          >
-            Editar
-          </button>
-        ) : (
-          <div className="d-flex gap-2">
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => setEdit(false)}
-              disabled={saving}
-            >
-              Cancelar
-            </button>
-            <button
-              className="btn swal-btn-confirm btn-sm"
-              onClick={guardar}
-              disabled={saving}
-            >
-              {saving ? "Guardando..." : "Guardar"}
-            </button>
+    <div className="account-shell container py-4">
+      <section className="profile-hero">
+        <div className="profile-hero-main">
+          <div className="profile-avatar" aria-hidden="true">
+            {inicialNombre || "U"}
           </div>
-        )}
-      </div>
 
-      {/* Tarjeta perfil */}
-      <div className="card mb-3">
-        <div className="card-body">
-          <label className="text-muted" style={{ fontSize: 13 }}>
-            Nombre
-          </label>
-          <input
-            className="form-control mb-3"
-            value={perfil.nombre}
-            disabled={!edit}
-            onChange={(e) => setPerfil({ ...perfil, nombre: e.target.value })}
-            placeholder="Tu nombre"
-          />
-
-          <label className="text-muted" style={{ fontSize: 13 }}>
-            Teléfono
-          </label>
-          <input
-            className="form-control mb-3"
-            value={perfil.telefono}
-            disabled={!edit}
-            onChange={(e) => setPerfil({ ...perfil, telefono: e.target.value })}
-            placeholder="Ej: +54 9 11 1234-5678"
-          />
-
-          <label className="text-muted" style={{ fontSize: 13 }}>
-            Email
-          </label>
-          <input
-            className="form-control"
-            value={perfil.email}
-            disabled
-            placeholder="Email"
-          />
-
-          <div className="text-muted mt-3" style={{ fontSize: 12 }}>
-            Para cambiar el email, tenés que hacerlo desde el método de inicio
-            de sesión.
+          <div className="profile-hero-copy">
+            <p className="profile-eyebrow">Area personal</p>
+            <h1 className="profile-title">Mi perfil</h1>
+            <p className="profile-subtitle">
+              Mantené tus datos actualizados y gestioná tu cuenta desde una
+              vista más clara.
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Acciones rápidas */}
-      <div className="card mb-3">
-        <div className="card-body d-flex flex-wrap gap-2">
-          <Link to="/mis-turnos" className="btn btn-outline-secondary">
-            Ver mis turnos
-          </Link>
-
-          {whatsappNro && (
-            <a
-              className="btn btn-outline-success"
-              href={`https://wa.me/54${whatsappNro}`}
-              target="_blank"
-              rel="noreferrer"
+        <div className="profile-hero-actions">
+          {!edit ? (
+            <button
+              className="btn profile-btn-secondary"
+              onClick={() => setEdit(true)}
             >
-              Contactar por WhatsApp
-            </a>
+              Editar perfil
+            </button>
+          ) : (
+            <>
+              <button
+                className="btn profile-btn-secondary"
+                onClick={() => setEdit(false)}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn swal-btn-confirm profile-btn-primary"
+                onClick={guardar}
+                disabled={saving}
+              >
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </>
           )}
-
-          <button className="btn btn-outline-danger ms-auto" onClick={salir}>
-            Cerrar sesión
-          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Sugerencia tipo “app estética” */}
-      <div className="text-muted" style={{ fontSize: 13 }}>
-        Tip: revisá “Mis turnos” para confirmar fecha y hora antes de asistir.
-      </div>
+      <section className="profile-grid">
+        <article className="profile-card profile-card-main">
+          <div className="profile-card-head">
+            <div>
+              <p className="profile-card-kicker">Datos personales</p>
+              <h2>Informacion de contacto</h2>
+            </div>
+            <span className={`profile-status-pill ${edit ? "editing" : ""}`}>
+              {edit ? "Modo edicion" : "Perfil activo"}
+            </span>
+          </div>
+
+          <div className="profile-form-grid">
+            <label className="profile-field">
+              <span>Nombre</span>
+              <input
+                className="form-control"
+                value={perfil.nombre}
+                disabled={!edit}
+                onChange={(e) => setPerfil({ ...perfil, nombre: e.target.value })}
+                placeholder="Tu nombre"
+              />
+            </label>
+
+            <label className="profile-field">
+              <span>Telefono</span>
+              <input
+                className="form-control"
+                value={perfil.telefono}
+                disabled={!edit}
+                onChange={(e) =>
+                  setPerfil({ ...perfil, telefono: e.target.value })
+                }
+                placeholder="Ej: +54 9 11 1234-5678"
+              />
+            </label>
+
+            <label className="profile-field profile-field-full">
+              <span>Email</span>
+              <input
+                className="form-control"
+                value={perfil.email}
+                disabled
+                placeholder="Email"
+              />
+            </label>
+          </div>
+
+          <div className="profile-help-text">
+            Para cambiar el email, hacelo desde el método de inicio de sesión
+            asociado a tu cuenta.
+          </div>
+        </article>
+
+        <aside className="profile-side">
+          <article className="profile-card">
+            <div className="profile-card-head">
+              <div>
+                <p className="profile-card-kicker">Accesos</p>
+                <h2>Acciones rapidas</h2>
+              </div>
+            </div>
+
+            <div className="profile-action-list">
+              <Link to="/mis-turnos" className="btn profile-action-btn">
+                Ver mis turnos
+              </Link>
+
+              {whatsappNro && (
+                <a
+                  className="btn profile-action-btn profile-action-btn-whatsapp"
+                  href={`https://wa.me/54${whatsappNro}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Contactar por WhatsApp
+                </a>
+              )}
+
+              <button
+                className="btn profile-action-btn profile-action-btn-danger"
+                onClick={salir}
+              >
+                Cerrar sesion
+              </button>
+            </div>
+          </article>
+
+          <article className="profile-card profile-tip-card">
+            <p className="profile-card-kicker">Tip</p>
+            <p className="profile-tip-text">
+              Revisá tus turnos antes de asistir para confirmar fecha, horario y
+              estado del pago.
+            </p>
+          </article>
+        </aside>
+      </section>
     </div>
   );
 }
