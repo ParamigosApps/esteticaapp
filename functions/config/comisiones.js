@@ -2,7 +2,7 @@
 
 const COMISION_DEFAULT_ENTRADA = 1
 const COMISION_DEFAULT_CATALOGO = 0
-const COMISION_FIJA_TURNO = 300
+const COMISION_FIJA_TURNO = 1
 
 function obtenerComisionCatalogo() {
   return COMISION_DEFAULT_CATALOGO

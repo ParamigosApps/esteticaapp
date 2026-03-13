@@ -84,6 +84,11 @@ function sumarDiasISO(fechaISO, dias) {
   return base.toISOString().slice(0, 10);
 }
 
+function getLimiteReservableMs(servicio) {
+  const agendaMaxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  return Date.now() + agendaMaxDias * 24 * 60 * 60 * 1000;
+}
+
 function obtenerDiaSemanaISO(fechaISO) {
   const [y, m, d] = String(fechaISO).split("-").map(Number);
   if (!y || !m || !d) return null;
@@ -258,21 +263,13 @@ const {
       servicio.nombre ||
       "Servicio";
 
-          const agendaMaxDias = Math.max(1, Number(servicio.agendaMaxDias || 7));
+    const agendaMaxDias = Math.max(1, Number(servicio.agendaMaxDias || 7));
     const hoyISO = toISODateEnZona(new Date());
-    const fechaMaxPermitida = sumarDiasISO(hoyISO, agendaMaxDias - 1);
 
     if (fecha < hoyISO) {
       throw new HttpsError(
         "failed-precondition",
         "No se pueden reservar turnos en fechas pasadas",
-      );
-    }
-
-    if (fecha > fechaMaxPermitida) {
-      throw new HttpsError(
-        "failed-precondition",
-        `Este servicio solo permite reservar hasta ${agendaMaxDias} días de anticipación`,
       );
     }
 
@@ -296,12 +293,19 @@ const {
     }
 
     const ahoraMs = Date.now();
-    const hoyISOActual = toISODateEnZona(new Date());
+    const limiteReservableMs = getLimiteReservableMs(servicio);
 
-    if (fecha === hoyISOActual && inicioNum <= ahoraMs) {
+    if (inicioNum <= ahoraMs) {
       throw new HttpsError(
         "failed-precondition",
-        "No se pueden reservar horarios pasados de hoy"
+        "No se pueden reservar horarios pasados"
+      );
+    }
+
+    if (inicioNum > limiteReservableMs) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Este servicio solo permite reservar hasta ${agendaMaxDias} dias de anticipacion`,
       );
     }
 

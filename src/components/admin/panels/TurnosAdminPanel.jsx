@@ -62,6 +62,11 @@ function formatDateShort(fechaIso) {
   });
 }
 
+function getLimiteReservableMs(servicio) {
+  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  return Date.now() + maxDias * 24 * 60 * 60 * 1000;
+}
+
 function getDiaConfig(servicio, fechaIso) {
   const fecha = new Date(`${fechaIso}T00:00:00`);
   const diaSemana = fecha.getDay();
@@ -81,17 +86,19 @@ function getDiaConfig(servicio, fechaIso) {
 }
 
 function estaDentroVentanaAgenda(servicio, fechaIso) {
-  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  fecha.setHours(0, 0, 0, 0);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  const fecha = new Date(`${fechaIso}T00:00:00`);
-  fecha.setHours(0, 0, 0, 0);
+  return (
+    fecha >= hoy &&
+    fecha.getTime() <= getLimiteReservableMs(servicio)
+  );
+}
 
-  const limite = new Date(hoy);
-  limite.setDate(limite.getDate() + (maxDias - 1));
-
-  return fecha >= hoy && fecha <= limite;
+function slotDentroDeVentanaAgenda(slot, servicio) {
+  return Number(slot?.inicio) <= getLimiteReservableMs(servicio);
 }
 
 function horarioPermitidoPorServicio(servicio, fechaIso, inicioMs, finMs) {
@@ -353,7 +360,9 @@ export default function TurnosAdminPanel() {
       agenda,
       servicioSeleccionado,
       new Date(`${nuevoTurno.fecha}T00:00:00`),
-    ).filter((slot) => !slot.ocupado);
+    ).filter(
+      (slot) => !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
+    );
   }, [
     agendaManual,
     nuevoTurno.fecha,
@@ -572,7 +581,10 @@ export default function TurnosAdminPanel() {
             agenda,
             servicioSeleccionado,
             new Date(`${fechaIso}T00:00:00`),
-          ).filter((slot) => !slot.ocupado);
+          ).filter(
+            (slot) =>
+              !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
+          );
 
           if (slots.length && !cancelled) {
             sugerencias.push({
@@ -626,6 +638,47 @@ export default function TurnosAdminPanel() {
       }));
     }
   }, [nuevoTurno.horaInicio, slotsDisponibles]);
+
+  useEffect(() => {
+    if (!servicioSeleccionado || !nuevoTurno.gabineteId) return;
+
+    if (!nuevoTurno.fecha) {
+      updateNuevoTurno("fecha", toISODateLocal(new Date()));
+      return;
+    }
+
+    if (!estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha)) {
+      updateNuevoTurno("fecha", toISODateLocal(new Date()));
+    }
+  }, [nuevoTurno.fecha, nuevoTurno.gabineteId, servicioSeleccionado]);
+
+  useEffect(() => {
+    if (!servicioSeleccionado || !nuevoTurno.gabineteId || !nuevoTurno.fecha) {
+      return;
+    }
+
+    if (
+      cargandoGabineteHorarios ||
+      cargandoSugerencias ||
+      slotsDisponibles.length > 0 ||
+      !sugerenciasHorarios.length
+    ) {
+      return;
+    }
+
+    const primeraSugerencia = sugerenciasHorarios[0]?.fecha;
+    if (primeraSugerencia && primeraSugerencia !== nuevoTurno.fecha) {
+      updateNuevoTurno("fecha", primeraSugerencia);
+    }
+  }, [
+    cargandoGabineteHorarios,
+    cargandoSugerencias,
+    nuevoTurno.fecha,
+    nuevoTurno.gabineteId,
+    servicioSeleccionado,
+    slotsDisponibles.length,
+    sugerenciasHorarios,
+  ]);
 
   async function crearTurnoManual() {
     if (creandoTurno) return;
@@ -761,7 +814,7 @@ export default function TurnosAdminPanel() {
     setCreandoTurno(true);
 
     try {
-      await Swal.fire({
+      Swal.fire({
         title: "Guardando turno",
         text: "Estamos registrando la reserva manual.",
         allowOutsideClick: false,

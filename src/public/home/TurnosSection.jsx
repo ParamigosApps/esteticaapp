@@ -163,16 +163,16 @@ export default function TurnosSection({
   }, [servicios, busqueda, categoriaSeleccionada]);
 
   const serviciosActivos = useMemo(() => {
-    const lista = (servicios || []).filter((s) => s.activo);
+    let lista = (servicios || []).filter((s) => s.activo);
 
     if (categoriaSeleccionada) {
-      return lista.filter((s) => s.categoriaId === categoriaSeleccionada);
+      lista = lista.filter((s) => s.categoriaId === categoriaSeleccionada);
     }
 
     if (busqueda) {
       const q = normalizarTexto(busqueda);
 
-      return lista.filter(
+      lista = lista.filter(
         (s) =>
           normalizarTexto(s.nombreServicio).includes(q) ||
           normalizarTexto(s.categoriaNombre).includes(q) ||

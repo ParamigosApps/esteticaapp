@@ -21,6 +21,37 @@ import { calcularMontosTurno } from "../../config/comisiones.js";
 
 import SlotHora from "./panels/SlotHora";
 
+function getReservaErrorMessage(err) {
+  if (typeof err?.details === "string" && err.details.trim()) {
+    return err.details;
+  }
+
+  if (
+    err?.details &&
+    typeof err.details === "object" &&
+    typeof err.details.message === "string" &&
+    err.details.message.trim()
+  ) {
+    return err.details.message;
+  }
+
+  if (typeof err?.message === "string" && err.message.trim()) {
+    return err.message.replace(/^firebaseerror:\s*/i, "").trim();
+  }
+
+  return "Ocurrio un problema al intentar reservar el turno.";
+}
+
+function formatearFechaHora(ms) {
+  return new Date(Number(ms)).toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function toISODateLocal(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -350,6 +381,17 @@ export default function TurnosPanel({ servicio }) {
 
     const fecha = toISODateLocal(fechaSeleccionada);
     try {
+      if (Number(slotSeleccionado.horaInicio) > limiteReservableMs) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Fuera de agenda",
+          text: `Este servicio permite reservar hasta el ${formatearFechaHora(
+            limiteReservableMs,
+          )}.`,
+        });
+        return;
+      }
+
       setLoadingReserva(true);
 
       const inicio = slotSeleccionado.horaInicio;
@@ -464,10 +506,7 @@ export default function TurnosPanel({ servicio }) {
       Swal.fire({
         icon: "warning",
         title: "No se pudo reservar",
-        text:
-          err?.message ||
-          err?.details ||
-          "Ocurrio un problema al intentar reservar el turno.",
+        text: getReservaErrorMessage(err),
       });
     } finally {
       setLoadingReserva(false);
