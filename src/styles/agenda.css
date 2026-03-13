@@ -164,6 +164,18 @@
   border: 1px solid rgba(226, 217, 239, 0.9);
 }
 
+.agenda-24hs-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 248, 233, 0.96), rgba(255, 242, 215, 0.96));
+  border: 1px solid rgba(240, 202, 124, 0.85);
+  color: #7b5616;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .agenda-titulo {
   display: flex;
   justify-content: space-between;

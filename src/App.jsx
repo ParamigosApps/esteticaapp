@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 import PublicLayout from "./public/layout/PublicLayout.jsx";
 
@@ -29,10 +30,60 @@ import MiPerfil from "./public/pages/MiPerfil.jsx";
 
 import { ToastContainer } from "react-toastify";
 
+const DEFAULT_TITLE = "EsteticApp";
+
+function resolvePageTitle(pathname) {
+  if (pathname === "/") return "Inicio | EsteticApp";
+  if (pathname === "/acceso") return "Acceso | EsteticApp";
+  if (pathname === "/mis-turnos") return "Mis turnos | EsteticApp";
+  if (pathname === "/mi-perfil") return "Mi perfil | EsteticApp";
+  if (pathname === "/pago-resultado") return "Confirmando pago | EsteticApp";
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/dashboard")) {
+    return "Dashboard | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/turnos")) {
+    return "Turnos y reservas | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/clientes")) {
+    return "Clientes | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/liquidaciones")) {
+    return "Liquidaciones | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/configuracion")) {
+    return "Configuracion | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/servicios")) {
+    return "Servicios | Admin | EsteticApp";
+  }
+  if (pathname.startsWith("/admin/gabinetes")) {
+    return "Gabinetes | Admin | EsteticApp";
+  }
+
+  if (pathname === "/profesional" || pathname.startsWith("/profesional/")) {
+    return "Mi agenda | Profesional | EsteticApp";
+  }
+
+  return DEFAULT_TITLE;
+}
+
+function TitleManager() {
+  const location = useLocation();
+
+  useEffect(() => {
+    document.title = resolvePageTitle(location.pathname);
+  }, [location.pathname]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <ServiciosProvider>
       <>
+        <TitleManager />
+
         <ToastContainer
           position="top-center"
           autoClose={3000}

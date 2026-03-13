@@ -1,5 +1,9 @@
 import Swal from "sweetalert2";
 
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString("es-AR");
+}
+
 export function swalSuccess({
   title = "Operación exitosa",
   text = "",
@@ -441,6 +445,8 @@ export function swalResumenTurno({
   modoReserva,
 }) {
   const esManual = modoReserva === "reserva";
+  const precioFormateado = formatMoney(precio);
+  const precioAnticipoFormateado = formatMoney(precioAnticipo);
 
   let tituloSwal = esManual ? "Solicitud de turno" : "Confirmación de turno";
   return Swal.fire({
@@ -490,7 +496,7 @@ export function swalResumenTurno({
               ? `
               <div class="swal-row precio-row">
                 <div class="swal-label"> Precio total</div>
-                <div class="swal-value precio">$${precio}</div>
+                <div class="swal-value precio">$${precioFormateado}</div>
               </div>
 
 
@@ -499,7 +505,7 @@ export function swalResumenTurno({
               ? `
               <div class="swal-row precio-row mt-2">
                 <div class="swal-label">Seña a abonar</div>
-                <div class="swal-value precio">$${precioAnticipo}</div>
+                <div class="swal-value precio">$${precioAnticipoFormateado}</div>
               </div>
               `
               : ""

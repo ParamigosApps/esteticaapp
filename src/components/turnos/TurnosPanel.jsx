@@ -294,6 +294,7 @@ export default function TurnosPanel({ servicio }) {
     precioEfectivo > 0
       ? precioEfectivo + (usaCargoReservaOnline ? comisionTurno : 0)
       : 0;
+  const agendaEs24Horas = Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
   const limiteReservableMs = getLimiteReservableMs(servicio);
   const fechaMaxReservable = getFechaMaxReservable(servicio);
 
@@ -738,6 +739,13 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           <b>{formatearSoloFecha(endOfDay(fechaMaxReservable))}</b>
         </small>
       </div>
+
+      {agendaEs24Horas && (
+        <div className="agenda-24hs-note">
+          En agendas de 24 hs, a partir de las 18:00 se habilitan horarios del
+          dia siguiente.
+        </div>
+      )}
 
       <h5 className="agenda-titulo">
         <b>{servicio.nombreServicio.toUpperCase()}</b>

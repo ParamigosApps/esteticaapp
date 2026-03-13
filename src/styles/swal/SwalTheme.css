@@ -248,3 +248,102 @@
   font-weight: 600;
   line-height: 1.5;
 }
+
+.swal-loading-popup {
+  width: min(92vw, 430px);
+  padding: 28px 24px 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(233, 226, 243, 0.95);
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.12), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 247, 255, 0.98));
+  box-shadow: 0 24px 56px rgba(44, 31, 61, 0.12);
+}
+
+.swal-loading-title {
+  padding: 0 52px 0 0;
+}
+
+.loading-title {
+  display: block;
+  color: #24192f;
+  font-size: clamp(1.8rem, 4vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.loading-box {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding-top: 6px;
+}
+
+.loading-spinner-shell {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fcf8ff, #f8f2ff);
+  border: 1px dashed rgba(199, 125, 255, 0.32);
+}
+
+.loading-spinner.spinner-border {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: #b589ed;
+  border-width: 0.22rem;
+}
+
+.loading-copy {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.loading-text {
+  max-width: 28ch;
+  margin: 0;
+  color: #6f6280;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.swal-loading-back-btn {
+  background: var(--btn-soft-bg);
+  color: var(--btn-soft-text);
+  border: 1px solid var(--border-soft);
+  padding: 12px 16px;
+  border-radius: var(--radius-2);
+  transition: all 0.2s ease;
+}
+
+.swal-loading-back-btn:hover {
+  background: var(--btn-soft-hover);
+}
+
+.swal-loading-close-btn {
+  width: 36px;
+  height: 36px;
+  top: 18px;
+  right: 18px;
+  padding: 0;
+  border-radius: 999px;
+  color: #7e7290;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(226, 217, 239, 0.9);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.swal-loading-close-btn:hover {
+  color: #4f4360;
+  background: rgba(255, 255, 255, 0.96);
+  transform: scale(1.04);
+}
+
+.swal-loading-close-btn:focus {
+  box-shadow: 0 0 0 3px rgba(199, 125, 255, 0.16);
+}
