@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
+  doc,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "../../../Firebase";
@@ -12,6 +14,7 @@ import { generarSlotsDia } from "../../../public/utils/generarSlotsDia";
 import Swal from "sweetalert2";
 import { swalError, swalSuccess } from "../../../public/utils/swalUtils";
 import {
+  esTurnoRechazadoOVencido,
   getEstadoPago,
   getEstadoTurno,
   getMetodoPagoEsperado,
@@ -477,6 +480,11 @@ export default function TurnosAdminPanel() {
     );
   }, [turnosFiltrados]);
 
+  const turnosLimpiables = useMemo(
+    () => turnosFiltrados.filter(esTurnoRechazadoOVencido),
+    [turnosFiltrados],
+  );
+
   function limpiarFiltros() {
     setFiltroEstado("todos");
     setFechaFiltro("");
@@ -484,6 +492,71 @@ export default function TurnosAdminPanel() {
     setFiltroMetodoPago("todos");
     setBusqueda("");
     setSoloSaldoPendiente(false);
+  }
+
+  async function limpiarTurnosRechazadosOVencidos() {
+    if (!turnosLimpiables.length) {
+      await swalError({
+        title: "No hay turnos para limpiar",
+        text: "Con los filtros actuales no hay turnos rechazados o vencidos.",
+      });
+      return;
+    }
+
+    const res = await Swal.fire({
+      title: "Limpiar turnos rechazados y vencidos",
+      text: `Se eliminaran ${turnosLimpiables.length} turno(s) visibles en este estado. Esta accion no se puede deshacer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Si, limpiar",
+      cancelButtonText: "Volver",
+      customClass: {
+        popup: "swal-popup-custom",
+        confirmButton: "swal-btn-confirm",
+        cancelButton: "swal-btn-cancel",
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
+    });
+
+    if (!res.isConfirmed) return;
+
+    try {
+      Swal.fire({
+        title: "Limpiando turnos",
+        text: "Eliminando registros rechazados y vencidos...",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      for (let index = 0; index < turnosLimpiables.length; index += 450) {
+        const batch = writeBatch(db);
+        const chunk = turnosLimpiables.slice(index, index + 450);
+
+        chunk.forEach((turno) => {
+          batch.delete(doc(db, "turnos", turno.id));
+        });
+
+        await batch.commit();
+      }
+
+      Swal.close();
+      await swalSuccess({
+        title: "Turnos eliminados",
+        text: `Se limpiaron ${turnosLimpiables.length} turno(s) rechazados o vencidos.`,
+      });
+    } catch (error) {
+      console.error("Error limpiando turnos rechazados/vencidos", error);
+      Swal.close();
+      await swalError({
+        title: "No se pudo completar la limpieza",
+        text: "Ocurrio un error al eliminar los turnos seleccionados.",
+      });
+    }
   }
 
   function resetNuevoTurno() {
@@ -1217,13 +1290,23 @@ export default function TurnosAdminPanel() {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="turnos-filtros-clear"
-            onClick={limpiarFiltros}
-          >
-            Limpiar
-          </button>
+          <div className="turnos-filtros-actions">
+            <button
+              type="button"
+              className="turnos-filtros-danger"
+              onClick={limpiarTurnosRechazadosOVencidos}
+              disabled={!turnosLimpiables.length}
+            >
+              Limpiar rechazados/vencidos ({turnosLimpiables.length})
+            </button>
+            <button
+              type="button"
+              className="turnos-filtros-clear"
+              onClick={limpiarFiltros}
+            >
+              Limpiar filtros
+            </button>
+          </div>
         </div>
 
         <div className="turnos-filtros-grid">

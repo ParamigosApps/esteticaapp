@@ -22,6 +22,19 @@ export function getEstadoTurno(t) {
   }
 }
 
+export function esTurnoRechazadoOVencido(t) {
+  const estadoTurnoRaw = String(t?.estadoTurno || t?.estado || "").toLowerCase();
+  const estadoPagoRaw = String(t?.estadoPago || "").toLowerCase();
+
+  return (
+    estadoTurnoRaw === "rechazado" ||
+    estadoTurnoRaw === "vencido" ||
+    estadoTurnoRaw === "expirado" ||
+    estadoPagoRaw === "rechazado" ||
+    estadoPagoRaw === "expirado"
+  );
+}
+
 export function getEstadoPago(t) {
   if (t?.estadoPago) return t.estadoPago;
 
