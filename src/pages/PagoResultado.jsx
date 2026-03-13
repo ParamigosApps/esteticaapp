@@ -43,6 +43,14 @@ export default function PagoResultado() {
 
   const intervalRef = useRef(null);
   const intentosRef = useRef(0);
+  const initPointRef = useRef(
+    localStorage.getItem("pagoInitPointEnProceso") || "",
+  );
+
+  const limpiarPagoEnProceso = () => {
+    localStorage.removeItem("pagoIdEnProceso");
+    localStorage.removeItem("pagoInitPointEnProceso");
+  };
 
   const abrirModalVerificacion = () => {
     showLoading({
@@ -50,16 +58,28 @@ export default function PagoResultado() {
       text: "Estamos verificando tu pago. Esto puede demorar unos instantes...",
       showBackButton: true,
       showCloseButton: true,
-      backButtonText: "Volver atras",
-      onBack: cerrarVerificacion,
+      backButtonText: "Volver al pago",
+      onBack: volverAlPago,
       onClose: handleIntentarCerrar,
     });
+  };
+
+  const volverAlPago = () => {
+    const initPoint = initPointRef.current;
+
+    if (initPoint) {
+      hideLoading();
+      window.location.href = initPoint;
+      return;
+    }
+
+    navigate("/mis-turnos", { replace: true });
   };
 
   const cerrarVerificacion = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    localStorage.removeItem("pagoIdEnProceso");
+    limpiarPagoEnProceso();
     hideLoading();
     navigate("/mis-turnos", { replace: true });
   };
@@ -113,6 +133,11 @@ export default function PagoResultado() {
         if (!snap.exists()) return;
 
         const pago = snap.data();
+        if (pago?.mpInitPoint) {
+          initPointRef.current = pago.mpInitPoint;
+          localStorage.setItem("pagoInitPointEnProceso", pago.mpInitPoint);
+        }
+
         const tipo = pago.tipo || "compra";
         const estado = normalizarEstado(pago.estado);
 
@@ -121,7 +146,7 @@ export default function PagoResultado() {
             "avisoPostPago",
             tipo === "entrada" ? "entrada_aprobada" : "compra_aprobada",
           );
-          localStorage.removeItem("pagoIdEnProceso");
+          limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
           hideLoading();
           navigate("/");
@@ -135,7 +160,7 @@ export default function PagoResultado() {
               ? "entrada_aprobada_error"
               : "compra_aprobada_error",
           );
-          localStorage.removeItem("pagoIdEnProceso");
+          limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
           hideLoading();
           navigate("/");
@@ -147,7 +172,7 @@ export default function PagoResultado() {
             "avisoPostPago",
             tipo === "entrada" ? "entrada_rechazada" : "compra_rechazada",
           );
-          localStorage.removeItem("pagoIdEnProceso");
+          limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
           hideLoading();
           navigate("/");
@@ -183,7 +208,7 @@ export default function PagoResultado() {
       style={{ minHeight: "100vh", padding: "24px" }}
     >
       <p className="text-muted mb-3">
-        Si cerraste la ventana de verificacion, podes volver atras desde aca.
+        Si cerraste la ventana de verificacion, podes volver al pago desde aca.
       </p>
 
       <button
@@ -191,7 +216,7 @@ export default function PagoResultado() {
         className="btn btn-outline-secondary"
         onClick={cerrarVerificacion}
       >
-        Volver atras
+        Volver al pago
       </button>
     </div>
   );

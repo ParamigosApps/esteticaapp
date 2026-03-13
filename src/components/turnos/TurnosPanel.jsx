@@ -179,9 +179,12 @@ function generarDiasDelMes(baseDate, fechaMax = null) {
   return dias;
 }
 
+const AGENDA_24HS_FALLBACK_DIAS = 90;
+
 function getLimiteReservableMs(servicio) {
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
-  return Date.now() + maxDias * 24 * 60 * 60 * 1000;
+  const diasVentana = maxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : maxDias;
+  return Date.now() + diasVentana * 24 * 60 * 60 * 1000;
 }
 
 function getFechaMaxReservable(servicio) {
@@ -667,6 +670,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     });
 
     if (pago?.data?.init_point) {
+      localStorage.setItem("pagoInitPointEnProceso", pago.data.init_point);
       window.location.href = pago.data.init_point;
     }
   }
@@ -808,16 +812,24 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       }}
     >
       <div className="agenda-header">
-        <small className="agenda-disponibilidad">
-          Agenda abierta hasta el{" "}
-          <b>{formatearSoloFecha(endOfDay(fechaMaxReservable))}</b>
-        </small>
+        {agendaEs24Horas ? (
+          <small className="agenda-disponibilidad">
+            Si el dia siguiente ya no tiene horarios, te mostramos la primera
+            fecha disponible.
+          </small>
+        ) : (
+          <small className="agenda-disponibilidad">
+            Agenda abierta hasta el{" "}
+            <b>{formatearSoloFecha(endOfDay(fechaMaxReservable))}</b>
+          </small>
+        )}
       </div>
 
       {agendaEs24Horas && (
         <div className="agenda-24hs-note">
           En agendas de 24 hs, a partir de las 18:00 se habilitan horarios del
-          dia siguiente.
+          dia siguiente. Si ese dia no tiene disponibilidad, te mostramos el
+          proximo con turnos libres.
         </div>
       )}
 

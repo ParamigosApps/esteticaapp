@@ -8,6 +8,7 @@ const { calcularMontosTurno } = require("../config/comisiones");
 const { WHATSAPP_TOKEN, enviarWhatsApp } = require("./whatsapp");
 
 const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 4;
+const AGENDA_24HS_FALLBACK_DIAS = 90;
 
 function normalizarEstadoTurno(turno = {}) {
   if (turno.estadoTurno) return turno.estadoTurno;
@@ -87,7 +88,9 @@ function sumarDiasISO(fechaISO, dias) {
 
 function getLimiteReservableMs(servicio) {
   const agendaMaxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
-  return Date.now() + agendaMaxDias * 24 * 60 * 60 * 1000;
+  const diasVentana =
+    agendaMaxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : agendaMaxDias;
+  return Date.now() + diasVentana * 24 * 60 * 60 * 1000;
 }
 
 function obtenerDiaSemanaISO(fechaISO) {
@@ -318,6 +321,8 @@ const {
       "Servicio";
 
     const agendaMaxDias = Math.max(1, Number(servicio.agendaMaxDias || 7));
+    const diasVentanaAgenda =
+      agendaMaxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : agendaMaxDias;
     const hoyISO = toISODateEnZona(new Date());
 
     if (fecha < hoyISO) {
@@ -359,7 +364,7 @@ const {
     if (inicioNum > limiteReservableMs) {
       throw new HttpsError(
         "failed-precondition",
-        `Este servicio solo permite reservar hasta ${agendaMaxDias} dias de anticipacion`,
+        `Este servicio solo permite reservar hasta ${diasVentanaAgenda} dias de anticipacion`,
       );
     }
 
