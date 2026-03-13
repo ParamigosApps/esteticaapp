@@ -6,7 +6,7 @@ const { getAdmin } = require("../_lib/firebaseAdmin");
 const { buildTurnoBaseCompat } = require("./turnoSchema");
 const { calcularMontosTurno } = require("../config/comisiones");
 
-const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 2;
+const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 4;
 
 function normalizarEstadoTurno(turno = {}) {
   if (turno.estadoTurno) return turno.estadoTurno;
@@ -366,7 +366,7 @@ const {
       ) {
         throw new HttpsError(
           "failed-precondition",
-          `Alcanaste el limite de ${MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS} solicitudes activas sin turnos confirmados. Espera una confirmacion antes de reservar otro turno.`,
+          `Alcanzaste el limite de ${MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS} solicitudes activas sin turnos confirmados. Espera una confirmacion antes de reservar otro turno.`,
         );
       }
 

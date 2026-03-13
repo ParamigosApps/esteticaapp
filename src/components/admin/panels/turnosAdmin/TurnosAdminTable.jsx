@@ -26,17 +26,28 @@ function getClienteInfo(turno, clientes) {
       turno.email ||
       (turno.clienteId || turno.usuarioId || turno.uid || "").slice(0, 8),
     telefono:
-      cliente?.telefono || turno.clienteTelefono || turno.telefonoCliente || "-",
+      cliente?.telefono ||
+      turno.clienteTelefono ||
+      turno.telefonoCliente ||
+      "-",
     email: cliente?.email || turno.clienteEmail || turno.email || "-",
   };
 }
 
 function getGabineteNombre(turno, gabinetes) {
   const gabinete = gabinetes[turno.gabineteId];
-  return gabinete?.nombreGabinete || turno.nombreGabinete || turno.gabineteId || "-";
+  return (
+    gabinete?.nombreGabinete || turno.nombreGabinete || turno.gabineteId || "-"
+  );
 }
 
-function TurnoRowContent({ turno, clientes, gabinetes, compact = false, nowMs }) {
+function TurnoRowContent({
+  turno,
+  clientes,
+  gabinetes,
+  compact = false,
+  nowMs,
+}) {
   const estadoTurno = getEstadoTurno(turno);
   const estadoPago = getEstadoPago(turno);
   const metodoPagoEsperado = getMetodoPagoEsperado(turno);
@@ -65,7 +76,9 @@ function TurnoRowContent({ turno, clientes, gabinetes, compact = false, nowMs })
       <article className="turno-admin-card">
         <div className="turno-admin-card-head">
           <div>
-            <p className="turno-admin-card-date">{formatearFecha(turno.fecha)}</p>
+            <p className="turno-admin-card-date">
+              {formatearFecha(turno.fecha)}
+            </p>
             <h3>{turno.nombreServicio || "Servicio"}</h3>
             {creadoPorAdmin ? (
               <div className="turno-origin-badge">Carga admin</div>
@@ -105,13 +118,16 @@ function TurnoRowContent({ turno, clientes, gabinetes, compact = false, nowMs })
             <strong>
               {formatMoney(montoPagado)} / {formatMoney(montoTotal)}
             </strong>
-            <small>Saldo: {formatMoney(saldoPendiente)}</small>
           </div>
         </div>
 
-        {(vencido || mostrarChequeoManual || (esPagoMP && estadoPago === "pendiente")) && (
+        {(vencido ||
+          mostrarChequeoManual ||
+          (esPagoMP && estadoPago === "pendiente")) && (
           <div className="turno-admin-notes">
-            {vencido ? <div className="turno-admin-note danger">Vencido</div> : null}
+            {vencido ? (
+              <div className="turno-admin-note danger">Vencido</div>
+            ) : null}
             {mostrarChequeoManual ? (
               <div className="turno-admin-note warning">
                 Chequear recibido: {formatMoney(getMontoAValidarPago(turno))}
@@ -165,7 +181,9 @@ function TurnoRowContent({ turno, clientes, gabinetes, compact = false, nowMs })
       <td>
         <div className="turno-cell-stack">
           <BadgeEstadoTurno estado={estadoTurno} />
-          {vencido ? <div className="turno-admin-note danger">Vencido</div> : null}
+          {vencido ? (
+            <div className="turno-admin-note danger">Vencido</div>
+          ) : null}
         </div>
       </td>
 
@@ -173,9 +191,9 @@ function TurnoRowContent({ turno, clientes, gabinetes, compact = false, nowMs })
         <div className="turno-cell-stack">
           <BadgeEstadoPago turno={turno} />
           <div className="turno-cell-muted">
-            {formatMoney(montoPagado)} / {formatMoney(montoTotal)}
+            Abonado: {formatMoney(montoPagado)} de {formatMoney(montoTotal)}
           </div>
-          <div className="turno-cell-muted">Saldo: {formatMoney(saldoPendiente)}</div>
+
           {mostrarChequeoManual ? (
             <div className="turno-admin-note warning">
               Chequear recibido: {formatMoney(getMontoAValidarPago(turno))}

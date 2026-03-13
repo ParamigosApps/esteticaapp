@@ -22,24 +22,78 @@ import { calcularMontosTurno } from "../../config/comisiones.js";
 import SlotHora from "./panels/SlotHora";
 
 function getReservaErrorMessage(err) {
+  const messageFromDetailsObject =
+    err?.details && typeof err.details === "object"
+      ? err.details.message || err.details.error || err.details.details
+      : null;
+  const messageFromCustomData =
+    err?.customData && typeof err.customData === "object"
+      ? err.customData.message ||
+        err.customData.details?.message ||
+        err.customData.details
+      : null;
+
   if (typeof err?.details === "string" && err.details.trim()) {
     return err.details;
   }
 
   if (
-    err?.details &&
-    typeof err.details === "object" &&
-    typeof err.details.message === "string" &&
-    err.details.message.trim()
+    typeof messageFromDetailsObject === "string" &&
+    messageFromDetailsObject.trim()
   ) {
-    return err.details.message;
+    return messageFromDetailsObject.trim();
+  }
+
+  if (
+    typeof messageFromCustomData === "string" &&
+    messageFromCustomData.trim()
+  ) {
+    return messageFromCustomData.trim();
   }
 
   if (typeof err?.message === "string" && err.message.trim()) {
-    return err.message.replace(/^firebaseerror:\s*/i, "").trim();
+    return err.message
+      .replace(/^firebaseerror:\s*/i, "")
+      .replace(/^(functions\/[a-z-]+:\s*)/i, "")
+      .trim();
   }
 
   return "Ocurrio un problema al intentar reservar el turno.";
+}
+
+function getReservaErrorAlert(err) {
+  const message = getReservaErrorMessage(err);
+  const knownMessages = [
+    "Alcanzaste el limite de",
+    "Este servicio solo permite reservar hasta",
+    "No se pueden reservar turnos en fechas pasadas",
+    "No se pueden reservar horarios pasados",
+    "Los turnos antes de las 12:00 requieren",
+    "El horario seleccionado no",
+    "Horario ocupado",
+    "Sin gabinetes activos",
+    "Servicio no encontrado",
+    "No autenticado",
+    "Datos incompletos",
+  ];
+
+  const esMensajeConocido = knownMessages.some((text) =>
+    message.toLowerCase().includes(text.toLowerCase()),
+  );
+
+  if (esMensajeConocido) {
+    return {
+      icon: "warning",
+      title: "No se pudo reservar",
+      text: message,
+    };
+  }
+
+  return {
+    icon: "error",
+    title: "Ocurrio un error",
+    text: "Ocurrio un problema inesperado al reservar. Por favor, comunicate con un administrador.",
+  };
 }
 
 function formatearFechaHora(ms) {
@@ -502,11 +556,18 @@ export default function TurnosPanel({ servicio }) {
       return res?.data;
     } catch (err) {
       console.error("Error reservando turno:", err);
+      const alertConfig = getReservaErrorAlert(err);
 
       Swal.fire({
-        icon: "warning",
-        title: "No se pudo reservar",
-        text: getReservaErrorMessage(err),
+        icon: alertConfig.icon,
+        title: alertConfig.title,
+        text: alertConfig.text,
+        confirmButtonText: "Entendido",
+        customClass: {
+          popup: "swal-popup-custom",
+          confirmButton: "swal-btn-confirm",
+        },
+        buttonsStyling: false,
       });
     } finally {
       setLoadingReserva(false);
