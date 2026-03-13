@@ -3,10 +3,9 @@ import {
   addDoc,
   collection,
   onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "../../../Firebase";
 import { calcularMontosTurno } from "../../../config/comisiones";
 import { generarSlotsDia } from "../../../public/utils/generarSlotsDia";
@@ -48,11 +47,29 @@ function formatHourLocal(timestamp) {
   });
 }
 
+function toISODateLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function formatDateShort(fechaIso) {
+  return new Date(`${fechaIso}T00:00:00`).toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
 function getDiaConfig(servicio, fechaIso) {
   const fecha = new Date(`${fechaIso}T00:00:00`);
   const diaSemana = fecha.getDay();
 
-  if (!Array.isArray(servicio?.horariosServicio) || !servicio.horariosServicio.length) {
+  if (
+    !Array.isArray(servicio?.horariosServicio) ||
+    !servicio.horariosServicio.length
+  ) {
     return null;
   }
 
@@ -98,8 +115,11 @@ export default function TurnosAdminPanel() {
   const [gabinetes, setGabinetes] = useState({});
   const [servicios, setServicios] = useState([]);
   const [creandoTurno, setCreandoTurno] = useState(false);
-  const [gabineteHorarios, setGabineteHorarios] = useState([]);
-  const [cargandoGabineteHorarios, setCargandoGabineteHorarios] = useState(false);
+  const [agendaManual, setAgendaManual] = useState(null);
+  const [cargandoGabineteHorarios, setCargandoGabineteHorarios] =
+    useState(false);
+  const [sugerenciasHorarios, setSugerenciasHorarios] = useState([]);
+  const [cargandoSugerencias, setCargandoSugerencias] = useState(false);
 
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [fechaFiltro, setFechaFiltro] = useState("");
@@ -141,7 +161,10 @@ export default function TurnosAdminPanel() {
         );
       },
       (error) => {
-        console.error("Error leyendo collection(turnos) en TurnosAdminPanel", error);
+        console.error(
+          "Error leyendo collection(turnos) en TurnosAdminPanel",
+          error,
+        );
         setTurnos([]);
       },
     );
@@ -158,7 +181,10 @@ export default function TurnosAdminPanel() {
         setClientes(map);
       },
       (error) => {
-        console.error("Error leyendo collection(usuarios) en TurnosAdminPanel", error);
+        console.error(
+          "Error leyendo collection(usuarios) en TurnosAdminPanel",
+          error,
+        );
         setClientes({});
       },
     );
@@ -175,7 +201,10 @@ export default function TurnosAdminPanel() {
         setGabinetes(map);
       },
       (error) => {
-        console.error("Error leyendo collection(gabinetes) en TurnosAdminPanel", error);
+        console.error(
+          "Error leyendo collection(gabinetes) en TurnosAdminPanel",
+          error,
+        );
         setGabinetes({});
       },
     );
@@ -196,51 +225,19 @@ export default function TurnosAdminPanel() {
         );
       },
       (error) => {
-        console.error("Error leyendo collection(servicios) en TurnosAdminPanel", error);
+        console.error(
+          "Error leyendo collection(servicios) en TurnosAdminPanel",
+          error,
+        );
         setServicios([]);
       },
     );
   }, []);
 
-  useEffect(() => {
-    if (!nuevoTurno.gabineteId) {
-      setGabineteHorarios([]);
-      return undefined;
-    }
-
-    setCargandoGabineteHorarios(true);
-
-    const horariosQuery = query(
-      collection(db, "gabinetes", nuevoTurno.gabineteId, "horarios"),
-      orderBy("diaSemana"),
-    );
-
-    return onSnapshot(
-      horariosQuery,
-      (snap) => {
-        setGabineteHorarios(
-          snap.docs
-            .map((d) => ({
-              id: d.id,
-              ...d.data(),
-            }))
-            .filter((horario) => horario.activo !== false),
-        );
-        setCargandoGabineteHorarios(false);
-      },
-      (error) => {
-        console.error(
-          "Error leyendo subcollection(gabinetes/{id}/horarios) en TurnosAdminPanel",
-          error,
-        );
-        setGabineteHorarios([]);
-        setCargandoGabineteHorarios(false);
-      },
-    );
-  }, [nuevoTurno.gabineteId]);
-
   const servicioSeleccionado = useMemo(
-    () => servicios.find((servicio) => servicio.id === nuevoTurno.servicioId) || null,
+    () =>
+      servicios.find((servicio) => servicio.id === nuevoTurno.servicioId) ||
+      null,
     [servicios, nuevoTurno.servicioId],
   );
 
@@ -264,7 +261,9 @@ export default function TurnosAdminPanel() {
       .map((gabinete) => ({
         id: gabinete.id,
         nombreGabinete:
-          gabinetes[gabinete.id]?.nombreGabinete || gabinete.nombreGabinete || "-",
+          gabinetes[gabinete.id]?.nombreGabinete ||
+          gabinete.nombreGabinete ||
+          "-",
         activo: gabinetes[gabinete.id]?.activo ?? true,
       }))
       .filter((gabinete) => gabinete.activo !== false);
@@ -298,6 +297,47 @@ export default function TurnosAdminPanel() {
       .sort(sortClientes);
   }, [clientes]);
 
+  useEffect(() => {
+    if (!servicioSeleccionado || !nuevoTurno.fecha || !nuevoTurno.gabineteId) {
+      setAgendaManual(null);
+      setCargandoGabineteHorarios(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+
+    async function cargarAgendaManual() {
+      setCargandoGabineteHorarios(true);
+
+      try {
+        const result = await getAgendaFn({
+          gabineteIds: [nuevoTurno.gabineteId],
+          fecha: nuevoTurno.fecha,
+        });
+
+        if (!cancelled) {
+          setAgendaManual(result.data || { horarios: [], turnos: [], bloqueos: [] });
+        }
+      } catch (error) {
+        console.error("Error cargando agenda manual", error);
+        if (!cancelled) {
+          setAgendaManual({ horarios: [], turnos: [], bloqueos: [] });
+        }
+      } finally {
+        if (!cancelled) {
+          setCargandoGabineteHorarios(false);
+        }
+      }
+    }
+
+    void cargarAgendaManual();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nuevoTurno.fecha, nuevoTurno.gabineteId, servicioSeleccionado]);
+
   const slotsDisponibles = useMemo(() => {
     if (!servicioSeleccionado || !nuevoTurno.fecha || !nuevoTurno.gabineteId) {
       return [];
@@ -307,22 +347,7 @@ export default function TurnosAdminPanel() {
       return [];
     }
 
-    const agenda = {
-      horarios: gabineteHorarios.map((horario) => ({
-        ...horario,
-        gabineteId: nuevoTurno.gabineteId,
-      })),
-      turnos: turnos.filter((turno) => {
-        if (turno.fecha !== nuevoTurno.fecha) return false;
-        if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
-
-        const estadoTurno = getEstadoTurno(turno);
-        return !["cancelado", "rechazado", "finalizado", "perdido"].includes(
-          estadoTurno,
-        );
-      }),
-      bloqueos: [],
-    };
+    const agenda = agendaManual || { horarios: [], turnos: [], bloqueos: [] };
 
     return generarSlotsDia(
       agenda,
@@ -330,11 +355,10 @@ export default function TurnosAdminPanel() {
       new Date(`${nuevoTurno.fecha}T00:00:00`),
     ).filter((slot) => !slot.ocupado);
   }, [
-    gabineteHorarios,
+    agendaManual,
     nuevoTurno.fecha,
     nuevoTurno.gabineteId,
     servicioSeleccionado,
-    turnos,
   ]);
 
   const turnosFiltrados = useMemo(() => {
@@ -350,24 +374,36 @@ export default function TurnosAdminPanel() {
 
       const cliente = clientes[turno.clienteId || turno.usuarioId || turno.uid];
       const nombreCliente =
-        cliente?.nombre || cliente?.email || turno.nombreCliente || turno.email || "";
+        cliente?.nombre ||
+        cliente?.email ||
+        turno.nombreCliente ||
+        turno.email ||
+        "";
       const telefonoCliente =
-        cliente?.telefono || turno.clienteTelefono || turno.telefonoCliente || "";
+        cliente?.telefono ||
+        turno.clienteTelefono ||
+        turno.telefonoCliente ||
+        "";
       const emailCliente =
         cliente?.email || turno.clienteEmail || turno.email || "";
 
       const nombreServicio = turno.nombreServicio || "";
       const nombreGabinete =
-        gabinetes[turno.gabineteId]?.nombreGabinete || turno.nombreGabinete || "";
+        gabinetes[turno.gabineteId]?.nombreGabinete ||
+        turno.nombreGabinete ||
+        "";
 
       const montoTotal = Number(turno?.montoTotal ?? turno?.precioTotal ?? 0);
       const montoPagado = Number(turno?.montoPagado ?? 0);
       const saldoPendiente = Math.max(0, montoTotal - montoPagado);
 
-      if (filtroEstado !== "todos" && estadoTurno !== filtroEstado) return false;
+      if (filtroEstado !== "todos" && estadoTurno !== filtroEstado)
+        return false;
       if (fechaFiltro && turno.fecha !== fechaFiltro) return false;
-      if (filtroEstadoPago !== "todos" && estadoPago !== filtroEstadoPago) return false;
-      if (filtroMetodoPago !== "todos" && metodoPagoBase !== filtroMetodoPago) return false;
+      if (filtroEstadoPago !== "todos" && estadoPago !== filtroEstadoPago)
+        return false;
+      if (filtroMetodoPago !== "todos" && metodoPagoBase !== filtroMetodoPago)
+        return false;
       if (soloSaldoPendiente && saldoPendiente <= 0) return false;
 
       if (texto) {
@@ -406,7 +442,10 @@ export default function TurnosAdminPanel() {
         const saldoPendiente = Math.max(0, montoTotal - montoPagado);
 
         acc.total += 1;
-        if (estadoTurno === "pendiente" || estadoTurno === "pendiente_aprobacion") {
+        if (
+          estadoTurno === "pendiente" ||
+          estadoTurno === "pendiente_aprobacion"
+        ) {
           acc.porConfirmar += 1;
         }
         if (estadoTurno === "confirmado") {
@@ -491,6 +530,89 @@ export default function TurnosAdminPanel() {
   }, [clientes, nuevoTurno.clienteId]);
 
   useEffect(() => {
+    if (!servicioSeleccionado || !nuevoTurno.fecha || !nuevoTurno.gabineteId) {
+      setSugerenciasHorarios([]);
+      setCargandoSugerencias(false);
+      return undefined;
+    }
+
+    if (cargandoGabineteHorarios || slotsDisponibles.length > 0) {
+      setSugerenciasHorarios([]);
+      setCargandoSugerencias(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+
+    async function cargarSugerencias() {
+      setCargandoSugerencias(true);
+
+      try {
+        const fechaBase = new Date(`${nuevoTurno.fecha}T00:00:00`);
+        const maxDias = Math.max(1, Number(servicioSeleccionado?.agendaMaxDias || 7));
+        const sugerencias = [];
+
+        for (let offset = 1; offset < maxDias && sugerencias.length < 3; offset += 1) {
+          const fecha = new Date(fechaBase);
+          fecha.setDate(fecha.getDate() + offset);
+          const fechaIso = toISODateLocal(fecha);
+
+          if (!estaDentroVentanaAgenda(servicioSeleccionado, fechaIso)) {
+            break;
+          }
+
+          const result = await getAgendaFn({
+            gabineteIds: [nuevoTurno.gabineteId],
+            fecha: fechaIso,
+          });
+
+          const agenda = result.data || { horarios: [], turnos: [], bloqueos: [] };
+          const slots = generarSlotsDia(
+            agenda,
+            servicioSeleccionado,
+            new Date(`${fechaIso}T00:00:00`),
+          ).filter((slot) => !slot.ocupado);
+
+          if (slots.length && !cancelled) {
+            sugerencias.push({
+              fecha: fechaIso,
+              label: formatDateShort(fechaIso),
+              cantidad: slots.length,
+              primeraHora: formatHourLocal(slots[0].inicio),
+            });
+          }
+        }
+
+        if (!cancelled) {
+          setSugerenciasHorarios(sugerencias);
+        }
+      } catch (error) {
+        console.error("Error cargando sugerencias de horarios", error);
+        if (!cancelled) {
+          setSugerenciasHorarios([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCargandoSugerencias(false);
+        }
+      }
+    }
+
+    void cargarSugerencias();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    cargandoGabineteHorarios,
+    nuevoTurno.fecha,
+    nuevoTurno.gabineteId,
+    servicioSeleccionado,
+    slotsDisponibles.length,
+  ]);
+
+  useEffect(() => {
     if (!nuevoTurno.horaInicio) return;
 
     const sigueDisponible = slotsDisponibles.some(
@@ -547,7 +669,10 @@ export default function TurnosAdminPanel() {
       return;
     }
 
-    const duracionMin = Math.max(1, Number(servicioSeleccionado.duracionMin || 0));
+    const duracionMin = Math.max(
+      1,
+      Number(servicioSeleccionado.duracionMin || 0),
+    );
     const finMs = inicioMs + duracionMin * 60000;
     const montoPagado = Math.max(0, Number(nuevoTurno.montoPagado || 0));
     const montos = calcularMontosTurno({
@@ -594,7 +719,11 @@ export default function TurnosAdminPanel() {
       if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
 
       const estadoTurno = getEstadoTurno(turno);
-      if (["cancelado", "rechazado", "finalizado", "perdido"].includes(estadoTurno)) {
+      if (
+        ["cancelado", "rechazado", "finalizado", "perdido"].includes(
+          estadoTurno,
+        )
+      ) {
         return false;
       }
 
@@ -614,7 +743,9 @@ export default function TurnosAdminPanel() {
 
     const gabineteSeleccionado =
       gabinetes[nuevoTurno.gabineteId] ||
-      gabinetesDisponibles.find((gabinete) => gabinete.id === nuevoTurno.gabineteId);
+      gabinetesDisponibles.find(
+        (gabinete) => gabinete.id === nuevoTurno.gabineteId,
+      );
 
     const montoAnticipo = montos.montoAnticipoTotal;
     const saldoPendiente = Math.max(0, montos.montoTotal - montoPagado);
@@ -719,8 +850,7 @@ export default function TurnosAdminPanel() {
           <p className="turnos-admin-eyebrow">Panel operativo</p>
           <h2 className="turnos-admin-title">Turnos y reservas</h2>
           <p className="turnos-admin-subtitle">
-            Revisa agenda, estado del pago y acciones operativas desde una vista mas
-            clara en desktop y mobile.
+            Revisa agenda, estado del pago y acciones operativas.
           </p>
         </div>
 
@@ -749,15 +879,17 @@ export default function TurnosAdminPanel() {
           <div>
             <h3 className="turnos-filtros-title">Agregar turno manual</h3>
             <p className="turnos-filtros-desc">
-              Crea reservas desde admin con servicio real, calculo de montos y chequeo
-              basico de solapamientos.
+              Crea reservas desde admin con servicio real, calculo de montos y
+              chequeo basico de solapamientos.
             </p>
           </div>
 
           {previewMontos ? (
             <div className="turnos-create-pricing">
               <span>Total {formatMoney(previewMontos.montoTotal)}</span>
-              <small>Anticipo {formatMoney(previewMontos.montoAnticipoTotal)}</small>
+              <small>
+                Anticipo {formatMoney(previewMontos.montoAnticipoTotal)}
+              </small>
             </div>
           ) : null}
         </div>
@@ -789,7 +921,10 @@ export default function TurnosAdminPanel() {
               <option value="">Elegi un servicio</option>
               {servicios.map((servicio) => (
                 <option key={servicio.id} value={servicio.id}>
-                  {servicio.nombreServicio} {servicio.nombreProfesional ? `• ${servicio.nombreProfesional}` : ""}
+                  {servicio.nombreServicio}{" "}
+                  {servicio.nombreProfesional
+                    ? `• ${servicio.nombreProfesional}`
+                    : ""}
                 </option>
               ))}
             </select>
@@ -818,7 +953,9 @@ export default function TurnosAdminPanel() {
               type="text"
               placeholder="Nombre y apellido"
               value={nuevoTurno.nombreCliente}
-              onChange={(e) => updateNuevoTurno("nombreCliente", e.target.value)}
+              onChange={(e) =>
+                updateNuevoTurno("nombreCliente", e.target.value)
+              }
             />
           </div>
 
@@ -829,7 +966,9 @@ export default function TurnosAdminPanel() {
               type="text"
               placeholder="Ej: 11 5555 5555"
               value={nuevoTurno.clienteTelefono}
-              onChange={(e) => updateNuevoTurno("clienteTelefono", e.target.value)}
+              onChange={(e) =>
+                updateNuevoTurno("clienteTelefono", e.target.value)
+              }
             />
           </div>
 
@@ -870,7 +1009,9 @@ export default function TurnosAdminPanel() {
             <select
               className="turnos-filtro-control"
               value={nuevoTurno.metodoPagoEsperado}
-              onChange={(e) => updateNuevoTurno("metodoPagoEsperado", e.target.value)}
+              onChange={(e) =>
+                updateNuevoTurno("metodoPagoEsperado", e.target.value)
+              }
             >
               <option value="manual">Manual</option>
               <option value="transferencia">Transferencia</option>
@@ -893,7 +1034,9 @@ export default function TurnosAdminPanel() {
             {montoSugerido ? (
               <small className="turnos-create-field-hint">
                 Sugerido: {formatMoney(montoSugerido)}{" "}
-                {servicioSeleccionado?.pedirAnticipo ? "(sena + comision)" : "(total)"}
+                {servicioSeleccionado?.pedirAnticipo
+                  ? "(sena + comision)"
+                  : "(total)"}
               </small>
             ) : null}
           </div>
@@ -920,19 +1063,48 @@ export default function TurnosAdminPanel() {
             </span>
           </div>
 
-          {!nuevoTurno.fecha || !servicioSeleccionado || !nuevoTurno.gabineteId ? (
+          {!nuevoTurno.fecha ||
+          !servicioSeleccionado ||
+          !nuevoTurno.gabineteId ? (
             <div className="turnos-slots-empty">
-              Selecciona servicio, gabinete y fecha para ver la agenda simplificada.
+              Selecciona servicio, gabinete y fecha para ver la agenda
+              simplificada.
             </div>
-          ) : !estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha) ? (
+          ) : !estaDentroVentanaAgenda(
+              servicioSeleccionado,
+              nuevoTurno.fecha,
+            ) ? (
             <div className="turnos-slots-empty">
               La fecha elegida queda fuera de la agenda abierta del servicio.
             </div>
           ) : cargandoGabineteHorarios ? (
-            <div className="turnos-slots-empty">Cargando horarios del gabinete...</div>
-          ) : slotsDisponibles.length === 0 ? (
             <div className="turnos-slots-empty">
-              No hay horarios disponibles para esa combinacion.
+              Cargando horarios del gabinete...
+            </div>
+          ) : slotsDisponibles.length === 0 ? (
+            <div className="turnos-slots-empty turnos-slots-empty-error">
+              <strong>No hay horarios disponibles para esa combinacion.</strong>
+              {cargandoSugerencias ? (
+                <span>Buscando proximas fechas con disponibilidad...</span>
+              ) : sugerenciasHorarios.length ? (
+                <div className="turnos-slots-suggestions">
+                  <span>Proba alguna de estas fechas:</span>
+                  <div className="turnos-slots-suggestion-list">
+                    {sugerenciasHorarios.map((sugerencia) => (
+                      <button
+                        key={sugerencia.fecha}
+                        type="button"
+                        className="turnos-slots-suggestion-btn"
+                        onClick={() => updateNuevoTurno("fecha", sugerencia.fecha)}
+                      >
+                        {sugerencia.label} · {sugerencia.primeraHora}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <span>No encontramos fechas cercanas con turnos para este gabinete.</span>
+              )}
             </div>
           ) : (
             <div className="turnos-slots-grid">
@@ -957,8 +1129,9 @@ export default function TurnosAdminPanel() {
 
         <div className="turnos-create-footer">
           <div className="turnos-create-hint">
-            El turno se crea como <strong>confirmado</strong> y con estado de pago
-            calculado segun el monto ingresado.
+            El turno se crea como <strong>confirmado</strong> y con estado de
+            pago calculado segun el monto ingresado. Desde admin no se aplica la
+            anticipacion minima publica de reserva.
           </div>
 
           <div className="turnos-create-actions">
@@ -986,8 +1159,8 @@ export default function TurnosAdminPanel() {
           <div>
             <h3 className="turnos-filtros-title">Filtros</h3>
             <p className="turnos-filtros-desc">
-              Combina estado, fecha, metodo y busqueda libre para encontrar rapido cada
-              turno.
+              Combina estado, fecha, metodo y busqueda libre para encontrar
+              rapido cada turno.
             </p>
           </div>
 
@@ -1038,7 +1211,9 @@ export default function TurnosAdminPanel() {
             >
               <option value="todos">Todos los pagos</option>
               <option value="pendiente">Pago pendiente</option>
-              <option value="pendiente_aprobacion">Pendiente aprobacion pago</option>
+              <option value="pendiente_aprobacion">
+                Pendiente aprobacion pago
+              </option>
               <option value="parcial">Pago parcial</option>
               <option value="abonado">Abonado</option>
               <option value="reembolsado">Reembolsado</option>

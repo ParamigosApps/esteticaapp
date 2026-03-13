@@ -3,6 +3,10 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { assertAdmin } = require("./adminTurnosShared");
 
+function resolveEstadoTurno(turno = {}) {
+  return String(turno?.estadoTurno || turno?.estado || "pendiente");
+}
+
 exports.marcarTurnoReembolsadoAdmin = onCall(
   { region: "us-central1" },
   async (request) => {
@@ -24,8 +28,16 @@ exports.marcarTurnoReembolsadoAdmin = onCall(
       }
 
       const turno = turnoSnap.data() || {};
+      const estadoTurnoActual = resolveEstadoTurno(turno);
       const montoPagado = Number(turno?.montoPagado ?? 0);
       const estadoPagoActual = String(turno?.estadoPago || "pendiente");
+
+      if (estadoTurnoActual !== "cancelado") {
+        throw new HttpsError(
+          "failed-precondition",
+          "Solo se puede reembolsar un turno cancelado",
+        );
+      }
 
       if (montoPagado <= 0) {
         throw new HttpsError(

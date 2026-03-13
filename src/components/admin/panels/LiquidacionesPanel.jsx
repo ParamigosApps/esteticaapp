@@ -75,20 +75,14 @@ function buildLiquidacionPdf(liquidacion) {
     120,
     26,
   );
-  doc.text(
-    `Comision: ${formatMoney(liquidacion.totalComisiones)}`,
-    120,
-    32,
-  );
-  doc.text(
-    `Neto: ${formatMoney(liquidacion.totalLiquidable)}`,
-    120,
-    38,
-  );
+  doc.text(`Comision: ${formatMoney(liquidacion.totalComisiones)}`, 120, 32);
+  doc.text(`Neto: ${formatMoney(liquidacion.totalLiquidable)}`, 120, 38);
 
   autoTable(doc, {
     startY: 46,
-    head: [["Fecha", "Cliente", "Servicio", "Metodo", "Bruto", "Comision", "Neto"]],
+    head: [
+      ["Fecha", "Cliente", "Servicio", "Metodo", "Bruto", "Comision", "Neto"],
+    ],
     body: pagosDetalle.map((pago) => [
       formatDate(pago.aprobadoEn || pago.creadoEn || pago.createdAt),
       pago.clienteNombre,
@@ -132,8 +126,12 @@ export default function LiquidacionesPanel() {
   const [notas, setNotas] = useState("");
   const [seleccionados, setSeleccionados] = useState({});
   const [guardando, setGuardando] = useState(false);
-  const [liquidacionSeleccionadaId, setLiquidacionSeleccionadaId] = useState("");
-  const crearLiquidacionAdmin = httpsCallable(functions, "crearLiquidacionAdmin");
+  const [liquidacionSeleccionadaId, setLiquidacionSeleccionadaId] =
+    useState("");
+  const crearLiquidacionAdmin = httpsCallable(
+    functions,
+    "crearLiquidacionAdmin",
+  );
 
   useEffect(() => {
     return onSnapshot(collection(db, "pagos"), (snap) => {
@@ -165,7 +163,9 @@ export default function LiquidacionesPanel() {
             ...docItem.data(),
           }))
           .sort(
-            (a, b) => getTimestampMs(b.createdAt || b.updatedAt) - getTimestampMs(a.createdAt || a.updatedAt),
+            (a, b) =>
+              getTimestampMs(b.createdAt || b.updatedAt) -
+              getTimestampMs(a.createdAt || a.updatedAt),
           ),
       );
     });
@@ -187,7 +187,10 @@ export default function LiquidacionesPanel() {
           pago.profesionalNombre || turno.profesionalNombre || "-",
         nombreGabinete: pago.nombreGabinete || turno.nombreGabinete || "-",
         metodo:
-          pago.metodo || turno.metodoPagoUsado || turno.metodoPagoEsperado || "-",
+          pago.metodo ||
+          turno.metodoPagoUsado ||
+          turno.metodoPagoEsperado ||
+          "-",
         montoComision: Number(pago.montoComision || 0),
         montoLiquidable: Number(
           pago.montoLiquidable ??
@@ -199,19 +202,28 @@ export default function LiquidacionesPanel() {
 
   const pagosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-    const desdeMs = fechaDesde ? new Date(`${fechaDesde}T00:00:00`).getTime() : 0;
-    const hastaMs = fechaHasta ? new Date(`${fechaHasta}T23:59:59`).getTime() : 0;
+    const desdeMs = fechaDesde
+      ? new Date(`${fechaDesde}T00:00:00`).getTime()
+      : 0;
+    const hastaMs = fechaHasta
+      ? new Date(`${fechaHasta}T23:59:59`).getTime()
+      : 0;
 
     return pagosConDetalle.filter((pago) => {
       const creadoMs = getTimestampMs(
         pago.aprobadoEn || pago.creadoEn || pago.createdAt,
       );
+      const turno = turnos[pago.turnoId] || {};
 
       if (filtroEstado === "pendientes" && pago.liquidado) return false;
       if (filtroEstado === "liquidados" && !pago.liquidado) return false;
-      if (filtroMetodo !== "todos" && pago.metodo !== filtroMetodo) return false;
+      if (filtroMetodo !== "todos" && pago.metodo !== filtroMetodo)
+        return false;
       if (desdeMs && creadoMs < desdeMs) return false;
       if (hastaMs && creadoMs > hastaMs) return false;
+      if (pago.estado === "reembolsado" || turno.estadoPago === "reembolsado") {
+        return false;
+      }
 
       if (texto) {
         const blob = `
@@ -228,7 +240,15 @@ export default function LiquidacionesPanel() {
 
       return pago.estado === "aprobado";
     });
-  }, [pagosConDetalle, filtroEstado, filtroMetodo, fechaDesde, fechaHasta, busqueda]);
+  }, [
+    pagosConDetalle,
+    filtroEstado,
+    filtroMetodo,
+    fechaDesde,
+    fechaHasta,
+    busqueda,
+    turnos,
+  ]);
 
   const pagosSeleccionables = useMemo(
     () => pagosFiltrados.filter((pago) => !pago.liquidado),
@@ -251,7 +271,10 @@ export default function LiquidacionesPanel() {
   const liquidacionesConDetalle = useMemo(() => {
     return liquidaciones.map((liquidacion) => {
       const pagosLiquidacion = pagosConDetalle.filter((pago) => {
-        if (Array.isArray(liquidacion.pagosIds) && liquidacion.pagosIds.includes(pago.id)) {
+        if (
+          Array.isArray(liquidacion.pagosIds) &&
+          liquidacion.pagosIds.includes(pago.id)
+        ) {
           return true;
         }
         return pago.liquidacionId === liquidacion.id;
@@ -312,7 +335,11 @@ export default function LiquidacionesPanel() {
   );
 
   const totalSeleccionado = useMemo(
-    () => pagosSeleccionados.reduce((acc, pago) => acc + Number(pago.monto || 0), 0),
+    () =>
+      pagosSeleccionados.reduce(
+        (acc, pago) => acc + Number(pago.monto || 0),
+        0,
+      ),
     [pagosSeleccionados],
   );
 
@@ -338,7 +365,9 @@ export default function LiquidacionesPanel() {
     return liquidacionesConDetalle.reduce(
       (acc, liquidacion) => {
         acc.cantidad += 1;
-        acc.totalBruto += Number(liquidacion.totalBruto ?? liquidacion.total ?? 0);
+        acc.totalBruto += Number(
+          liquidacion.totalBruto ?? liquidacion.total ?? 0,
+        );
         acc.totalNeto += Number(liquidacion.totalLiquidable || 0);
         return acc;
       },
@@ -352,10 +381,10 @@ export default function LiquidacionesPanel() {
 
   const hayFiltrosActivos = Boolean(
     filtroEstado !== "pendientes" ||
-      filtroMetodo !== "todos" ||
-      fechaDesde ||
-      fechaHasta ||
-      busqueda,
+    filtroMetodo !== "todos" ||
+    fechaDesde ||
+    fechaHasta ||
+    busqueda,
   );
 
   async function liquidarSeleccionados() {
@@ -451,7 +480,9 @@ export default function LiquidacionesPanel() {
     });
 
     try {
-      buildLiquidacionPdf(liquidacion).save(`liquidacion-${liquidacion.id}.pdf`);
+      buildLiquidacionPdf(liquidacion).save(
+        `liquidacion-${liquidacion.id}.pdf`,
+      );
     } finally {
       hideLoading();
     }
@@ -485,6 +516,21 @@ export default function LiquidacionesPanel() {
             Revisa pagos aprobados, genera cierres y consulta el historial con
             exportacion PDF desde un solo panel.
           </p>
+
+          <div className="liquidaciones-hero-meta">
+            <div className="liquidaciones-hero-pill">
+              <span>Neto pendiente</span>
+              <strong>{formatMoney(totalNetoPendiente)}</strong>
+            </div>
+            <div className="liquidaciones-hero-pill">
+              <span>Comision retenida</span>
+              <strong>{formatMoney(totalComisionPendiente)}</strong>
+            </div>
+            <div className="liquidaciones-hero-pill">
+              <span>Historial neto</span>
+              <strong>{formatMoney(resumenHistorial.totalNeto)}</strong>
+            </div>
+          </div>
         </div>
 
         <div className="liquidaciones-hero-status">
@@ -552,7 +598,7 @@ export default function LiquidacionesPanel() {
             </div>
 
             <div className="turnos-filtro-item">
-              <label htmlFor="liquidaciones-desde">Desde</label>
+              <label htmlFor="liquidaciones-desde">Desdess</label>
               <input
                 id="liquidaciones-desde"
                 className="turnos-filtro-control"
@@ -663,6 +709,16 @@ export default function LiquidacionesPanel() {
       </section>
 
       <div className="tabla-turnos-wrapper liquidaciones-table-shell">
+        <div className="liquidaciones-table-head">
+          <div>
+            <span className="liquidaciones-section-kicker">Pagos</span>
+            <h3>Detalle liquidable</h3>
+          </div>
+          <div className="liquidaciones-table-summary">
+            <span>{pagosSeleccionables.length} pendientes</span>
+            <strong>{formatMoney(totalNetoPendiente)}</strong>
+          </div>
+        </div>
         <table className="tabla-turnos liquidaciones-table">
           <thead>
             <tr>
@@ -702,10 +758,14 @@ export default function LiquidacionesPanel() {
                   />
                 </td>
                 <td className="liquidaciones-date-cell">
-                  {formatDate(pago.aprobadoEn || pago.creadoEn || pago.createdAt)}
+                  {formatDate(
+                    pago.aprobadoEn || pago.creadoEn || pago.createdAt,
+                  )}
                 </td>
                 <td>
-                  <div className="liquidaciones-cell-main">{pago.clienteNombre}</div>
+                  <div className="liquidaciones-cell-main">
+                    {pago.clienteNombre}
+                  </div>
                   <div className="liquidaciones-cell-sub">{pago.id}</div>
                 </td>
                 <td>{pago.nombreServicio}</td>
@@ -713,7 +773,9 @@ export default function LiquidacionesPanel() {
                   <div className="liquidaciones-cell-main">
                     {pago.profesionalNombre}
                   </div>
-                  <div className="liquidaciones-cell-sub">{pago.nombreGabinete}</div>
+                  <div className="liquidaciones-cell-sub">
+                    {pago.nombreGabinete}
+                  </div>
                 </td>
                 <td>{formatMetodo(pago.metodo)}</td>
                 <td>{formatTipo(pago.tipoPago || pago.tipo)}</td>
@@ -743,7 +805,8 @@ export default function LiquidacionesPanel() {
                   <div className="liquidaciones-empty-state">
                     <strong>Sin resultados para los filtros actuales</strong>
                     <span>
-                      Ajusta fechas, metodo o busqueda para volver a encontrar pagos.
+                      Ajusta fechas, metodo o busqueda para volver a encontrar
+                      pagos.
                     </span>
                   </div>
                 </td>
@@ -768,14 +831,25 @@ export default function LiquidacionesPanel() {
                 key={liquidacion.id}
                 type="button"
                 className={`liquidaciones-history-item ${
-                  liquidacion.id === liquidacionSeleccionadaId ? "is-active" : ""
+                  liquidacion.id === liquidacionSeleccionadaId
+                    ? "is-active"
+                    : ""
                 }`}
                 onClick={() => setLiquidacionSeleccionadaId(liquidacion.id)}
               >
                 <div className="liquidaciones-history-copy">
-                  <strong>{liquidacion.id}</strong>
-                  <span>{formatDate(liquidacion.createdAt || liquidacion.updatedAt)}</span>
-                  <small>{liquidacion.cantidadPagos || liquidacion.pagosLiquidacion.length} pagos</small>
+                  <div className="liquidaciones-history-topline">
+                    <strong>{liquidacion.id}</strong>
+                    <span className="liquidaciones-history-chip">
+                      {liquidacion.cantidadPagos ||
+                        liquidacion.pagosLiquidacion.length}{" "}
+                      pagos
+                    </span>
+                  </div>
+                  <span>
+                    {formatDate(liquidacion.createdAt || liquidacion.updatedAt)}
+                  </span>
+                  <small>Bruto {formatMoney(liquidacion.totalBruto ?? liquidacion.total)}</small>
                 </div>
                 <div className="liquidaciones-history-amounts">
                   <span>{formatMoney(liquidacion.totalLiquidable)}</span>
@@ -808,6 +882,18 @@ export default function LiquidacionesPanel() {
                   </p>
                 </div>
 
+                <div className="liquidaciones-detail-highlight">
+                  <small>Neto liquidado</small>
+                  <strong>
+                    {formatMoney(liquidacionSeleccionada.totalLiquidable)}
+                  </strong>
+                  <span>
+                    {liquidacionSeleccionada.cantidadPagos ||
+                      liquidacionSeleccionada.pagosLiquidacion.length}{" "}
+                    pagos incluidos
+                  </span>
+                </div>
+
                 <div className="liquidaciones-detail-actions">
                   <button
                     type="button"
@@ -819,7 +905,9 @@ export default function LiquidacionesPanel() {
                   <button
                     type="button"
                     className="liquidaciones-secondary-btn"
-                    onClick={() => exportarLiquidacionPdf(liquidacionSeleccionada)}
+                    onClick={() =>
+                      exportarLiquidacionPdf(liquidacionSeleccionada)
+                    }
                   >
                     Exportar PDF
                   </button>
@@ -838,11 +926,15 @@ export default function LiquidacionesPanel() {
                 </article>
                 <article className="liquidaciones-mini-card">
                   <span>Comision</span>
-                  <strong>{formatMoney(liquidacionSeleccionada.totalComisiones)}</strong>
+                  <strong>
+                    {formatMoney(liquidacionSeleccionada.totalComisiones)}
+                  </strong>
                 </article>
                 <article className="liquidaciones-mini-card">
                   <span>Neto</span>
-                  <strong>{formatMoney(liquidacionSeleccionada.totalLiquidable)}</strong>
+                  <strong>
+                    {formatMoney(liquidacionSeleccionada.totalLiquidable)}
+                  </strong>
                 </article>
                 <article className="liquidaciones-mini-card">
                   <span>Pagos</span>

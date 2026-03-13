@@ -14,6 +14,8 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import { db, storage } from "../../../Firebase.js";
 import { swalError, swalSuccess } from "../../../public/utils/swalUtils.js";
 import { hideLoading, showLoading } from "../../../services/loadingService.js";
+import profesionalFemImg from "../../../assets/icons/profesional-fem.png";
+import profesionalMascImg from "../../../assets/icons/profesional-masc.png";
 import EmpleadosPanel from "./EmpleadosPanel.jsx";
 
 const DIAS_SEMANA = [
@@ -48,6 +50,12 @@ function esWhatsappValido(value) {
 function esCbuValido(value) {
   const text = toStr(value);
   return /^[0-9]{22}$/.test(text);
+}
+
+function getProfesionalFallback(profesional) {
+  if (profesional?.imgProfesional) return profesional.imgProfesional;
+  if (profesional?.generoProfesional === "masculino") return profesionalMascImg;
+  return profesionalFemImg;
 }
 
 async function obtenerAuthConfig() {
@@ -95,12 +103,18 @@ async function obtenerHomeVisuales() {
   return snap.exists() ? snap.data() : null;
 }
 
+async function obtenerReservasConfig() {
+  const snap = await getDoc(doc(db, "configuracion", "reservas"));
+  return snap.exists() ? snap.data() : { bloquearTurnosMananaSin12h: false };
+}
+
 function Seccion({
   title,
   subtitle,
   open,
   onToggle,
   completo = null,
+  loading = false,
   children,
 }) {
   return (
@@ -134,9 +148,54 @@ function Seccion({
       </button>
 
       <div className={`config-section-body ${open ? "open" : ""}`}>
-        <div className="config-section-body-inner">{children}</div>
+        <div className="config-section-body-inner">
+          {loading ? <LoadingBlock /> : children}
+        </div>
       </div>
     </section>
+  );
+}
+
+function LoadingBlock({ label = "Cargando seccion..." }) {
+  return (
+    <div className="config-loading-block" role="status" aria-live="polite">
+      <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function ImageWithLoader({ src, alt, className = "", wrapperClassName = "" }) {
+  const [imageLoading, setImageLoading] = useState(Boolean(src));
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    setImageLoading(Boolean(src));
+  }, [src]);
+
+  useEffect(() => {
+    if (imgRef.current?.complete && src) {
+      setImageLoading(false);
+    }
+  }, [src]);
+
+  return (
+    <div className={`config-image-shell ${wrapperClassName}`.trim()}>
+      {imageLoading ? (
+        <div className="config-image-loader" aria-hidden="true">
+          <span className="spinner-border spinner-border-sm" />
+        </div>
+      ) : null}
+
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className={className}
+        onLoad={() => setImageLoading(false)}
+        onError={() => setImageLoading(false)}
+      />
+    </div>
   );
 }
 
@@ -152,9 +211,20 @@ async function runWithLoading(task, options = {}) {
 
 export default function AdminConfiguracion() {
   const { user, loading } = useAuth();
+  const [sectionLoading, setSectionLoading] = useState({
+    auth: true,
+    profesionales: true,
+    banco: true,
+    redes: true,
+    ubicacion: true,
+    horarios: true,
+    homeVisuales: true,
+    reservas: true,
+  });
 
   const [profesionales, setProfesionales] = useState([]);
   const [nombreProfesional, setNombreProfesional] = useState("");
+  const [generoProfesional, setGeneroProfesional] = useState("femenino");
   const [fileProfesional, setFileProfesional] = useState(null);
   const [homeVisuales, setHomeVisuales] = useState({
     imgPrincipalHome: "",
@@ -172,6 +242,7 @@ export default function AdminConfiguracion() {
     redes: false,
     ubicacion: false,
     auth: true,
+    reservas: false,
     empleados: false,
     profesionales: false,
     homeVisuales: false,
@@ -211,6 +282,9 @@ export default function AdminConfiguracion() {
 
   const [authConfig, setAuthConfig] = useState({
     ...AUTH_CONFIG_BASE,
+  });
+  const [reservasConfig, setReservasConfig] = useState({
+    bloquearTurnosMananaSin12h: false,
   });
 
   const toggle = (key) => {
@@ -259,44 +333,100 @@ export default function AdminConfiguracion() {
     let cancelled = false;
 
     async function cargarInicial() {
-      const [
-        authData,
-        profesionalesData,
-        bancoData,
-        redesData,
-        ubicacionData,
-        horariosData,
-        homeVisualesData,
-      ] = await Promise.all([
-        obtenerAuthConfig(),
-        obtenerProfesionales(),
-        obtenerDatosBancarios(),
-        obtenerRedes(),
-        obtenerUbicacion(),
-        obtenerHorarios(),
-        obtenerHomeVisuales(),
-      ]);
+      setSectionLoading({
+        auth: true,
+        profesionales: true,
+        banco: true,
+        redes: true,
+        ubicacion: true,
+        horarios: true,
+        homeVisuales: true,
+        reservas: true,
+      });
 
-      if (cancelled) return;
+      const tareas = [
+        ["auth", async () => setAuthConfig(await obtenerAuthConfig())],
+        [
+          "profesionales",
+          async () => setProfesionales(await obtenerProfesionales()),
+        ],
+        [
+          "banco",
+          async () => {
+            const bancoData = await obtenerDatosBancarios();
+            if (bancoData) setDatosBanco((prev) => ({ ...prev, ...bancoData }));
+          },
+        ],
+        [
+          "redes",
+          async () => {
+            const redesData = await obtenerRedes();
+            if (redesData) setSocial((prev) => ({ ...prev, ...redesData }));
+          },
+        ],
+        [
+          "ubicacion",
+          async () => {
+            const ubicacionData = await obtenerUbicacion();
+            if (ubicacionData) {
+              setUbicacion((prev) => ({ ...prev, ...ubicacionData }));
+            }
+          },
+        ],
+        [
+          "horarios",
+          async () => {
+            const horariosData = await obtenerHorarios();
+            if (horariosData) {
+              setHorarios((prev) => ({
+                ...prev,
+                ...horariosData,
+              }));
+            }
+          },
+        ],
+        [
+          "homeVisuales",
+          async () => {
+            const homeVisualesData = await obtenerHomeVisuales();
+            if (homeVisualesData) {
+              setHomeVisuales((prev) => ({
+                ...prev,
+                ...homeVisualesData,
+              }));
+            }
+          },
+        ],
+        [
+          "reservas",
+          async () => {
+            const reservasData = await obtenerReservasConfig();
+            if (reservasData) {
+              setReservasConfig((prev) => ({
+                ...prev,
+                ...reservasData,
+              }));
+            }
+          },
+        ],
+      ];
 
-      setAuthConfig(authData);
-      setProfesionales(profesionalesData);
-      if (bancoData) setDatosBanco((prev) => ({ ...prev, ...bancoData }));
-      if (redesData) setSocial((prev) => ({ ...prev, ...redesData }));
-      if (ubicacionData)
-        setUbicacion((prev) => ({ ...prev, ...ubicacionData }));
-      if (horariosData) {
-        setHorarios((prev) => ({
-          ...prev,
-          ...horariosData,
-        }));
-      }
-      if (homeVisualesData) {
-        setHomeVisuales((prev) => ({
-          ...prev,
-          ...homeVisualesData,
-        }));
-      }
+      await Promise.all(
+        tareas.map(async ([key, task]) => {
+          try {
+            if (!cancelled) await task();
+          } catch (error) {
+            console.error(`Error cargando seccion ${key}`, error);
+          } finally {
+            if (!cancelled) {
+              setSectionLoading((current) => ({
+                ...current,
+                [key]: false,
+              }));
+            }
+          }
+        }),
+      );
     }
 
     void cargarInicial();
@@ -306,7 +436,13 @@ export default function AdminConfiguracion() {
     };
   }, [loading, user]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="config-admin-page">
+        <LoadingBlock label="Cargando configuracion..." />
+      </div>
+    );
+  }
 
   if (!user || Number(user.nivel) !== 4) {
     return (
@@ -326,6 +462,20 @@ export default function AdminConfiguracion() {
     );
     swalSuccess({
       title: "Metodos de inicio de sesion",
+      text: "Configuracion actualizada correctamente",
+    });
+  }
+
+  async function guardarReservasConfig() {
+    await runWithLoading(
+      () => setDoc(doc(db, "configuracion", "reservas"), reservasConfig),
+      {
+        title: "Guardando reglas",
+        text: "Actualizando reglas generales de reserva...",
+      },
+    );
+    swalSuccess({
+      title: "Reglas de reserva",
       text: "Configuracion actualizada correctamente",
     });
   }
@@ -354,11 +504,13 @@ export default function AdminConfiguracion() {
         await addDoc(collection(db, "profesionales"), {
           nombreProfesional: nombreProfesional.trim(),
           imgProfesional: urlImagen,
+          generoProfesional,
           activo: true,
           creadoEn: new Date(),
         });
 
         setNombreProfesional("");
+        setGeneroProfesional("femenino");
         setFileProfesional(null);
 
         if (fileInputProfesionalRef.current) {
@@ -536,6 +688,7 @@ export default function AdminConfiguracion() {
   const ubicacionCompleta = Boolean(
     ubicacion.mapsEmbedUrl && ubicacion.mapsDireccion,
   );
+  const initialLoading = Object.values(sectionLoading).some(Boolean);
   const metodosActivos = Object.values(authConfig).filter(Boolean).length;
   const redesCargadas = Object.values(social).filter((value) =>
     toStr(value),
@@ -562,19 +715,19 @@ export default function AdminConfiguracion() {
         <div className="config-admin-summary">
           <article className="config-summary-card">
             <span className="config-summary-label">Metodos activos</span>
-            <strong>{metodosActivos}</strong>
+            <strong>{initialLoading ? "..." : metodosActivos}</strong>
           </article>
           <article className="config-summary-card">
             <span className="config-summary-label">Profesionales</span>
-            <strong>{profesionales.length}</strong>
+            <strong>{initialLoading ? "..." : profesionales.length}</strong>
           </article>
           <article className="config-summary-card">
             <span className="config-summary-label">Redes cargadas</span>
-            <strong>{redesCargadas}</strong>
+            <strong>{initialLoading ? "..." : redesCargadas}</strong>
           </article>
           <article className="config-summary-card">
             <span className="config-summary-label">Dias abiertos</span>
-            <strong>{diasAbiertos}</strong>
+            <strong>{initialLoading ? "..." : diasAbiertos}</strong>
           </article>
         </div>
       </section>
@@ -585,6 +738,7 @@ export default function AdminConfiguracion() {
           subtitle="Define que accesos pueden usar los clientes."
           open={open.auth}
           onToggle={() => toggle("auth")}
+          loading={sectionLoading.auth}
         >
           <div className="config-note">
             Se recomienda mantener Google y correo electronico habilitados para
@@ -633,11 +787,56 @@ export default function AdminConfiguracion() {
         </Seccion>
 
         <Seccion
+          title="Reglas de reserva"
+          subtitle="Condiciones globales que aplican a la agenda publica."
+          open={open.reservas}
+          onToggle={() => toggle("reservas")}
+          loading={sectionLoading.reservas}
+        >
+          <div className="config-note">
+            Si activas esta regla, la agenda publica solo mostrara turnos con al
+            menos 48 horas de anticipacion.
+          </div>
+
+          <div className="config-switch-list">
+            <label className="config-switch-item">
+              <div>
+                <span className="config-switch-label">
+                  Exigir 48 horas de anticipacion minima
+                </span>
+              </div>
+
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={Boolean(reservasConfig.bloquearTurnosMananaSin12h)}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    bloquearTurnosMananaSin12h: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="config-actions">
+            <button
+              className="btn swal-btn-confirm"
+              onClick={guardarReservasConfig}
+            >
+              Guardar reglas
+            </button>
+          </div>
+        </Seccion>
+
+        <Seccion
           title="Datos bancarios"
           subtitle="Cuenta visible para transferencias y pagos manuales."
           open={open.banco}
           onToggle={() => toggle("banco")}
           completo={bancoCompleto}
+          loading={sectionLoading.banco}
         >
           <div className="config-form-grid">
             {[
@@ -676,6 +875,7 @@ export default function AdminConfiguracion() {
           open={open.redes}
           onToggle={() => toggle("redes")}
           completo={redesCompletas}
+          loading={sectionLoading.redes}
         >
           <div className="config-form-grid">
             {[
@@ -715,6 +915,7 @@ export default function AdminConfiguracion() {
           subtitle="El dueño puede crear, editar y quitar accesos del equipo."
           open={open.empleados}
           onToggle={() => toggle("empleados")}
+          loading={false}
         >
           <EmpleadosPanel />
         </Seccion>
@@ -724,6 +925,7 @@ export default function AdminConfiguracion() {
           subtitle="Gestiona el equipo que se muestra en el panel y en la web."
           open={open.profesionales}
           onToggle={() => toggle("profesionales")}
+          loading={sectionLoading.profesionales}
         >
           <div className="config-prof-layout">
             <div className="config-prof-form">
@@ -750,9 +952,27 @@ export default function AdminConfiguracion() {
                 />
               </label>
 
+              <label className="config-field">
+                <span>Avatar por defecto</span>
+                <select
+                  className="form-control"
+                  value={generoProfesional}
+                  onChange={(event) => setGeneroProfesional(event.target.value)}
+                >
+                  <option value="femenino">Profesional femenino</option>
+                  <option value="masculino">Profesional masculino</option>
+                </select>
+              </label>
+
               <div className="config-prof-preview">
-                {fileProfesionalPreview ? (
-                  <img src={fileProfesionalPreview} alt="Preview profesional" />
+                {fileProfesionalPreview || generoProfesional ? (
+                  <ImageWithLoader
+                    src={
+                      fileProfesionalPreview ||
+                      getProfesionalFallback({ generoProfesional })
+                    }
+                    alt="Preview profesional"
+                  />
                 ) : (
                   <div className="config-prof-preview-empty">Sin imagen</div>
                 )}
@@ -773,24 +993,17 @@ export default function AdminConfiguracion() {
             {profesionales.length ? (
               profesionales.map((profesional) => (
                 <article key={profesional.id} className="config-prof-card">
-                  {profesional.imgProfesional ? (
-                    <img
-                      src={profesional.imgProfesional}
-                      alt={profesional.nombreProfesional}
-                      className="config-prof-card-image"
-                    />
-                  ) : (
-                    <div className="config-prof-card-placeholder">
-                      {profesional.nombreProfesional
-                        ?.slice(0, 1)
-                        ?.toUpperCase() || "P"}
-                    </div>
-                  )}
+                  <ImageWithLoader
+                    src={getProfesionalFallback(profesional)}
+                    alt={profesional.nombreProfesional}
+                    className="config-prof-card-image"
+                    wrapperClassName="config-prof-card-image-shell"
+                  />
 
                   <strong>{profesional.nombreProfesional}</strong>
 
                   <button
-                    className="swal-btn-eliminar"
+                    className="swal-btn-eliminar-sm"
                     onClick={() => eliminarProfesional(profesional.id)}
                   >
                     Eliminar
@@ -811,6 +1024,7 @@ export default function AdminConfiguracion() {
           open={open.homeVisuales}
           onToggle={() => toggle("homeVisuales")}
           completo={homeVisualesCompleto}
+          loading={sectionLoading.homeVisuales}
         >
           <div className="config-home-media-grid">
             <div className="config-subcard">
@@ -834,11 +1048,12 @@ export default function AdminConfiguracion() {
 
               <div className="config-home-preview">
                 {fileHomePrincipalPreview || homeVisuales.imgPrincipalHome ? (
-                  <img
+                  <ImageWithLoader
                     src={
                       fileHomePrincipalPreview || homeVisuales.imgPrincipalHome
                     }
                     alt="Preview imagen principal"
+                    wrapperClassName="config-home-preview-shell"
                   />
                 ) : (
                   <div className="config-prof-preview-empty">Sin imagen</div>
@@ -867,12 +1082,13 @@ export default function AdminConfiguracion() {
 
               <div className="config-home-preview config-home-preview-soft">
                 {fileHomeSecundariaPreview || homeVisuales.imgSecundariaHome ? (
-                  <img
+                  <ImageWithLoader
                     src={
                       fileHomeSecundariaPreview ||
                       homeVisuales.imgSecundariaHome
                     }
                     alt="Preview imagen secundaria"
+                    wrapperClassName="config-home-preview-shell"
                   />
                 ) : (
                   <div className="config-prof-preview-empty">Sin imagen</div>
@@ -897,6 +1113,7 @@ export default function AdminConfiguracion() {
           open={open.ubicacion}
           onToggle={() => toggle("ubicacion")}
           completo={ubicacionCompleta}
+          loading={sectionLoading.ubicacion || sectionLoading.horarios}
         >
           <div className="config-business-grid">
             <div className="config-subcard">

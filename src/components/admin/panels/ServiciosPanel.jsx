@@ -586,12 +586,23 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     if (!confirmar?.isConfirmed) return;
 
     try {
+      showLoading({
+        title: "Desactivando servicio",
+        text: "Actualizando disponibilidad del servicio...",
+      });
       const fn = httpsCallable(getFunctions(), "desactivarServicio");
       await fn({ servicioId: servicio.id });
+      hideLoading();
+      swalSuccess({
+        title: "Servicio desactivado",
+        text: "El servicio fue desactivado correctamente.",
+      });
     } catch (e) {
-      await showError(
-        e?.message || "Ocurrio un error al desactivar el servicio.",
-      );
+      hideLoading();
+      swalError({
+        title: "No se pudo desactivar",
+        text: e?.message || "Ocurrio un error al desactivar el servicio.",
+      });
     }
   }
 
@@ -1149,10 +1160,10 @@ export default function ServiciosPanel() {
         "Ya existe un servicio activo con ese nombre para ese profesional en esta categoria",
       );
 
-    if (Number(duracion) <= 0) return showError("Duración inválida");
-    if (Number(precio) < 0) return showError("Precio inválido");
+    if (Number(duracion) <= 0) return showError("Duracion invalida");
+    if (Number(precio) < 0) return showError("Precio invalido");
     if (Number(precioEfectivo) < 0)
-      return showError("Precio en efectivo inválido");
+      return showError("Precio en efectivo invalido");
     if (
       Number(precioEfectivo) > 0 &&
       Number(precioEfectivo) >= Number(precio)
@@ -1169,61 +1180,81 @@ export default function ServiciosPanel() {
 
     if (!tieneHorariosServicioValidos(horariosServicio)) {
       return showError(
-        "Revisá los horarios del servicio. Cada día activo debe tener al menos una franja válida.",
+        "Revisa los horarios del servicio. Cada dia activo debe tener al menos una franja valida.",
       );
     }
 
     const cat = categorias.find((c) => c.id === categoriaId);
-    if (!cat) return showError("Categoría inválida");
+    if (!cat) return showError("Categoria invalida");
     const categoriaNombre = (cat.nombre || "").trim();
 
-    await addDoc(collection(db, "servicios"), {
-      categoriaId,
-      categoriaNombre,
-      categoriaNombreNormalizado: normalizar(categoriaNombre),
+    try {
+      showLoading({
+        title: "Creando servicio",
+        text: "Guardando configuracion y agenda...",
+      });
 
-      nombreServicio: nombreServicio.trim(),
-      nombreServicioNormalizado: normalizar(nombreServicio),
-      profesionalId: profesionalId || null,
-      nombreProfesional: nombreProfesional.trim(),
-      descripcion,
-      duracionMin: Number(duracion),
-      precio: Number(precio),
-      precioEfectivo: Number(precioEfectivo || 0),
-      responsableGestion,
-      modoReserva,
-      pedirAnticipo,
-      porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
-      agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
-      horariosServicio: serializarHorariosServicio(horariosServicio),
+      await addDoc(collection(db, "servicios"), {
+        categoriaId,
+        categoriaNombre,
+        categoriaNombreNormalizado: normalizar(categoriaNombre),
 
-      gabinetes: seleccionados
-        .map((id) => {
-          const g = gabinetes.find((x) => x.id === id);
-          if (!g) return null;
-          return { id: g.id, nombreGabinete: g.nombreGabinete ?? "" };
-        })
-        .filter(Boolean),
+        nombreServicio: nombreServicio.trim(),
+        nombreServicioNormalizado: normalizar(nombreServicio),
+        profesionalId: profesionalId || null,
+        nombreProfesional: nombreProfesional.trim(),
+        descripcion,
+        duracionMin: Number(duracion),
+        precio: Number(precio),
+        precioEfectivo: Number(precioEfectivo || 0),
+        responsableGestion,
+        modoReserva,
+        pedirAnticipo,
+        porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
+        agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
+        horariosServicio: serializarHorariosServicio(horariosServicio),
 
-      activo: true,
-      creadoEn: serverTimestamp(),
-    });
+        gabinetes: seleccionados
+          .map((id) => {
+            const g = gabinetes.find((x) => x.id === id);
+            if (!g) return null;
+            return { id: g.id, nombreGabinete: g.nombreGabinete ?? "" };
+          })
+          .filter(Boolean),
 
-    setCategoriaId("");
-    setNombreServicio("");
-    setNombreProfesional("");
-    setProfesionalId("");
-    setDescripcion("");
-    setDuracion(60);
-    setPrecio(0);
-    setPrecioEfectivo(0);
-    setResponsableGestion("admin");
-    setModoReserva("reserva");
-    setPedirAnticipo(true);
-    setPorcentajeAnticipo(50);
-    setAgendaMaxDias(14);
-    setHorariosServicio(crearHorariosServicioBase());
-    setSeleccionados([]);
+        activo: true,
+        creadoEn: serverTimestamp(),
+      });
+
+      setCategoriaId("");
+      setNombreServicio("");
+      setNombreProfesional("");
+      setProfesionalId("");
+      setDescripcion("");
+      setDuracion(60);
+      setPrecio(0);
+      setPrecioEfectivo(0);
+      setResponsableGestion("admin");
+      setModoReserva("reserva");
+      setPedirAnticipo(true);
+      setPorcentajeAnticipo(50);
+      setAgendaMaxDias(14);
+      setHorariosServicio(crearHorariosServicioBase());
+      setSeleccionados([]);
+
+      await swalSuccess({
+        title: "Servicio creado",
+        text: "El servicio se guardo correctamente.",
+      });
+    } catch (error) {
+      console.error("Error creando servicio", error);
+      await swalError({
+        title: "No se pudo crear",
+        text: "Ocurrio un error al guardar el servicio.",
+      });
+    } finally {
+      hideLoading();
+    }
   }
 
   return (

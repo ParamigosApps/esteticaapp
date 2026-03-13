@@ -45,6 +45,7 @@ export default function TurnoAcciones({
     saldoPendiente > 0;
 
   const puedeMarcarReembolso =
+    estadoTurno === "cancelado" &&
     ["abonado", "parcial"].includes(estadoPago) &&
     pagado > 0 &&
     estadoPago !== "reembolsado";

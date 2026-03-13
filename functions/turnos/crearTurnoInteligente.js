@@ -113,6 +113,26 @@ function obtenerMinutosEnZona(ms, timeZone = "America/Argentina/Buenos_Aires") {
   return hour * 60 + minute;
 }
 
+function getReservasConfigDefault() {
+  return {
+    bloquearTurnosMananaSin12h: false,
+  };
+}
+
+function cumpleReglaAnticipacionManana(
+  inicioMs,
+  reservasConfig = getReservasConfigDefault(),
+) {
+  if (!reservasConfig?.bloquearTurnosMananaSin12h) return true;
+
+  const minutos = obtenerMinutosEnZona(inicioMs);
+  const hour = Number.isFinite(minutos) ? Math.floor(minutos / 60) : null;
+
+  if (hour == null || hour >= 12) return true;
+
+  return Number(inicioMs) - Date.now() >= 12 * 60 * 60 * 1000;
+}
+
 function turnoDentroDeHorarioServicio(servicio, fechaISO, inicioMs, finMs) {
   if (!Array.isArray(servicio.horariosServicio) || !servicio.horariosServicio.length) {
     return true;
@@ -221,6 +241,13 @@ const {
 
     const servicio = servicioSnap.data() || {};
     const modoReserva = servicio.modoReserva || "automatico";
+    const reservasConfigSnap = await db
+      .collection("configuracion")
+      .doc("reservas")
+      .get();
+    const reservasConfig = reservasConfigSnap.exists
+      ? { ...getReservasConfigDefault(), ...reservasConfigSnap.data() }
+      : getReservasConfigDefault();
 
     const pedirAnticipoServicio = Boolean(servicio.pedirAnticipo);
     const tipoAnticipo = servicio.tipoAnticipo || "online"; // online | manual
@@ -260,6 +287,13 @@ const {
        if (finNum <= inicioNum) {
     throw new HttpsError("invalid-argument", "Rango horario inválido");
   }
+
+    if (!cumpleReglaAnticipacionManana(inicioNum, reservasConfig)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Los turnos antes de las 12:00 requieren al menos 12 horas de anticipacion",
+      );
+    }
 
     const ahoraMs = Date.now();
     const hoyISOActual = toISODateEnZona(new Date());

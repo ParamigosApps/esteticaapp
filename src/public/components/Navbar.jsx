@@ -53,9 +53,14 @@ export default function Navbar() {
 
           {menuOpen && (
             <div className="dropdown-menu-custom">
+              <div className="dropdown-menu-head">
+                <span className="dropdown-menu-kicker">Cuenta activa</span>
+                <strong className="dropdown-menu-name">{userName}</strong>
+              </div>
+
               {esAdmin ? (
                 <Link
-                  className="dropdown-item"
+                  className="dropdown-item dropdown-item-primary"
                   to="/admin/dashboard"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -66,6 +71,7 @@ export default function Navbar() {
                 </Link>
               ) : null}
 
+              <div className="dropdown-menu-group">
               <Link
                 className="dropdown-item"
                 to="/mis-turnos"
@@ -83,6 +89,7 @@ export default function Navbar() {
                 <span className="dropdown-item-title">Mi perfil</span>
                 <span className="dropdown-item-copy">Editar datos personales</span>
               </Link>
+              </div>
 
               <div className="dropdown-divider" />
 

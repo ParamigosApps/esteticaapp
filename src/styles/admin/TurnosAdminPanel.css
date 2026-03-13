@@ -191,6 +191,46 @@
   border: 1px dashed #e2d8ee;
 }
 
+.turnos-slots-empty-error {
+  background: #fff4f4;
+  border: 1px dashed #ef9a9a;
+  color: #b42318;
+}
+
+.turnos-slots-empty-error strong {
+  display: block;
+  color: #b42318;
+  margin-bottom: 6px;
+}
+
+.turnos-slots-suggestions {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.turnos-slots-suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.turnos-slots-suggestion-btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #ef9a9a;
+  background: #fff;
+  color: #b42318;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.turnos-slots-suggestion-btn:hover {
+  border-color: #dc6f6f;
+  background: #fff7f7;
+}
+
 .turnos-slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));

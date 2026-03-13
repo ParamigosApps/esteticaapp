@@ -41,7 +41,11 @@ exports.crearLiquidacionAdmin = onCall(
     });
 
     const invalidos = pagos.filter(
-      (p) => p.estado !== "aprobado" || p.liquidado === true,
+      (p) =>
+        p.estado !== "aprobado" ||
+        p.liquidado === true ||
+        p.estado === "reembolsado" ||
+        p.estadoPagoTurno === "reembolsado",
     );
 
     if (invalidos.length) {

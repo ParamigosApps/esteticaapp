@@ -21,6 +21,135 @@ function getPrecioEfectivo(servicio) {
   return 0;
 }
 
+function agruparServiciosPorNombre(lista = []) {
+  const acc = {};
+
+  for (const servicio of lista) {
+    const key = normalizarTexto(servicio?.nombreServicio || "");
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(servicio);
+  }
+
+  return Object.values(acc).sort((a, b) =>
+    String(a?.[0]?.nombreServicio || "").localeCompare(
+      String(b?.[0]?.nombreServicio || ""),
+      "es",
+    ),
+  );
+}
+
+function ServicioVariante({
+  servicio,
+  compact = false,
+  onSelect,
+  etiquetaPrecio = "Precio",
+}) {
+  const pricingTurno = calcularMontosTurno({
+    precioServicio: Number(servicio.precio || 0),
+    porcentajeAnticipo: servicio.pedirAnticipo
+      ? Number(servicio.porcentajeAnticipo || 0)
+      : 0,
+    cobrarComision: true,
+  });
+
+  const precioOnline = Number(pricingTurno.montoTotal || 0);
+  const precioEfectivo = getPrecioEfectivo(servicio);
+
+  const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
+
+  const contenido = (
+    <>
+      <div className="servicio-stack-top">
+        <span className="servicio-profesional">
+          con <b>{servicio.nombreProfesional || "Profesional"}</b>
+        </span>
+        {precioOnline > 0 ? (
+          <span className="servicio-precio">
+            {etiquetaPrecio} ${precioOnline.toLocaleString("es-AR")}
+          </span>
+        ) : null}
+      </div>
+
+      {servicio.descripcion ? (
+        <span className="servicio-descripcion">{servicio.descripcion}</span>
+      ) : null}
+
+      {precioEfectivo > 0 ? (
+        <div className="servicio-efectivo">
+          Pagando en efectivo abonas
+          {ahorroEfectivo > 0 ? (
+            <span>
+              {" "}
+              ${precioEfectivo.toLocaleString("es-AR")} y ahorrás{" "}
+              <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="servicio-meta-line">
+        <span className="servicio-duracion">
+          Duracion: <b>{servicio.duracionMin} min</b>
+        </span>
+
+        <span className="servicio-tipo">Tipo:</span>
+
+        <span
+          className={`${
+            servicio.modoReserva === "reserva"
+              ? "sin-reserva"
+              : "reserva-inmediata"
+          }`}
+        >
+          {servicio.modoReserva === "reserva"
+            ? "Reserva y pago"
+            : "Confirmacion inmediata"}
+        </span>
+      </div>
+
+      {servicio.pedirAnticipo ? (
+        <div className="servicio-anticipo mt-2">
+          Reservas con el {servicio.porcentajeAnticipo}% del total (
+          <strong>
+            ${pricingTurno.montoAnticipoTotal.toLocaleString("es-AR")}
+          </strong>
+          )
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className="servicio-stack-item"
+        onClick={() => onSelect(servicio)}
+      >
+        {contenido}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className="servicio-stack-item servicio-stack-item-single"
+      onClick={() => onSelect(servicio)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          onSelect(servicio);
+        }
+      }}
+    >
+      {contenido}
+    </div>
+  );
+}
+
 export default function TurnosSection({
   busqueda,
   categoriaSeleccionada,
@@ -79,8 +208,15 @@ export default function TurnosSection({
   const serviciosCategoria = useMemo(() => {
     if (!categoriaSeleccionada) return [];
 
-    return serviciosActivos.filter((s) => s.categoriaId === categoriaSeleccionada);
+    return serviciosActivos.filter(
+      (s) => s.categoriaId === categoriaSeleccionada,
+    );
   }, [serviciosActivos, categoriaSeleccionada]);
+
+  const gruposServiciosCategoria = useMemo(
+    () => agruparServiciosPorNombre(serviciosCategoria),
+    [serviciosCategoria],
+  );
 
   return (
     <>
@@ -103,8 +239,32 @@ export default function TurnosSection({
             >
               <div className="servicio-card-header">
                 <h6 className="servicio-titulo">{data.nombre}</h6>
-                <div className="servicio-card-count">
-                  {data.servicios.length} opciones
+                <div className="servicio-card-header-meta">
+                  <div className="servicio-card-count">
+                    {data.servicios.length} opciones
+                  </div>
+                  {data.servicios.some(
+                    (servicio) => Number(servicio.precio || 0) > 0,
+                  ) ? (
+                    <div className="servicio-precio">
+                      Precios desde $
+                      {Math.min(
+                        ...data.servicios
+                          .map((servicio) =>
+                            Number(
+                              calcularMontosTurno({
+                                precioServicio: Number(servicio.precio || 0),
+                                porcentajeAnticipo: servicio.pedirAnticipo
+                                  ? Number(servicio.porcentajeAnticipo || 0)
+                                  : 0,
+                                cobrarComision: true,
+                              }).montoTotal || 0,
+                            ),
+                          )
+                          .filter((precio) => precio > 0),
+                      ).toLocaleString("es-AR")}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -112,7 +272,11 @@ export default function TurnosSection({
                 <span className="servicio-sub-listado">
                   {data.servicios
                     .slice(0, 3)
-                    .map((s) => s.nombreServicio)
+                    .map((s) =>
+                      s.nombreProfesional
+                        ? `${s.nombreServicio} - ${s.nombreProfesional}`
+                        : s.nombreServicio,
+                    )
                     .join(" · ")}
                   {data.servicios.length > 3 ? " · ..." : ""}
                 </span>
@@ -132,88 +296,45 @@ export default function TurnosSection({
           </button>
 
           <h6 className="fw-bold mb-2 servicios-title">
-            {serviciosCategoria?.[0]?.categoriaNombre || "Categoría"}
+            {serviciosCategoria?.[0]?.categoriaNombre || "Categoria"}
           </h6>
 
           <div className="servicios-lista">
-            {serviciosCategoria.map((s) => {
-              const pricingTurno = calcularMontosTurno({
-                precioServicio: Number(s.precio || 0),
-                porcentajeAnticipo: s.pedirAnticipo
-                  ? Number(s.porcentajeAnticipo || 0)
-                  : 0,
-                cobrarComision: true,
-              });
-              const precioOnline = Number(pricingTurno.montoTotal || 0);
-              const precioEfectivo = getPrecioEfectivo(s);
-              const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
+            {gruposServiciosCategoria.map((grupo) => {
+              const servicioBase = grupo[0];
+              const apilado = grupo.length > 1;
 
               return (
-                <div
-                  key={s.id}
-                  className="servicio-card"
-                  onClick={() => {
-                    setServicioSeleccionado(s);
-                  }}
-                >
+                <div key={servicioBase.id} className="servicio-card">
                   <div className="servicio-card-header">
-                    <h6 className="servicio-titulo">{s.nombreServicio}</h6>
-
-                    {s.precio > 0 && (
-                      <div className="servicio-precio">
-                        Desde ${s.precio.toLocaleString("es-AR")}
+                    <h6 className="servicio-titulo">
+                      {servicioBase.nombreServicio}
+                    </h6>
+                    {apilado ? (
+                      <div className="servicio-card-count">
+                        {grupo.length} profesionales
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
-                  <div className="servicio-sub mb-1">
-                    <span className="servicio-profesional">
-                      con <b>{s.nombreProfesional}</b>
-                    </span>
-                  </div>
-
-                  {s.descripcion && (
-                    <span className="servicio-descripcion">{s.descripcion}</span>
-                  )}
-
-                  {precioEfectivo > 0 && (
-                    <div className="servicio-efectivo">
-                      En efectivo ahorrás{" "}
-                      <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
-                      {ahorroEfectivo > 0 && (
-                        <span> y abonás ${precioEfectivo.toLocaleString("es-AR")}.</span>
-                      )}
+                  {apilado ? (
+                    <div className="servicio-stack">
+                      {grupo.map((servicio) => (
+                        <ServicioVariante
+                          key={servicio.id}
+                          servicio={servicio}
+                          compact
+                          onSelect={setServicioSeleccionado}
+                          etiquetaPrecio="Desde"
+                        />
+                      ))}
                     </div>
-                  )}
-
-                  <div className="servicio-meta-line">
-                    <span className="servicio-duracion">
-                      Duración: <b>{s.duracionMin} min</b>
-                    </span>
-
-                    <span className="servicio-tipo">Tipo:</span>
-
-                    <span
-                      className={`${
-                        s.modoReserva === "reserva"
-                          ? "sin-reserva"
-                          : "reserva-inmediata"
-                      }`}
-                    >
-                      {s.modoReserva === "reserva"
-                        ? "Requiere confirmación"
-                        : "Confirmación inmediata"}
-                    </span>
-                  </div>
-
-                  {s.pedirAnticipo && (
-                    <div className="servicio-anticipo mt-2">
-                      Reservas con el {s.porcentajeAnticipo}% del total (
-                      <strong>
-                        ${pricingTurno.montoAnticipoTotal.toLocaleString("es-AR")}
-                      </strong>
-                      )
-                    </div>
+                  ) : (
+                    <ServicioVariante
+                      servicio={servicioBase}
+                      onSelect={setServicioSeleccionado}
+                      etiquetaPrecio="Precio"
+                    />
                   )}
                 </div>
               );

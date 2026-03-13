@@ -4,19 +4,259 @@ import {
   swalSuccess,
   swalError,
   swalConfirmAdmin,
-  swalReprogramarTurno,
 } from "../../../../public/utils/swalUtils.js";
 
+import Swal from "sweetalert2";
 import { db, functions } from "../../../../Firebase";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { hideLoading, showLoading } from "../../../../services/loadingService.js";
+import { generarSlotsDia } from "../../../../public/utils/generarSlotsDia.js";
 
 const registrarPagoTurnoAdmin = httpsCallable(functions, "registrarPagoTurnoAdmin");
 const marcarTurnoReembolsadoAdminFn = httpsCallable(
   functions,
   "marcarTurnoReembolsadoAdmin",
 );
+
+function toISODateLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getFechaMaxReservable(servicio) {
+  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const max = new Date(hoy);
+  max.setDate(max.getDate() + maxDias - 1);
+  max.setHours(0, 0, 0, 0);
+
+  return max;
+}
+
+function extraerGabineteIds(servicio) {
+  return (Array.isArray(servicio?.gabinetes) ? servicio.gabinetes : [])
+    .map((gabinete) => {
+      if (typeof gabinete === "string") return gabinete.trim();
+      if (gabinete && typeof gabinete === "object") {
+        return String(gabinete.id || gabinete.gabineteId || "").trim();
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function formatDateOption(fechaIso) {
+  return new Date(`${fechaIso}T00:00:00`).toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function formatHourOption(ms) {
+  return new Date(Number(ms)).toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+async function pedirNuevaFechaDesdeAgenda(turno) {
+  if (!turno?.servicioId) {
+    await swalError({
+      title: "Turno sin servicio",
+      text: "Este turno no tiene un servicio asociado para consultar agenda.",
+    });
+    return null;
+  }
+
+  const servicioSnap = await getDoc(doc(db, "servicios", turno.servicioId));
+  if (!servicioSnap.exists()) {
+    await swalError({
+      title: "Servicio no encontrado",
+      text: "No se pudo cargar la configuracion del servicio.",
+    });
+    return null;
+  }
+
+  const servicio = {
+    id: servicioSnap.id,
+    ...servicioSnap.data(),
+  };
+  const gabineteIds = extraerGabineteIds(servicio);
+
+  if (!gabineteIds.length) {
+    await swalError({
+      title: "Sin gabinetes configurados",
+      text: "El servicio no tiene gabinetes asociados para reprogramar.",
+    });
+    return null;
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fechaMaxReservable = getFechaMaxReservable(servicio);
+  const fechaInicial = (() => {
+    if (!turno?.fecha) return toISODateLocal(hoy);
+
+    const parsed = new Date(`${turno.fecha}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return toISODateLocal(hoy);
+    if (parsed < hoy) return toISODateLocal(hoy);
+    if (parsed > fechaMaxReservable) return toISODateLocal(hoy);
+
+    return turno.fecha;
+  })();
+
+  const getAgendaFn = httpsCallable(functions, "getAgendaGabinete");
+  const agendaCache = {};
+
+  async function obtenerSlotsDisponibles(fechaIso) {
+    if (!agendaCache[fechaIso]) {
+      const resp = await getAgendaFn({
+        gabineteIds,
+        fecha: fechaIso,
+      });
+      agendaCache[fechaIso] = resp.data || {};
+    }
+
+    const agenda = agendaCache[fechaIso];
+    return generarSlotsDia(
+      agenda,
+      { ...servicio, id: servicio.id },
+      new Date(`${fechaIso}T00:00:00`),
+    ).filter((slot) => !slot.ocupado);
+  }
+
+  return Swal.fire({
+    title: "Reprogramar turno",
+    html: `
+      <div style="text-align:left">
+        <label for="swal-fecha-reprogramar" style="display:block;margin:0 0 6px;font-weight:600;">Fecha</label>
+        <input id="swal-fecha-reprogramar" type="date" class="swal2-input" value="${fechaInicial}" min="${toISODateLocal(hoy)}" max="${toISODateLocal(fechaMaxReservable)}" style="margin-top:0;">
+        <label for="swal-slot-reprogramar" style="display:block;margin:12px 0 6px;font-weight:600;">Horario disponible</label>
+        <select id="swal-slot-reprogramar" class="swal2-select" style="width:100%;margin:0;">
+          <option value="">Cargando horarios...</option>
+        </select>
+        <p id="swal-slot-ayuda" style="font-size:12px;color:#7a6d85;margin:12px 0 0;">
+          Solo se muestran horarios disponibles segun agenda y gabinetes activos.
+        </p>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Guardar cambio",
+    cancelButtonText: "Volver",
+    customClass: {
+      popup: "swal-popup-custom",
+      confirmButton: "swal-btn-confirm",
+      cancelButton: "swal-btn-cancel",
+    },
+    buttonsStyling: false,
+    reverseButtons: true,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: async () => {
+      const fechaInput = document.getElementById("swal-fecha-reprogramar");
+      const slotSelect = document.getElementById("swal-slot-reprogramar");
+      const ayuda = document.getElementById("swal-slot-ayuda");
+
+      const renderSlots = async () => {
+        const fechaIso = fechaInput?.value;
+        if (!fechaIso || !slotSelect) return;
+
+        slotSelect.innerHTML = `<option value="">Cargando horarios...</option>`;
+        slotSelect.disabled = true;
+
+        try {
+          const slots = await obtenerSlotsDisponibles(fechaIso);
+
+          if (!slots.length) {
+            slotSelect.innerHTML =
+              '<option value="">No hay horarios disponibles para esta fecha</option>';
+            if (ayuda) {
+              ayuda.textContent =
+                "Selecciona otra fecha dentro de la ventana de agenda del servicio.";
+            }
+            return;
+          }
+
+          slotSelect.innerHTML = [
+            '<option value="">Selecciona un horario</option>',
+            ...slots.map(
+              (slot) =>
+                `<option value="${slot.inicio}|${slot.fin}">${formatDateOption(fechaIso)} · ${formatHourOption(slot.inicio)} a ${formatHourOption(slot.fin)}</option>`,
+            ),
+          ].join("");
+
+          const slotActual = slots.find(
+            (slot) =>
+              Number(slot.inicio) === Number(turno?.horaInicio) &&
+              Number(slot.fin) === Number(turno?.horaFin),
+          );
+
+          if (slotActual && fechaIso === turno?.fecha) {
+            slotSelect.value = `${slotActual.inicio}|${slotActual.fin}`;
+          }
+
+          if (ayuda) {
+            ayuda.textContent =
+              "Solo se muestran horarios disponibles segun agenda y gabinetes activos.";
+          }
+        } catch (error) {
+          console.error("Error cargando agenda para reprogramar", error);
+          slotSelect.innerHTML =
+            '<option value="">No se pudo cargar la agenda</option>';
+          if (ayuda) {
+            ayuda.textContent =
+              "Ocurrio un error al consultar la disponibilidad del servicio.";
+          }
+        } finally {
+          slotSelect.disabled = false;
+        }
+      };
+
+      fechaInput?.addEventListener("change", renderSlots);
+      await renderSlots();
+    },
+    preConfirm: () => {
+      const fechaValue =
+        document.getElementById("swal-fecha-reprogramar")?.value || "";
+      const slotValue =
+        document.getElementById("swal-slot-reprogramar")?.value || "";
+
+      if (!fechaValue) {
+        Swal.showValidationMessage("Selecciona una fecha");
+        return false;
+      }
+
+      if (!slotValue) {
+        Swal.showValidationMessage("Selecciona un horario disponible");
+        return false;
+      }
+
+      const [horaInicioValue, horaFinValue] = slotValue.split("|").map(Number);
+
+      if (
+        !Number.isFinite(horaInicioValue) ||
+        !Number.isFinite(horaFinValue) ||
+        horaFinValue <= horaInicioValue
+      ) {
+        Swal.showValidationMessage("El horario seleccionado no es valido");
+        return false;
+      }
+
+      return {
+        fecha: fechaValue,
+        horaInicio: horaInicioValue,
+        horaFin: horaFinValue,
+      };
+    },
+  });
+}
 
 export async function pedirConfirmacionPago(turno) {
   const total = Number(
@@ -410,7 +650,7 @@ export async function marcarTurnoAusenteAdmin(turno) {
 
 export async function reprogramarTurnoAdmin(turno) {
   try {
-    const res = await swalReprogramarTurno();
+    const res = await pedirNuevaFechaDesdeAgenda(turno);
 
     if (!res.isConfirmed || !res.value) return false;
 

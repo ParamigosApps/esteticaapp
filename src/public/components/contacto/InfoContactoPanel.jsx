@@ -4,6 +4,14 @@ import { doc, collection, onSnapshot } from "firebase/firestore";
 
 import whatsappIcon from "../../../assets/icons/whatsapp.png";
 import ubicacionIcon from "../../../assets/icons/mapa.png";
+import profesionalFemImg from "../../../assets/icons/profesional-fem.png";
+import profesionalMascImg from "../../../assets/icons/profesional-masc.png";
+
+function getProfesionalFallback(profesional) {
+  if (profesional?.imgProfesional) return profesional.imgProfesional;
+  if (profesional?.generoProfesional === "masculino") return profesionalMascImg;
+  return profesionalFemImg;
+}
 
 export default function InfoContactoPanel() {
   const [ubicacion, setUbicacion] = useState(null);
@@ -224,9 +232,10 @@ export default function InfoContactoPanel() {
             <div className="prof-grid">
               {profesionales.map((p) => (
                 <div key={p.id} className="prof-card">
-                  {p.imgProfesional ? (
-                    <img src={p.imgProfesional} alt={p.nombreProfesional} />
-                  ) : null}
+                  <img
+                    src={getProfesionalFallback(p)}
+                    alt={p.nombreProfesional}
+                  />
 
                   <div>{p.nombreProfesional}</div>
                 </div>

@@ -17,6 +17,7 @@ import { useFirebase } from "../../../context/FirebaseContext.jsx";
 import {
   getEstadoPago,
   getEstadoTurno,
+  getMetodoPagoEsperado,
 } from "./turnosAdmin/turnosAdminHelpers.js";
 
 function formatMoney(value) {
@@ -42,6 +43,46 @@ function formatTime(ms) {
 
 function isClosedStatus(status) {
   return ["cancelado", "rechazado", "finalizado", "perdido"].includes(status);
+}
+
+function isPendienteAprobacionTurno(turno) {
+  return getEstadoTurno(turno) === "pendiente_aprobacion";
+}
+
+function isPendientePagoMpTurno(turno) {
+  const estadoTurno = getEstadoTurno(turno);
+  const estadoPago = getEstadoPago(turno);
+  const metodoPago = String(getMetodoPagoEsperado(turno) || "").toLowerCase();
+
+  if (turno?.estado === "pendiente_pago_mp") return true;
+  return (
+    estadoTurno === "pendiente" &&
+    estadoPago === "pendiente" &&
+    metodoPago === "mercadopago"
+  );
+}
+
+function getEstadoDashboard(turno) {
+  if (isPendienteAprobacionTurno(turno)) {
+    return {
+      key: "pendiente-aprobacion",
+      label: "Por aprobar",
+    };
+  }
+
+  if (isPendientePagoMpTurno(turno)) {
+    return {
+      key: "pendiente-mp",
+      label: "Pendiente MP",
+    };
+  }
+
+  const estado = getEstadoTurno(turno);
+
+  return {
+    key: estado,
+    label: estado.replaceAll("_", " "),
+  };
 }
 
 const QUICK_ACTIONS = [
@@ -165,10 +206,10 @@ export default function AdminDashboard() {
   }, [today.iso, turnosActivos]);
 
   const resumen = useMemo(() => {
-    const porConfirmar = turnosActivos.filter((turno) => {
-      const estado = getEstadoTurno(turno);
-      return estado === "pendiente" || estado === "pendiente_aprobacion";
-    }).length;
+    const pendientesAprobacion = turnosActivos.filter(
+      isPendienteAprobacionTurno,
+    ).length;
+    const pendientesMp = turnosActivos.filter(isPendientePagoMpTurno).length;
 
     const confirmadosHoy = agendaHoy.filter(
       (turno) => getEstadoTurno(turno) === "confirmado",
@@ -199,7 +240,9 @@ export default function AdminDashboard() {
     return {
       hoy: agendaHoy.length,
       confirmadosHoy,
-      porConfirmar,
+      pendientesAprobacion,
+      pendientesMp,
+      porConfirmar: pendientesAprobacion + pendientesMp,
       saldoPendiente,
       clientesConProximoTurno,
       pagosPendientesLiquidar: pagosPendientesLiquidar.length,
@@ -250,10 +293,16 @@ export default function AdminDashboard() {
 
     return [
       {
-        label: "Reservas por confirmar",
-        value: resumen.porConfirmar,
-        tone: resumen.porConfirmar > 0 ? "warning" : "ok",
+        label: "Pendientes de aprobacion",
+        value: resumen.pendientesAprobacion,
+        tone: resumen.pendientesAprobacion > 0 ? "warning" : "ok",
         icon: FiClock,
+      },
+      {
+        label: "Pendientes MP",
+        value: resumen.pendientesMp,
+        tone: resumen.pendientesMp > 0 ? "warning" : "ok",
+        icon: FiDollarSign,
       },
       {
         label: "Pagos por validar",
@@ -274,7 +323,13 @@ export default function AdminDashboard() {
         icon: FiCheckCircle,
       },
     ];
-  }, [agendaHoy, pagos, resumen.porConfirmar, turnosActivos]);
+  }, [
+    agendaHoy,
+    pagos,
+    resumen.pendientesAprobacion,
+    resumen.pendientesMp,
+    turnosActivos,
+  ]);
 
   return (
     <div className="admin-panel admin-dashboard-page">
@@ -312,9 +367,15 @@ export default function AdminDashboard() {
 
       <section className="dashboard-metrics-grid">
         <article className="dashboard-metric-card">
-          <span>Por confirmar</span>
-          <strong>{resumen.porConfirmar}</strong>
-          <small>Reservas que requieren seguimiento.</small>
+          <span>Pend. aprobacion</span>
+          <strong>{resumen.pendientesAprobacion}</strong>
+          <small>Reservas manuales pendientes.</small>
+        </article>
+
+        <article className="dashboard-metric-card">
+          <span>Pend. MP</span>
+          <strong>{resumen.pendientesMp}</strong>
+          <small>Turnos esperando pago online.</small>
         </article>
 
         <article className="dashboard-metric-card">
@@ -324,15 +385,15 @@ export default function AdminDashboard() {
         </article>
 
         <article className="dashboard-metric-card">
-          <span>Servicios activos</span>
-          <strong>{resumen.serviciosActivos}</strong>
-          <small>Catalogo disponible para reservar.</small>
-        </article>
-
-        <article className="dashboard-metric-card">
           <span>Gabinetes operativos</span>
           <strong>{resumen.gabinetesActivos}</strong>
           <small>Espacios habilitados hoy.</small>
+        </article>
+
+        <article className="dashboard-metric-card">
+          <span>Servicios activos</span>
+          <strong>{resumen.serviciosActivos}</strong>
+          <small>Catalogo disponible para reservar.</small>
         </article>
       </section>
 
@@ -358,7 +419,7 @@ export default function AdminDashboard() {
                 turno.nombreCliente ||
                 turno.clienteEmail ||
                 "Cliente";
-              const estado = getEstadoTurno(turno);
+              const estadoDashboard = getEstadoDashboard(turno);
 
               return (
                 <article key={turno.id} className="dashboard-appointment-item">
@@ -373,8 +434,8 @@ export default function AdminDashboard() {
                     <small>{turno.nombreGabinete || "Sin gabinete"}</small>
                   </div>
 
-                  <div className={`dashboard-badge is-${estado}`}>
-                    {estado.replaceAll("_", " ")}
+                  <div className={`dashboard-badge is-${estadoDashboard.key}`}>
+                    {estadoDashboard.label}
                   </div>
                 </article>
               );

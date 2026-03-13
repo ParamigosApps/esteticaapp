@@ -7,6 +7,62 @@ const {
   extraerGabineteIdsDesdeServicio,
 } = require("./adminTurnosShared");
 
+function estaDentroVentanaAgenda(servicio, fechaIso) {
+  const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  fecha.setHours(0, 0, 0, 0);
+
+  const limite = new Date(hoy);
+  limite.setDate(limite.getDate() + (maxDias - 1));
+
+  return fecha >= hoy && fecha <= limite;
+}
+
+function getDiaConfig(servicio, fechaIso) {
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  const diaSemana = fecha.getDay();
+
+  if (
+    !Array.isArray(servicio?.horariosServicio) ||
+    !servicio.horariosServicio.length
+  ) {
+    return null;
+  }
+
+  return (
+    servicio.horariosServicio.find(
+      (item) => Number(item?.diaSemana) === Number(diaSemana),
+    ) || null
+  );
+}
+
+function formatHourLocal(timestamp) {
+  return new Date(Number(timestamp)).toLocaleTimeString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function horarioPermitidoPorServicio(servicio, fechaIso, inicioMs, finMs) {
+  const configDia = getDiaConfig(servicio, fechaIso);
+  if (!configDia) return true;
+  if (!configDia.activo) return false;
+
+  const inicioHora = formatHourLocal(inicioMs);
+  const finHora = formatHourLocal(finMs);
+  const franjas = Array.isArray(configDia.franjas) ? configDia.franjas : [];
+
+  return franjas.some((franja) => {
+    if (!franja?.desde || !franja?.hasta) return false;
+    return inicioHora >= franja.desde && finHora <= franja.hasta;
+  });
+}
+
 exports.reprogramarTurnoAdmin = onCall({ region: "us-central1" }, async (request) => {
   assertAdmin(request);
 
@@ -63,6 +119,20 @@ exports.reprogramarTurnoAdmin = onCall({ region: "us-central1" }, async (request
     const idsValidos = extraerGabineteIdsDesdeServicio(servicio);
     if (!idsValidos.length) {
       throw new HttpsError("failed-precondition", "El servicio no tiene gabinetes configurados");
+    }
+
+    if (!estaDentroVentanaAgenda(servicio, fecha)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "La fecha elegida esta fuera de la ventana de agenda del servicio",
+      );
+    }
+
+    if (!horarioPermitidoPorServicio(servicio, fecha, inicioNum, finNum)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "El horario elegido no esta disponible segun la agenda del servicio",
+      );
     }
 
     const gabineteDocs = await Promise.all(
