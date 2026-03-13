@@ -61,12 +61,7 @@ export default function PagoResultado() {
 
     localStorage.removeItem("pagoIdEnProceso");
     hideLoading();
-
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/");
-    }
+    navigate("/mis-turnos", { replace: true });
   };
 
   const handleIntentarCerrar = async () => {

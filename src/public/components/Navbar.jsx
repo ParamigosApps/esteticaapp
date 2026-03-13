@@ -1,18 +1,33 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import logo from "../../assets/img/logo.png";
 import LoginModal from "./LoginModal";
 
 export default function Navbar() {
   const { user, logout, loginEnProceso } = useAuth();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const userName = user?.nombre || user?.displayName || "Mi cuenta";
   const userInitial = userName.trim().charAt(0).toUpperCase();
   const nivel = Number(user?.nivel || 0);
   const esAdmin = nivel >= 3;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (user || loginEnProceso) return;
+    if (location.pathname !== "/") return;
+
+    const shouldOpenLogin =
+      window.sessionStorage.getItem("openLoginOnHome") === "1";
+
+    if (!shouldOpenLogin) return;
+
+    window.sessionStorage.removeItem("openLoginOnHome");
+    setLoginOpen(true);
+  }, [location.pathname, user, loginEnProceso]);
 
   return (
     <header className="app-header">

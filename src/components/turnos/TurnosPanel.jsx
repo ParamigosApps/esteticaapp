@@ -599,6 +599,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
 
     const pago = await iniciarPagoFn({
       turnoId: data.turnoId,
+      frontOrigin: window.location.origin,
     });
 
     if (pago?.data?.init_point) {

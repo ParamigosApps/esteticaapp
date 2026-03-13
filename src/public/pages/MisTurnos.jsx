@@ -6,7 +6,6 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { useAuth } from "../../context/AuthContext";
 import { generarSlotsDia } from "../../public/utils/generarSlotsDia";
-import { normalizarMontosTurno } from "../../config/comisiones.js";
 
 import {
   collection,
@@ -652,8 +651,11 @@ export default function MisTurnos() {
     const estadoTurno = getEstadoTurno(t);
     const estadoPago = getEstadoPago(t);
     const { total, anticipo, pagado, saldoPendiente } = getMontos(t);
-    const montosTurno = normalizarMontosTurno(t);
     const isExpanded = !!expanded[t.id];
+    const mostrarResumenPago =
+      total > 0 &&
+      saldoPendiente > 0 &&
+      !["cancelado", "rechazado", "expirado"].includes(estadoPago);
 
     return (
       <article className={`turno-card ${isProximo ? "is-upcoming" : ""}`}>
@@ -695,33 +697,30 @@ export default function MisTurnos() {
         </div>
 
         <div className="turno-card-stats">
-          <div className="turno-stat">
-            <span>Servicio</span>
-            <strong>
-              ${montosTurno.montoServicio.toLocaleString("es-AR")}
-            </strong>
-          </div>
-          <div className="turno-stat">
-            <span>Comision</span>
-            <strong>
-              ${montosTurno.comisionTurno.toLocaleString("es-AR")}
-            </strong>
-          </div>
-          <div className="turno-stat">
+          <div className="turno-stat turno-stat-highlight">
             <span>Pagado</span>
             <strong>${pagado.toLocaleString("es-AR")}</strong>
-          </div>
-          <div className="turno-stat">
-            <span>Saldo</span>
-            <strong>${saldoPendiente.toLocaleString("es-AR")}</strong>
+            <small>
+              {pagado > 0
+                ? "Registrado en tu turno"
+                : "Todavia no tenes pagos registrados"}
+            </small>
           </div>
           {anticipo > 0 && (
             <div className="turno-stat">
-              <span>Seña</span>
+              <span>Senia</span>
               <strong>${anticipo.toLocaleString("es-AR")}</strong>
+              <small>Reserva solicitada para este servicio</small>
             </div>
           )}
         </div>
+
+        {mostrarResumenPago && (
+          <div className="turno-card-payment-note">
+            Te queda pendiente abonar ${saldoPendiente.toLocaleString("es-AR")}
+            .
+          </div>
+        )}
 
         <div className="turno-card-actions">
           {ubicacion?.mapsLink && (

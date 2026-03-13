@@ -11,6 +11,12 @@ const { desglosarPagoTurno, normalizarMontosTurno } = require("../config/comisio
 const MP_ACCESS_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const FRONT_URL = defineSecret("FRONT_URL");
 
+function sanitizarUrlBase(url) {
+  const value = String(url || "").trim().replace(/\/$/, "");
+  if (!/^https?:\/\//i.test(value)) return "";
+  return value;
+}
+
 exports.iniciarPagoTurnoMP = onCall(
   {
     region: "us-central1",
@@ -21,7 +27,7 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("unauthenticated", "No autenticado");
     }
 
-    const { turnoId } = request.data || {};
+    const { turnoId, frontOrigin } = request.data || {};
     if (!turnoId) {
       throw new HttpsError("invalid-argument", "turnoId requerido");
     }
@@ -109,7 +115,9 @@ exports.iniciarPagoTurnoMP = onCall(
     }
 
     const mpAccessToken = MP_ACCESS_TOKEN.value();
-    const frontUrl = FRONT_URL.value()?.replace(/\/$/, "");
+    const frontUrl =
+      sanitizarUrlBase(frontOrigin) ||
+      sanitizarUrlBase(FRONT_URL.value());
 
     if (!mpAccessToken || !frontUrl) {
       throw new HttpsError("internal", "MP no configurado");

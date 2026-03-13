@@ -8,10 +8,11 @@ import {
   getDocs,
   setDoc,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { db, storage } from "../../../Firebase.js";
+import { db, functions as firebaseFunctions, storage } from "../../../Firebase.js";
 import { swalError, swalSuccess } from "../../../public/utils/swalUtils.js";
 import { hideLoading, showLoading } from "../../../services/loadingService.js";
 import profesionalFemImg from "../../../assets/icons/profesional-fem.png";
@@ -105,7 +106,19 @@ async function obtenerHomeVisuales() {
 
 async function obtenerReservasConfig() {
   const snap = await getDoc(doc(db, "configuracion", "reservas"));
-  return snap.exists() ? snap.data() : { bloquearTurnosMananaSin12h: false };
+  return snap.exists()
+    ? snap.data()
+    : {
+        bloquearTurnosMananaSin12h: false,
+        whatsappHabilitado: false,
+        enviarWhatsappPendienteTest: false,
+        horaRecordatorioWhatsapp: "10:00",
+        whatsappCodigoPais: "54",
+        whatsappPhoneNumberId: "",
+        whatsappTemplateIdioma: "es_AR",
+        whatsappTemplateSolicitud: "",
+        whatsappTemplateRecordatorio: "",
+      };
 }
 
 function Seccion({
@@ -285,6 +298,18 @@ export default function AdminConfiguracion() {
   });
   const [reservasConfig, setReservasConfig] = useState({
     bloquearTurnosMananaSin12h: false,
+    whatsappHabilitado: false,
+    enviarWhatsappPendienteTest: false,
+    horaRecordatorioWhatsapp: "10:00",
+    whatsappCodigoPais: "54",
+    whatsappPhoneNumberId: "",
+    whatsappTemplateIdioma: "es_AR",
+    whatsappTemplateSolicitud: "",
+    whatsappTemplateRecordatorio: "",
+  });
+  const [whatsappEstado, setWhatsappEstado] = useState({
+    status: "idle",
+    message: "Token sin validar",
   });
 
   const toggle = (key) => {
@@ -474,10 +499,67 @@ export default function AdminConfiguracion() {
         text: "Actualizando reglas generales de reserva...",
       },
     );
+
+    if (reservasConfig.whatsappPhoneNumberId) {
+      await validarWhatsAppToken({ silent: true });
+    } else {
+      setWhatsappEstado({
+        status: "idle",
+        message: "Completa el Phone Number ID para validar",
+      });
+    }
+
     swalSuccess({
       title: "Reglas de reserva",
       text: "Configuracion actualizada correctamente",
     });
+  }
+
+  async function validarWhatsAppToken({ silent = false } = {}) {
+    if (!reservasConfig.whatsappPhoneNumberId) {
+      setWhatsappEstado({
+        status: "error",
+        message: "Falta el Phone Number ID",
+      });
+      return;
+    }
+
+    if (!silent) {
+      setWhatsappEstado({
+        status: "checking",
+        message: "Validando token...",
+      });
+    }
+
+    try {
+      const callable = httpsCallable(firebaseFunctions, "validarWhatsAppConfig");
+      const response = await callable({
+        phoneNumberId: reservasConfig.whatsappPhoneNumberId,
+      });
+
+      const data = response?.data || {};
+      const detalles = [data.verifiedName, data.displayPhoneNumber]
+        .filter(Boolean)
+        .join(" - ");
+
+      setWhatsappEstado({
+        status: "ok",
+        message: detalles
+          ? `Token correcto${detalles ? ` (${detalles})` : ""}`
+          : "Token correcto",
+      });
+    } catch (error) {
+      const message =
+        error?.message?.replace("FirebaseError: ", "") ||
+        "Token incorrecto";
+
+      setWhatsappEstado({
+        status: "error",
+        message: message.includes("Token incorrecto")
+          ? message
+          : `Token incorrecto: ${message}`,
+      });
+    }
   }
 
   async function agregarProfesional() {
@@ -794,15 +876,15 @@ export default function AdminConfiguracion() {
           loading={sectionLoading.reservas}
         >
           <div className="config-note">
-            Si activas esta regla, la agenda publica solo mostrara turnos con al
-            menos 48 horas de anticipacion.
+            Desde aca podes controlar reglas de anticipacion y el envio
+            automatico de WhatsApp para pruebas y recordatorios.
           </div>
 
           <div className="config-switch-list">
             <label className="config-switch-item">
               <div>
                 <span className="config-switch-label">
-                  Exigir 48 horas de anticipacion minima
+                  Exigir 12 horas de anticipacion para turnos antes de las 12:00
                 </span>
               </div>
 
@@ -818,6 +900,170 @@ export default function AdminConfiguracion() {
                 }
               />
             </label>
+
+            <label className="config-switch-item">
+              <div>
+                <span className="config-switch-label">
+                  Activar WhatsApp automatico
+                </span>
+              </div>
+
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={Boolean(reservasConfig.whatsappHabilitado)}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappHabilitado: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-switch-item">
+              <div>
+                <span className="config-switch-label">
+                  Enviar mensaje de prueba al solicitar turno
+                </span>
+              </div>
+
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={Boolean(reservasConfig.enviarWhatsappPendienteTest)}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    enviarWhatsappPendienteTest: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="config-form-grid mt-3">
+            <label className="config-field">
+              <span>Hora del recordatorio del dia siguiente</span>
+              <input
+                className="form-control"
+                type="time"
+                value={reservasConfig.horaRecordatorioWhatsapp || "10:00"}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    horaRecordatorioWhatsapp: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Codigo de pais WhatsApp</span>
+              <input
+                className="form-control"
+                placeholder="54"
+                value={reservasConfig.whatsappCodigoPais || ""}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappCodigoPais: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Phone Number ID de WhatsApp Cloud</span>
+              <input
+                className="form-control"
+                placeholder="Ej: 123456789012345"
+                value={reservasConfig.whatsappPhoneNumberId || ""}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappPhoneNumberId: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Idioma del template</span>
+              <input
+                className="form-control"
+                placeholder="es_AR"
+                value={reservasConfig.whatsappTemplateIdioma || ""}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappTemplateIdioma: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Template solicitud (opcional)</span>
+              <input
+                className="form-control"
+                placeholder="turno_pendiente"
+                value={reservasConfig.whatsappTemplateSolicitud || ""}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappTemplateSolicitud: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Template recordatorio (opcional)</span>
+              <input
+                className="form-control"
+                placeholder="recordatorio_turno"
+                value={reservasConfig.whatsappTemplateRecordatorio || ""}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    whatsappTemplateRecordatorio: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="config-note mt-3">
+            El token de Meta se sigue cargando como secret en Firebase. Si no
+            completas templates, el sistema intenta enviar texto simple para
+            pruebas.
+          </div>
+
+          <div className="config-actions config-actions-inline">
+            <button
+              className="btn btn-outline-secondary"
+              type="button"
+              onClick={() => validarWhatsAppToken()}
+              disabled={whatsappEstado.status === "checking"}
+            >
+              {whatsappEstado.status === "checking"
+                ? "Validando token..."
+                : "Validar token"}
+            </button>
+
+            <span
+              className={`config-section-status ${
+                whatsappEstado.status === "ok"
+                  ? "ok"
+                  : whatsappEstado.status === "error"
+                    ? "pending"
+                    : ""
+              }`}
+            >
+              <span className="config-section-status-dot" />
+              {whatsappEstado.message}
+            </span>
           </div>
 
           <div className="config-actions">

@@ -148,7 +148,7 @@ export function swalConfirmWarning({
 // =====================================================
 
 export async function swalRequiereLogin() {
-  return Swal.fire({
+  const result = await Swal.fire({
     title: "Debes iniciar sesión",
     text: "Inicia sesión para comprar.",
     icon: "warning",
@@ -161,6 +161,13 @@ export async function swalRequiereLogin() {
     },
     buttonsStyling: false,
   });
+
+  if (result.isConfirmed && typeof window !== "undefined") {
+    window.sessionStorage.setItem("openLoginOnHome", "1");
+    window.location.assign("/");
+  }
+
+  return result;
 }
 // =====================================================
 //  FORM PERFIL USUARIO (NOMBRE + EMAIL + TELÉFONO)

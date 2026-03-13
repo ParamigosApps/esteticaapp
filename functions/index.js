@@ -78,6 +78,8 @@ exports.confirmarPagoManual =
   require("./callables/confirmarPagoManual").confirmarPagoManual;
 exports.validarEmailVerificado =
   require("./callables/validarEmailVerificado").validarEmailVerificado;
+exports.validarWhatsAppConfig =
+  require("./callables/validarWhatsAppConfig").validarWhatsAppConfig;
 exports.cancelarTurnoAdmin =
   require("./admin/cancelarTurnoAdmin").cancelarTurnoAdmin;
 exports.marcarTurnoRealizadoAdmin =

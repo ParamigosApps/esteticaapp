@@ -236,17 +236,26 @@
 
 .turno-card-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .turno-stat {
   display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid #eee7f7;
-  background: #fff;
+  gap: 7px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(232, 223, 245, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 246, 255, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.turno-stat-highlight {
+  border-color: rgba(187, 154, 232, 0.5);
+  background:
+    radial-gradient(circle at top right, rgba(243, 208, 255, 0.35), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(248, 242, 255, 1));
 }
 
 .turno-stat span {
@@ -258,7 +267,25 @@
 }
 
 .turno-stat strong {
+  font-size: 1.35rem;
+  line-height: 1.05;
   color: #261d30;
+}
+
+.turno-stat small {
+  color: #756b83;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.turno-card-payment-note {
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(242, 211, 146, 0.65);
+  background: linear-gradient(180deg, #fffaf0, #fff4dc);
+  color: #8a5a00;
+  font-size: 0.93rem;
+  font-weight: 600;
 }
 
 .turno-card-actions {

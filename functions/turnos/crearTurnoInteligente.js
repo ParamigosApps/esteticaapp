@@ -5,6 +5,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { buildTurnoBaseCompat } = require("./turnoSchema");
 const { calcularMontosTurno } = require("../config/comisiones");
+const { WHATSAPP_TOKEN, enviarWhatsApp } = require("./whatsapp");
 
 const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 4;
 
@@ -121,7 +122,60 @@ function obtenerMinutosEnZona(ms, timeZone = "America/Argentina/Buenos_Aires") {
 function getReservasConfigDefault() {
   return {
     bloquearTurnosMananaSin12h: false,
+    whatsappHabilitado: false,
+    enviarWhatsappPendienteTest: false,
+    horaRecordatorioWhatsapp: "10:00",
+    whatsappCodigoPais: "54",
+    whatsappPhoneNumberId: "",
+    whatsappTemplateIdioma: "es_AR",
+    whatsappTemplateSolicitud: "",
+    whatsappTemplateRecordatorio: "",
   };
+}
+
+function formatHora(ms) {
+  return new Date(Number(ms)).toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+}
+
+function formatFecha(fechaISO) {
+  const [y, m, d] = String(fechaISO).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toLocaleDateString(
+    "es-AR",
+    {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      timeZone: "America/Argentina/Buenos_Aires",
+    },
+  );
+}
+
+function buildMensajeSolicitud({
+  estadoTurnoInicial,
+  nombreServicioFinal,
+  fecha,
+  horaInicio,
+}) {
+  if (estadoTurnoInicial === "confirmado") {
+    return [
+      "Tu turno fue confirmado.",
+      `Servicio: ${nombreServicioFinal}.`,
+      `Fecha: ${formatFecha(fecha)}.`,
+      `Hora: ${formatHora(horaInicio)}.`,
+    ].join(" ");
+  }
+
+  return [
+    "Recibimos tu solicitud y tu turno quedo pendiente.",
+    `Servicio: ${nombreServicioFinal}.`,
+    `Fecha: ${formatFecha(fecha)}.`,
+    `Hora: ${formatHora(horaInicio)}.`,
+    "Te vamos a avisar por este medio cuando quede confirmado.",
+  ].join(" ");
 }
 
 function cumpleReglaAnticipacionManana(
@@ -174,7 +228,7 @@ function turnoDentroDeHorarioServicio(servicio, fechaISO, inicioMs, finMs) {
 }
 
 exports.crearTurnoInteligente = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", secrets: [WHATSAPP_TOKEN] },
   async (request) => {
     console.log("=== crearTurnoInteligente INPUT ===");
     console.log("UID:", request.auth?.uid);
@@ -273,7 +327,7 @@ const {
       );
     }
 
-    return await db.runTransaction(async (tx) => {
+    const resultado = await db.runTransaction(async (tx) => {
       const inicioNum = Number(horaInicio);
       const finNum = Number(horaFin);
 
@@ -540,5 +594,47 @@ const {
         venceEn: venceTurno,
       };
     });
+
+    if (
+      resultado?.turnoId &&
+      telefonoCliente &&
+      reservasConfig.whatsappHabilitado &&
+      reservasConfig.enviarWhatsappPendienteTest
+    ) {
+      try {
+        await enviarWhatsApp({
+          telefono: telefonoCliente,
+          texto: buildMensajeSolicitud({
+            estadoTurnoInicial: resultado.estadoTurnoInicial,
+            nombreServicioFinal,
+            fecha,
+            horaInicio,
+          }),
+          phoneNumberId: reservasConfig.whatsappPhoneNumberId,
+          templateName: reservasConfig.whatsappTemplateSolicitud,
+          languageCode: reservasConfig.whatsappTemplateIdioma,
+          bodyParameters: [
+            nombreCliente || "Cliente",
+            nombreServicioFinal,
+            formatFecha(fecha),
+            formatHora(horaInicio),
+            resultado.estadoTurnoInicial === "confirmado"
+              ? "confirmado"
+              : "pendiente",
+          ],
+          countryCode: reservasConfig.whatsappCodigoPais,
+        });
+
+        await db.collection("turnos").doc(resultado.turnoId).update({
+          whatsappSolicitudEnviadaAt:
+            getAdmin().firestore.FieldValue.serverTimestamp(),
+          whatsappSolicitudTelefonoUsado: telefonoCliente,
+        });
+      } catch (error) {
+        console.error("No se pudo enviar WhatsApp de solicitud", error);
+      }
+    }
+
+    return resultado;
   }
 );
