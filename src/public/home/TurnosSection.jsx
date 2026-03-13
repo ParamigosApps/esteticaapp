@@ -162,6 +162,30 @@ export default function TurnosSection({
     setServicioSeleccionado(null);
   }, [servicios, busqueda, categoriaSeleccionada]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!servicios.length) return;
+
+    try {
+      const raw = window.sessionStorage.getItem("pendingLoginAction");
+      if (!raw) return;
+
+      const intent = JSON.parse(raw);
+      if (intent?.tipo !== "turno" || !intent?.servicioId) return;
+
+      const servicio = servicios.find((item) => item.id === intent.servicioId);
+      if (!servicio) return;
+
+      if (servicio.categoriaId) {
+        setCategoriaSeleccionada(servicio.categoriaId);
+      }
+
+      setServicioSeleccionado(servicio);
+    } catch (error) {
+      console.error("No se pudo restaurar el servicio pendiente", error);
+    }
+  }, [servicios, setCategoriaSeleccionada]);
+
   const serviciosActivos = useMemo(() => {
     let lista = (servicios || []).filter((s) => s.activo);
 

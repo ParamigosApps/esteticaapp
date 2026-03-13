@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { db } from "../../Firebase";
 import { useAuth } from "../../context/AuthContext";
@@ -17,6 +17,7 @@ const esTelValido = (v) => {
 
 export default function MiPerfil() {
   const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [perfil, setPerfil] = useState({
     nombre: "",
@@ -157,6 +158,7 @@ export default function MiPerfil() {
 
     try {
       await logout?.();
+      navigate("/");
     } catch (e) {
       console.error(e);
       Swal.fire({

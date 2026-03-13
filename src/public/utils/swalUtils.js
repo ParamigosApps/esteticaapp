@@ -147,7 +147,7 @@ export function swalConfirmWarning({
 // REQUIERE INICIAR SESION
 // =====================================================
 
-export async function swalRequiereLogin() {
+export async function swalRequiereLogin(contexto = null) {
   const result = await Swal.fire({
     title: "Debes iniciar sesión",
     text: "Inicia sesión para comprar.",
@@ -163,8 +163,20 @@ export async function swalRequiereLogin() {
   });
 
   if (result.isConfirmed && typeof window !== "undefined") {
+    if (contexto) {
+      window.sessionStorage.setItem(
+        "pendingLoginAction",
+        JSON.stringify(contexto),
+      );
+    }
+
     window.sessionStorage.setItem("openLoginOnHome", "1");
-    window.location.assign("/");
+
+    if (window.location.pathname === "/") {
+      window.dispatchEvent(new CustomEvent("open-login-modal"));
+    } else {
+      window.location.assign("/");
+    }
   }
 
   return result;

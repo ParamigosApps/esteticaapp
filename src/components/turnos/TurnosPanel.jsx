@@ -125,6 +125,18 @@ function endOfDay(date) {
   return next;
 }
 
+function readPendingLoginAction() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem("pendingLoginAction");
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.error("No se pudo leer la accion pendiente de login", error);
+    return null;
+  }
+}
+
 function getMonthRange(baseDate, fechaMax = null) {
   const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
   const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
@@ -299,6 +311,27 @@ export default function TurnosPanel({ servicio }) {
   const fechaMaxReservable = getFechaMaxReservable(servicio);
 
   useEffect(() => {
+    if (!user || !servicio?.id) return;
+
+    const intent = readPendingLoginAction();
+    if (!intent || intent.tipo !== "turno" || intent.servicioId !== servicio.id) {
+      return;
+    }
+
+    if (!intent.fechaSeleccionada) return;
+
+    const [year, month, day] = String(intent.fechaSeleccionada)
+      .split("-")
+      .map(Number);
+
+    if (!year || !month || !day) return;
+
+    const restoredDate = new Date(year, month - 1, day);
+    restoredDate.setHours(0, 0, 0, 0);
+    setFechaSeleccionada(restoredDate);
+  }, [user, servicio?.id]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function cargarReservasConfig() {
@@ -421,6 +454,37 @@ export default function TurnosPanel({ servicio }) {
     limiteReservableMs,
     reservasConfig,
   ]);
+
+  useEffect(() => {
+    if (!user || !agenda || !servicio?.id) return;
+
+    const intent = readPendingLoginAction();
+    if (!intent || intent.tipo !== "turno" || intent.servicioId !== servicio.id) {
+      return;
+    }
+
+    if (intent.fechaSeleccionada !== toISODateLocal(fechaSeleccionada)) return;
+
+    const slotIntent = intent.slotSeleccionado || {};
+    const slotsDelDia = generarSlotsDia(agenda, servicio, fechaSeleccionada);
+    const slotRestaurado = slotsDelDia.find(
+      (slot) =>
+        !slot.ocupado &&
+        Number(slot.inicio) === Number(slotIntent.horaInicio) &&
+        Number(slot.fin) === Number(slotIntent.horaFin),
+    );
+
+    if (!slotRestaurado) return;
+
+    setSlotSeleccionado({
+      ...slotRestaurado,
+      fecha: toISODateLocal(fechaSeleccionada),
+      horaInicio: slotRestaurado.inicio,
+      horaFin: slotRestaurado.fin,
+    });
+
+    window.sessionStorage.removeItem("pendingLoginAction");
+  }, [agenda, fechaSeleccionada, servicio, user]);
 
   function cambiarMes(offset) {
     const nueva = startOfDay(fechaSeleccionada);
@@ -611,7 +675,16 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     if (authLoading) return;
 
     if (!user) {
-      await swalRequiereLogin();
+      await swalRequiereLogin({
+        tipo: "turno",
+        servicioId: servicio.id,
+        categoriaId: servicio.categoriaId || null,
+        fechaSeleccionada: toISODateLocal(fechaSeleccionada),
+        slotSeleccionado: {
+          horaInicio: slotSeleccionado?.horaInicio,
+          horaFin: slotSeleccionado?.horaFin,
+        },
+      });
       return;
     }
 

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 
@@ -8,6 +8,7 @@ import LoginModal from "./LoginModal";
 export default function Navbar() {
   const { user, logout, loginEnProceso } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const userName = user?.nombre || user?.displayName || "Mi cuenta";
@@ -28,6 +29,16 @@ export default function Navbar() {
     window.sessionStorage.removeItem("openLoginOnHome");
     setLoginOpen(true);
   }, [location.pathname, user, loginEnProceso]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleOpenLogin = () => setLoginOpen(true);
+
+    window.addEventListener("open-login-modal", handleOpenLogin);
+    return () =>
+      window.removeEventListener("open-login-modal", handleOpenLogin);
+  }, []);
 
   return (
     <header className="app-header">
@@ -114,6 +125,12 @@ export default function Navbar() {
                 onClick={async () => {
                   setMenuOpen(false);
                   await logout();
+                  if (
+                    location.pathname === "/mis-turnos" ||
+                    location.pathname === "/mi-perfil"
+                  ) {
+                    navigate("/");
+                  }
                 }}
               >
                 <span className="dropdown-item-title">Cerrar sesion</span>
