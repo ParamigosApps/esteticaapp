@@ -28,6 +28,7 @@ function toISODateLocal(date) {
 
 function parseISODateLocal(value) {
   if (!value || typeof value !== "string") return null;
+  if (value.trim() === "null" || value.trim() === "undefined") return null;
 
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return null;

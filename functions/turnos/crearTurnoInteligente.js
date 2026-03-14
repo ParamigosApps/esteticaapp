@@ -335,6 +335,8 @@ const {
 
     if (
       typeof servicio?.agendaDisponibleDesde === "string" &&
+      servicio.agendaDisponibleDesde !== "null" &&
+      servicio.agendaDisponibleDesde !== "undefined" &&
       /^\d{4}-\d{2}-\d{2}$/.test(servicio.agendaDisponibleDesde) &&
       fecha < servicio.agendaDisponibleDesde
     ) {
@@ -525,9 +527,20 @@ const {
             .map((item) => String(item?.nombre || "").trim())
             .filter(Boolean)
         : [];
+      const nombresSolicitadosUnicos = [...new Set(nombresSolicitados)];
+
+      if (
+        servicio?.precioVariableModo === "single" &&
+        nombresSolicitadosUnicos.length > 1
+      ) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Este servicio solo permite seleccionar un adicional",
+        );
+      }
 
       const itemsVariableSeleccionados = itemsDisponibles.filter((item) =>
-        nombresSolicitados.includes(String(item.nombre || "").trim()),
+        nombresSolicitadosUnicos.includes(String(item.nombre || "").trim()),
       );
 
       const ajusteServicio = itemsVariableSeleccionados.reduce(

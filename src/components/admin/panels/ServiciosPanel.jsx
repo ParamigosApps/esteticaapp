@@ -30,6 +30,7 @@ function normalizar(str) {
 
 function normalizarFechaAgendaDesde(value) {
   const text = String(value || "").trim();
+  if (!text || text === "null" || text === "undefined") return "";
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
@@ -103,6 +104,16 @@ function servicioTienePrecioVariableActivo(servicio = {}) {
     Boolean(servicio?.precioVariable) &&
     serializarItemsPrecioVariable(servicio.itemsPrecioVariable || []).length > 0
   );
+}
+
+function getPrecioVariableModo(servicio = {}) {
+  return servicio?.precioVariableModo === "single" ? "single" : "multiple";
+}
+
+function getPrecioVariableModoLabel(servicio = {}) {
+  return getPrecioVariableModo(servicio) === "single"
+    ? "Un adicional"
+    : "Varios adicionales";
 }
 
 function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
@@ -784,6 +795,8 @@ function AgendaMensualEditor({
 function PrecioVariableEditor({
   precioVariable,
   setPrecioVariable,
+  precioVariableModo,
+  setPrecioVariableModo,
   itemsPrecioVariable,
   setItemsPrecioVariable,
 }) {
@@ -818,6 +831,18 @@ function PrecioVariableEditor({
 
       {precioVariable && (
         <div className="service-variable-box">
+          <div className="field-group service-field-sm">
+            <label>Seleccion de adicionales</label>
+            <select
+              className="admin-input reserva"
+              value={precioVariableModo}
+              onChange={(e) => setPrecioVariableModo(e.target.value)}
+            >
+              <option value="multiple">Permitir varios items</option>
+              <option value="single">Permitir solo uno</option>
+            </select>
+          </div>
+
           <div className="agenda-tipo-header">
             <label className="horarios-servicio-label mb-0">
               Items que suman al valor total
@@ -1209,6 +1234,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [precioVariable, setPrecioVariable] = useState(
     Boolean(servicio.precioVariable),
   );
+  const [precioVariableModo, setPrecioVariableModo] = useState(
+    getPrecioVariableModo(servicio),
+  );
   const [itemsPrecioVariable, setItemsPrecioVariable] = useState(
     normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
   );
@@ -1262,6 +1290,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     setPrecio(servicio.precio ?? 0);
     setPrecioEfectivo(servicio.precioEfectivo ?? 0);
     setPrecioVariable(Boolean(servicio.precioVariable));
+    setPrecioVariableModo(getPrecioVariableModo(servicio));
     setItemsPrecioVariable(
       normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
     );
@@ -1399,6 +1428,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       precio: Number(precio),
       precioEfectivo: Number(precioEfectivo || 0),
       precioVariable,
+      precioVariableModo: precioVariable ? precioVariableModo : "multiple",
       itemsPrecioVariable: precioVariable
         ? serializarItemsPrecioVariable(itemsPrecioVariable)
         : [],
@@ -1598,6 +1628,12 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             <strong>{getResumenPrecioVariable(servicio)}</strong>
           </span>
         )}
+        {servicio.precioVariable && (
+          <span>
+            Seleccion de adicionales:{" "}
+            <strong>{getPrecioVariableModoLabel(servicio)}</strong>
+          </span>
+        )}
         <span>
           Gabinetes:{" "}
           <strong>
@@ -1755,6 +1791,8 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                   <PrecioVariableEditor
                     precioVariable={precioVariable}
                     setPrecioVariable={setPrecioVariable}
+                    precioVariableModo={precioVariableModo}
+                    setPrecioVariableModo={setPrecioVariableModo}
                     itemsPrecioVariable={itemsPrecioVariable}
                     setItemsPrecioVariable={setItemsPrecioVariable}
                   />
@@ -1928,6 +1966,7 @@ export default function ServiciosPanel() {
   const [precio, setPrecio] = useState(0);
   const [precioEfectivo, setPrecioEfectivo] = useState(0);
   const [precioVariable, setPrecioVariable] = useState(false);
+  const [precioVariableModo, setPrecioVariableModo] = useState("multiple");
   const [itemsPrecioVariable, setItemsPrecioVariable] = useState([]);
   const [responsableGestion, setResponsableGestion] = useState("admin");
   const [modoReserva, setModoReserva] = useState("reserva");
@@ -2162,6 +2201,7 @@ export default function ServiciosPanel() {
         precio: Number(precio),
         precioEfectivo: Number(precioEfectivo || 0),
         precioVariable,
+        precioVariableModo: precioVariable ? precioVariableModo : "multiple",
         itemsPrecioVariable: precioVariable
           ? serializarItemsPrecioVariable(itemsPrecioVariable)
           : [],
@@ -2202,6 +2242,7 @@ export default function ServiciosPanel() {
       setPrecio(0);
       setPrecioEfectivo(0);
       setPrecioVariable(false);
+      setPrecioVariableModo("multiple");
       setItemsPrecioVariable([]);
       setResponsableGestion("admin");
       setModoReserva("reserva");
@@ -2368,6 +2409,8 @@ export default function ServiciosPanel() {
                     <PrecioVariableEditor
                       precioVariable={precioVariable}
                       setPrecioVariable={setPrecioVariable}
+                      precioVariableModo={precioVariableModo}
+                      setPrecioVariableModo={setPrecioVariableModo}
                       itemsPrecioVariable={itemsPrecioVariable}
                       setItemsPrecioVariable={setItemsPrecioVariable}
                     />

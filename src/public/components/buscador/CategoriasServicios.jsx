@@ -61,17 +61,38 @@ export default function CategoriasServicios({
             }}
           >
             <div className="categoria-card-top">
-              <span className="categoria-pill">
-                {activa ? "Activa" : "Categoria"}
+              <div className="categoria-card-top-left">
+                <span className="categoria-icon" aria-hidden="true">
+                  {String(c.nombre || "?").trim().charAt(0).toUpperCase() || "C"}
+                </span>
+                <div className="categoria-card-kicker-wrap">
+                  <span className="categoria-pill">
+                    {activa ? "Activa" : "Categoria"}
+                  </span>
+                  <span className="categoria-count">
+                    {c.cantidad} servicio{c.cantidad === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </div>
+              <span className="categoria-arrow" aria-hidden="true">
+                {activa ? "●" : "→"}
               </span>
-              <span className="categoria-count">{c.cantidad} servicios</span>
             </div>
-            <h4>{c.nombre}</h4>
-            <p className="categoria-card-copy">
-              {activa
-                ? "Mostrando servicios de esta categoria"
-                : "Explorar tratamientos disponibles"}
-            </p>
+            <div className="categoria-card-body">
+              <h4>{c.nombre}</h4>
+              <p className="categoria-card-copy">
+                {c.descripcion?.trim()
+                  ? c.descripcion
+                  : activa
+                    ? "Mostrando servicios de esta categoria"
+                    : "Explorar tratamientos disponibles"}
+              </p>
+            </div>
+            <div className="categoria-card-footer">
+              <span className="categoria-footer-copy">
+                {activa ? "Categoria abierta" : "Ver opciones"}
+              </span>
+            </div>
           </div>
         );
       })}

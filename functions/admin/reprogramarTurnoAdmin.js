@@ -17,6 +17,8 @@ function estaDentroVentanaAgenda(servicio, fechaIso) {
   fecha.setHours(0, 0, 0, 0);
   const fechaAgendaDesde =
     typeof servicio?.agendaDisponibleDesde === "string" &&
+    servicio.agendaDisponibleDesde !== "null" &&
+    servicio.agendaDisponibleDesde !== "undefined" &&
     /^\d{4}-\d{2}-\d{2}$/.test(servicio.agendaDisponibleDesde)
       ? new Date(`${servicio.agendaDisponibleDesde}T00:00:00`)
       : null;

@@ -127,6 +127,7 @@ function endOfDay(date) {
 
 function parseISODateLocal(value) {
   const text = String(value || "").trim();
+  if (!text || text === "null" || text === "undefined") return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
 
   const [year, month, day] = text.split("-").map(Number);
@@ -174,10 +175,7 @@ function generarDiasDelMes(baseDate, fechaMax = null, fechaMin = null) {
   while (cursor <= ultimoDia) {
     const copia = new Date(cursor);
 
-    if (
-      copia >= (fechaMin || hoy) &&
-      (!fechaMax || copia <= fechaMax)
-    ) {
+    if (copia >= (fechaMin || hoy) && (!fechaMax || copia <= fechaMax)) {
       dias.push(copia);
     }
 
@@ -192,7 +190,11 @@ const AGENDA_24HS_FALLBACK_DIAS = 90;
 function getLimiteReservableMs(servicio) {
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
   const diasVentana = maxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : maxDias;
-  return Date.now() + diasVentana * 24 * 60 * 60 * 1000;
+  const fechaMax = new Date();
+  fechaMax.setHours(0, 0, 0, 0);
+  fechaMax.setDate(fechaMax.getDate() + (diasVentana - 1));
+  fechaMax.setHours(23, 59, 59, 999);
+  return fechaMax.getTime();
 }
 
 function getFechaMaxReservable(servicio) {
@@ -239,7 +241,11 @@ function getFechaMinReservable(servicio) {
 
 const ANTICIPACION_MINIMA_TURNOS_MANANA_HORAS = 12;
 
-function cumpleReglaAnticipacionManana(inicioMs, reservasConfig, servicio = null) {
+function cumpleReglaAnticipacionManana(
+  inicioMs,
+  reservasConfig,
+  servicio = null,
+) {
   if (!reservasConfig?.bloquearTurnosMananaSin12h) return true;
   if (Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1) return true;
 
@@ -319,7 +325,10 @@ function getFechasAgendaMensualTexto(
 
   const agendaMensual = Array.isArray(servicio?.agendaMensual)
     ? servicio.agendaMensual.filter(
-        (item) => item?.activo !== false && Array.isArray(item?.franjas) && item.franjas.length,
+        (item) =>
+          item?.activo !== false &&
+          Array.isArray(item?.franjas) &&
+          item.franjas.length,
       )
     : [];
 
@@ -379,6 +388,8 @@ export default function TurnosPanel({ servicio }) {
         (item) => item?.activo !== false && Number(item?.monto || 0) > 0,
       )
     : [];
+  const precioVariableModo =
+    servicio?.precioVariableModo === "single" ? "single" : "multiple";
   const itemsVariablesSeleccionados = itemsPrecioVariable.filter((item) =>
     itemsSeleccionados.includes(String(item?.nombre || "")),
   );
@@ -424,7 +435,8 @@ export default function TurnosPanel({ servicio }) {
     precioEfectivo > 0
       ? precioEfectivo + (usaCargoReservaOnline ? comisionTurno : 0)
       : 0;
-  const agendaEs24Horas = Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
+  const agendaEs24Horas =
+    Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
   const limiteReservableMs = getLimiteReservableMs(servicio);
   const fechaMinReservable = getFechaMinReservable(servicio);
   const fechaMaxReservable = getFechaMaxReservableReal(
@@ -451,18 +463,28 @@ export default function TurnosPanel({ servicio }) {
   }, [fechaSeleccionada, fechaMinReservable]);
 
   function toggleItemVariable(nombre) {
-    setItemsSeleccionados((prev) =>
-      prev.includes(nombre)
+    setItemsSeleccionados((prev) => {
+      const yaSeleccionado = prev.includes(nombre);
+
+      if (precioVariableModo === "single") {
+        return yaSeleccionado ? [] : [nombre];
+      }
+
+      return yaSeleccionado
         ? prev.filter((item) => item !== nombre)
-        : [...prev, nombre],
-    );
+        : [...prev, nombre];
+    });
   }
 
   useEffect(() => {
     if (!user || !servicio?.id) return;
 
     const intent = readPendingLoginAction();
-    if (!intent || intent.tipo !== "turno" || intent.servicioId !== servicio.id) {
+    if (
+      !intent ||
+      intent.tipo !== "turno" ||
+      intent.servicioId !== servicio.id
+    ) {
       return;
     }
 
@@ -612,7 +634,11 @@ export default function TurnosPanel({ servicio }) {
     if (!user || !agenda || !servicio?.id) return;
 
     const intent = readPendingLoginAction();
-    if (!intent || intent.tipo !== "turno" || intent.servicioId !== servicio.id) {
+    if (
+      !intent ||
+      intent.tipo !== "turno" ||
+      intent.servicioId !== servicio.id
+    ) {
       return;
     }
 
@@ -902,11 +928,16 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     fechaMinReservable,
   );
   const slots =
-    fechaSeleccionada < fechaMinReservable || fechaSeleccionada > fechaMaxReservable
+    fechaSeleccionada < fechaMinReservable ||
+    fechaSeleccionada > fechaMaxReservable
       ? []
-      : generarSlotsDia(agenda, servicio, fechaSeleccionada).filter((slot) =>
-          cumpleReglaAnticipacionManana(slot.inicio, reservasConfig, servicio) &&
-          slotDentroDeVentanaAgenda(slot, limiteReservableMs),
+      : generarSlotsDia(agenda, servicio, fechaSeleccionada).filter(
+          (slot) =>
+            cumpleReglaAnticipacionManana(
+              slot.inicio,
+              reservasConfig,
+              servicio,
+            ) && slotDentroDeVentanaAgenda(slot, limiteReservableMs),
         );
 
   const fechaFormateada = slotSeleccionado
@@ -979,8 +1010,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       <div className="agenda-header">
         {agendaEs24Horas ? (
           <small className="agenda-disponibilidad">
-            Si el dia siguiente ya no tiene horarios, te mostramos la primera
-            fecha disponible.
+            <b>Agenda de 24 hs</b>
           </small>
         ) : agendaMensualTexto ? (
           <small className="agenda-disponibilidad">
@@ -1011,6 +1041,43 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         <b>{servicio.nombreServicio.toUpperCase()}</b>
       </h5>
 
+      {itemsPrecioVariable.length > 0 && (
+        <div className="agenda-variable-box">
+          <div className="agenda-variable-title">Personaliza tu servicio</div>
+          <div className="agenda-variable-hint">
+            {precioVariableModo === "single"
+              ? "Podes elegir un solo adicional."
+              : "Podes elegir uno o varios adicionales."}
+          </div>
+          <div className="agenda-variable-list">
+            {itemsPrecioVariable.map((item) => {
+              const nombre = String(item?.nombre || "").trim();
+              const activo = itemsSeleccionados.includes(nombre);
+
+              return (
+                <label
+                  key={`item-turno-${nombre}`}
+                  className={`agenda-variable-item ${activo ? "activo" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={activo}
+                    onChange={() => toggleItemVariable(nombre)}
+                  />
+                  <span>{nombre}</span>
+                  <strong>
+                    +${Number(item?.monto || 0).toLocaleString("es-AR")}
+                  </strong>
+                </label>
+              );
+            })}
+          </div>
+          <div className="agenda-variable-total">
+            Total pagando con transferencia:{" "}
+            <strong>${precioServicio.toLocaleString("es-AR")}</strong>
+          </div>
+        </div>
+      )}
       {precioEfectivo > 0 && (
         <div className="agenda-cash-note">
           {requierePagoOnline ? (
@@ -1058,51 +1125,21 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         </div>
       )}
 
-      {itemsPrecioVariable.length > 0 && (
-        <div className="agenda-variable-box">
-          <div className="agenda-variable-title">Personaliza tu servicio</div>
-          <div className="agenda-variable-list">
-            {itemsPrecioVariable.map((item) => {
-              const nombre = String(item?.nombre || "").trim();
-              const activo = itemsSeleccionados.includes(nombre);
-
-              return (
-                <label
-                  key={`item-turno-${nombre}`}
-                  className={`agenda-variable-item ${activo ? "activo" : ""}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={activo}
-                    onChange={() => toggleItemVariable(nombre)}
-                  />
-                  <span>{nombre}</span>
-                  <strong>
-                    +${Number(item?.monto || 0).toLocaleString("es-AR")}
-                  </strong>
-                </label>
-              );
-            })}
-          </div>
-          <div className="agenda-variable-total">
-            Total pagando con transferencia:{" "}
-            <strong>${precioServicio.toLocaleString("es-AR")}</strong>
-          </div>
-        </div>
-      )}
-
-      <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
+      <div className="agenda-month-nav d-flex justify-content-between align-items-center mb-3 mt-4">
         <div className="text-center mb-2"></div>
         <button
           type="button"
-          className="btn btn-outline-secondary btn-sm"
+          className="agenda-month-btn agenda-month-btn-prev btn btn-outline-secondary btn-sm"
           onClick={() => cambiarMes(-1)}
           disabled={!puedeIrMesAnterior}
         >
-          {"<-"} Mes anterior
+          <span className="agenda-month-btn-arrow" aria-hidden="true">
+            {"<-"}
+          </span>
+          <span>Mes anterior</span>
         </button>
 
-        <div style={{ fontWeight: 700 }}>
+        <div className="agenda-month-label" style={{ fontWeight: 700 }}>
           {fechaSeleccionada.toLocaleDateString("es-AR", {
             month: "long",
             year: "numeric",
@@ -1111,11 +1148,14 @@ Turno ID: ${data.turnoId.slice(0, 8)}
 
         <button
           type="button"
-          className="btn btn-outline-secondary btn-sm"
+          className="agenda-month-btn agenda-month-btn-next btn btn-outline-secondary btn-sm"
           onClick={() => cambiarMes(1)}
           disabled={!puedeIrMesSiguiente}
         >
-          Mes siguiente {"->"}
+          <span>Mes siguiente</span>
+          <span className="agenda-month-btn-arrow" aria-hidden="true">
+            {"->"}
+          </span>
         </button>
       </div>
 
@@ -1144,7 +1184,11 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             slotsDelDia.some(
               (s) =>
                 !s.ocupado &&
-                cumpleReglaAnticipacionManana(s.inicio, reservasConfig, servicio) &&
+                cumpleReglaAnticipacionManana(
+                  s.inicio,
+                  reservasConfig,
+                  servicio,
+                ) &&
                 slotDentroDeVentanaAgenda(s, limiteReservableMs),
             );
 

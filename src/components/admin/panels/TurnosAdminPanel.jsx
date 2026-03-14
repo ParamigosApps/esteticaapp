@@ -57,6 +57,19 @@ function toISODateLocal(date) {
   return `${y}-${m}-${d}`;
 }
 
+function parseISODateLocal(value) {
+  if (!value || typeof value !== "string") return null;
+  if (value.trim() === "null" || value.trim() === "undefined") return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [, y, m, d] = match;
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function formatDateShort(fechaIso) {
   return new Date(`${fechaIso}T00:00:00`).toLocaleDateString("es-AR", {
     weekday: "short",
@@ -65,12 +78,79 @@ function formatDateShort(fechaIso) {
   });
 }
 
+function getMonthRange(baseDate, fechaMax = null) {
+  const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+  const fechaHasta = fechaMax && end > fechaMax ? new Date(fechaMax) : end;
+
+  return {
+    fechaDesde: toISODateLocal(start),
+    fechaHasta: toISODateLocal(fechaHasta),
+  };
+}
+
 function getLimiteReservableMs(servicio) {
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
-  return Date.now() + maxDias * 24 * 60 * 60 * 1000;
+  const diasVentana = maxDias <= 1 ? 90 : maxDias;
+  const fechaMax = new Date();
+  fechaMax.setHours(0, 0, 0, 0);
+  fechaMax.setDate(fechaMax.getDate() + (diasVentana - 1));
+  fechaMax.setHours(23, 59, 59, 999);
+  return fechaMax.getTime();
+}
+
+function getFechaMaxReservable(servicio) {
+  const fecha = new Date(getLimiteReservableMs(servicio));
+  fecha.setHours(0, 0, 0, 0);
+  return fecha;
+}
+
+function getFechaMaxReservableReal(servicio) {
+  const fechaMaxBase = getFechaMaxReservable(servicio);
+
+  if (servicio?.agendaTipo === "mensual") {
+    const hoy = new Date();
+    const mesBaseOffset =
+      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+      ? mesBaseOffset + 2
+      : mesBaseOffset + 1;
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+    finMes.setHours(0, 0, 0, 0);
+
+    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+  }
+
+  return fechaMaxBase;
+}
+
+function getFechaMinReservable(servicio) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fechaAgendaDesde = parseISODateLocal(servicio?.agendaDisponibleDesde);
+
+  if (fechaAgendaDesde && fechaAgendaDesde > hoy) {
+    return fechaAgendaDesde;
+  }
+
+  return hoy;
 }
 
 function getDiaConfig(servicio, fechaIso) {
+  if (servicio?.agendaTipo === "mensual") {
+    const fecha = new Date(`${fechaIso}T00:00:00`);
+    const diaMes = fecha.getDate();
+    const agendaMensual = Array.isArray(servicio?.agendaMensual)
+      ? servicio.agendaMensual
+      : [];
+
+    return (
+      agendaMensual.find(
+        (item) => Number(item?.diaMes) === Number(diaMes),
+      ) || null
+    );
+  }
+
   const fecha = new Date(`${fechaIso}T00:00:00`);
   const diaSemana = fecha.getDay();
 
@@ -91,17 +171,15 @@ function getDiaConfig(servicio, fechaIso) {
 function estaDentroVentanaAgenda(servicio, fechaIso) {
   const fecha = new Date(`${fechaIso}T00:00:00`);
   fecha.setHours(0, 0, 0, 0);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const fechaMin = getFechaMinReservable(servicio);
+  const fechaMax = getFechaMaxReservableReal(servicio);
 
-  return (
-    fecha >= hoy &&
-    fecha.getTime() <= getLimiteReservableMs(servicio)
-  );
+  return fecha >= fechaMin && fecha <= fechaMax;
 }
 
 function slotDentroDeVentanaAgenda(slot, servicio) {
-  return Number(slot?.inicio) <= getLimiteReservableMs(servicio);
+  const fechaMax = getFechaMaxReservableReal(servicio);
+  return Number(slot?.inicio) <= Number(fechaMax.getTime() + 86400000 - 1);
 }
 
 function horarioPermitidoPorServicio(servicio, fechaIso, inicioMs, finMs) {
@@ -127,6 +205,9 @@ export default function TurnosAdminPanel() {
   const [creandoTurno, setCreandoTurno] = useState(false);
   const [agendaManual, setAgendaManual] = useState(null);
   const [cargandoGabineteHorarios, setCargandoGabineteHorarios] =
+    useState(false);
+  const [fechasDisponiblesManual, setFechasDisponiblesManual] = useState([]);
+  const [cargandoFechasDisponibles, setCargandoFechasDisponibles] =
     useState(false);
   const [sugerenciasHorarios, setSugerenciasHorarios] = useState([]);
   const [cargandoSugerencias, setCargandoSugerencias] = useState(false);
@@ -347,6 +428,98 @@ export default function TurnosAdminPanel() {
       cancelled = true;
     };
   }, [nuevoTurno.fecha, nuevoTurno.gabineteId, servicioSeleccionado]);
+
+  useEffect(() => {
+    if (!servicioSeleccionado || !nuevoTurno.gabineteId) {
+      setFechasDisponiblesManual([]);
+      setCargandoFechasDisponibles(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+
+    async function cargarFechasDisponibles() {
+      setCargandoFechasDisponibles(true);
+
+      try {
+        const fechaMin = getFechaMinReservable(servicioSeleccionado);
+        const fechaMax = getFechaMaxReservableReal(servicioSeleccionado);
+        const fechasConDisponibilidad = [];
+        const agendaPorMes = {};
+        const cursorMes = new Date(
+          fechaMin.getFullYear(),
+          fechaMin.getMonth(),
+          1,
+        );
+
+        while (cursorMes <= fechaMax && !cancelled) {
+          const { fechaDesde, fechaHasta } = getMonthRange(cursorMes, fechaMax);
+          const result = await getAgendaFn({
+            gabineteIds: [nuevoTurno.gabineteId],
+            fechaDesde,
+            fechaHasta,
+          });
+
+          agendaPorMes[`${cursorMes.getFullYear()}-${cursorMes.getMonth()}`] =
+            result.data || { horarios: [], turnos: [], bloqueos: [] };
+
+          cursorMes.setMonth(cursorMes.getMonth() + 1, 1);
+          cursorMes.setHours(0, 0, 0, 0);
+        }
+
+        for (
+          let fecha = new Date(fechaMin);
+          fecha <= fechaMax && !cancelled;
+          fecha.setDate(fecha.getDate() + 1)
+        ) {
+          const fechaBase = new Date(fecha);
+          fechaBase.setHours(0, 0, 0, 0);
+          const agendaMes =
+            agendaPorMes[
+              `${fechaBase.getFullYear()}-${fechaBase.getMonth()}`
+            ] || { horarios: [], turnos: [], bloqueos: [] };
+
+          const slots = generarSlotsDia(
+            agendaMes,
+            servicioSeleccionado,
+            fechaBase,
+          ).filter(
+            (slot) =>
+              !slot.ocupado &&
+              slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
+          );
+
+          if (slots.length) {
+            fechasConDisponibilidad.push({
+              value: toISODateLocal(fechaBase),
+              label: formatDateShort(toISODateLocal(fechaBase)),
+              cantidad: slots.length,
+            });
+          }
+        }
+
+        if (!cancelled) {
+          setFechasDisponiblesManual(fechasConDisponibilidad);
+        }
+      } catch (error) {
+        console.error("Error cargando fechas disponibles manuales", error);
+        if (!cancelled) {
+          setFechasDisponiblesManual([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCargandoFechasDisponibles(false);
+        }
+      }
+    }
+
+    void cargarFechasDisponibles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nuevoTurno.gabineteId, servicioSeleccionado]);
 
   const slotsDisponibles = useMemo(() => {
     if (!servicioSeleccionado || !nuevoTurno.fecha || !nuevoTurno.gabineteId) {
@@ -618,79 +791,36 @@ export default function TurnosAdminPanel() {
       return undefined;
     }
 
-    if (cargandoGabineteHorarios || slotsDisponibles.length > 0) {
+    if (
+      cargandoGabineteHorarios ||
+      cargandoFechasDisponibles ||
+      slotsDisponibles.length > 0
+    ) {
       setSugerenciasHorarios([]);
       setCargandoSugerencias(false);
       return undefined;
     }
 
-    let cancelled = false;
-    const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+    setCargandoSugerencias(true);
 
-    async function cargarSugerencias() {
-      setCargandoSugerencias(true);
+    const sugerencias = fechasDisponiblesManual
+      .filter((item) => item.value > nuevoTurno.fecha)
+      .slice(0, 3)
+      .map((item) => ({
+        fecha: item.value,
+        label: item.label,
+        cantidad: item.cantidad,
+        primeraHora: `${item.cantidad} horario(s)`,
+      }));
 
-      try {
-        const fechaBase = new Date(`${nuevoTurno.fecha}T00:00:00`);
-        const maxDias = Math.max(1, Number(servicioSeleccionado?.agendaMaxDias || 7));
-        const sugerencias = [];
+    setSugerenciasHorarios(sugerencias);
+    setCargandoSugerencias(false);
 
-        for (let offset = 1; offset < maxDias && sugerencias.length < 3; offset += 1) {
-          const fecha = new Date(fechaBase);
-          fecha.setDate(fecha.getDate() + offset);
-          const fechaIso = toISODateLocal(fecha);
-
-          if (!estaDentroVentanaAgenda(servicioSeleccionado, fechaIso)) {
-            break;
-          }
-
-          const result = await getAgendaFn({
-            gabineteIds: [nuevoTurno.gabineteId],
-            fecha: fechaIso,
-          });
-
-          const agenda = result.data || { horarios: [], turnos: [], bloqueos: [] };
-          const slots = generarSlotsDia(
-            agenda,
-            servicioSeleccionado,
-            new Date(`${fechaIso}T00:00:00`),
-          ).filter(
-            (slot) =>
-              !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
-          );
-
-          if (slots.length && !cancelled) {
-            sugerencias.push({
-              fecha: fechaIso,
-              label: formatDateShort(fechaIso),
-              cantidad: slots.length,
-              primeraHora: formatHourLocal(slots[0].inicio),
-            });
-          }
-        }
-
-        if (!cancelled) {
-          setSugerenciasHorarios(sugerencias);
-        }
-      } catch (error) {
-        console.error("Error cargando sugerencias de horarios", error);
-        if (!cancelled) {
-          setSugerenciasHorarios([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setCargandoSugerencias(false);
-        }
-      }
-    }
-
-    void cargarSugerencias();
-
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [
     cargandoGabineteHorarios,
+    cargandoFechasDisponibles,
+    fechasDisponiblesManual,
     nuevoTurno.fecha,
     nuevoTurno.gabineteId,
     servicioSeleccionado,
@@ -715,15 +845,31 @@ export default function TurnosAdminPanel() {
   useEffect(() => {
     if (!servicioSeleccionado || !nuevoTurno.gabineteId) return;
 
+    if (cargandoFechasDisponibles) return;
+
+    const primeraFechaDisponible = fechasDisponiblesManual[0]?.value || "";
+
     if (!nuevoTurno.fecha) {
-      updateNuevoTurno("fecha", toISODateLocal(new Date()));
+      if (primeraFechaDisponible) {
+        updateNuevoTurno("fecha", primeraFechaDisponible);
+      }
       return;
     }
 
-    if (!estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha)) {
-      updateNuevoTurno("fecha", toISODateLocal(new Date()));
+    const fechaSigueDisponible = fechasDisponiblesManual.some(
+      (item) => item.value === nuevoTurno.fecha,
+    );
+
+    if (!fechaSigueDisponible) {
+      updateNuevoTurno("fecha", primeraFechaDisponible || "");
     }
-  }, [nuevoTurno.fecha, nuevoTurno.gabineteId, servicioSeleccionado]);
+  }, [
+    cargandoFechasDisponibles,
+    fechasDisponiblesManual,
+    nuevoTurno.fecha,
+    nuevoTurno.gabineteId,
+    servicioSeleccionado,
+  ]);
 
   useEffect(() => {
     if (!servicioSeleccionado || !nuevoTurno.gabineteId || !nuevoTurno.fecha) {
@@ -1111,12 +1257,35 @@ export default function TurnosAdminPanel() {
 
           <div className="turnos-filtro-item">
             <label>Fecha</label>
-            <input
+            <select
               className="turnos-filtro-control"
-              type="date"
               value={nuevoTurno.fecha}
               onChange={(e) => updateNuevoTurno("fecha", e.target.value)}
-            />
+              disabled={
+                !servicioSeleccionado ||
+                !nuevoTurno.gabineteId ||
+                cargandoFechasDisponibles
+              }
+            >
+              <option value="">
+                {cargandoFechasDisponibles
+                  ? "Buscando fechas disponibles..."
+                  : "Selecciona una fecha con turnos"}
+              </option>
+              {fechasDisponiblesManual.map((fecha) => (
+                <option key={fecha.value} value={fecha.value}>
+                  {fecha.label} · {fecha.cantidad} horario(s)
+                </option>
+              ))}
+            </select>
+            {!cargandoFechasDisponibles &&
+            servicioSeleccionado &&
+            nuevoTurno.gabineteId &&
+            !fechasDisponiblesManual.length ? (
+              <small className="turnos-create-field-hint">
+                No hay fechas con disponibilidad para este servicio y gabinete.
+              </small>
+            ) : null}
           </div>
 
           <div className="turnos-filtro-item">

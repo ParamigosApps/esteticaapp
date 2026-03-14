@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect } from "react";
 import { useServicios } from "../../context/ServiciosContext";
 import TurnosPanel from "../../components/turnos/TurnosPanel";
 import { calcularMontosTurno } from "../../config/comisiones.js";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../../Firebase";
 
 function normalizarTexto(str = "") {
   return str
@@ -182,6 +184,7 @@ export default function TurnosSection({
   setCategoriaSeleccionada,
 }) {
   const { servicios, loadingServicios } = useServicios();
+  const [categorias, setCategorias] = useState([]);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
 
   useEffect(() => {
@@ -262,6 +265,22 @@ export default function TurnosSection({
       (s) => s.categoriaId === categoriaSeleccionada,
     );
   }, [serviciosActivos, categoriaSeleccionada]);
+
+  const categoriaActual = useMemo(
+    () => categorias.find((categoria) => categoria.id === categoriaSeleccionada) || null,
+    [categorias, categoriaSeleccionada],
+  );
+
+  useEffect(() => {
+    return onSnapshot(collection(db, "categorias_servicio"), (snap) => {
+      setCategorias(
+        snap.docs.map((docItem) => ({
+          id: docItem.id,
+          ...docItem.data(),
+        })),
+      );
+    });
+  }, []);
 
   const gruposServiciosCategoria = useMemo(
     () => agruparServiciosPorNombre(serviciosCategoria),
@@ -347,8 +366,16 @@ export default function TurnosSection({
           </button>
 
           <h6 className="fw-bold mb-2 servicios-title">
-            {serviciosCategoria?.[0]?.categoriaNombre || "Categoria"}
+            {categoriaActual?.nombre ||
+              serviciosCategoria?.[0]?.categoriaNombre ||
+              "Categoria"}
           </h6>
+
+          {categoriaActual?.descripcion ? (
+            <p className="servicios-categoria-descripcion">
+              {categoriaActual.descripcion}
+            </p>
+          ) : null}
 
           <div className="servicios-lista">
             {gruposServiciosCategoria.map((grupo) => {

@@ -1,8 +1,3 @@
-// --------------------------------------------------
-// CategoriasServiciosPanel.jsx
-// Admin de categorías de servicios
-// --------------------------------------------------
-
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import {
@@ -32,12 +27,10 @@ function normalizar(str) {
 export default function CategoriasServiciosPanel() {
   const [categorias, setCategorias] = useState([]);
   const [nombreNueva, setNombreNueva] = useState("");
+  const [descripcionNueva, setDescripcionNueva] = useState("");
   const [loading, setLoading] = useState(true);
   const [abierto, setAbierto] = useState(true);
 
-  // =============================
-  // Snapshot categorías
-  // =============================
   useEffect(() => {
     const q = query(
       collection(db, "categorias_servicio"),
@@ -55,12 +48,11 @@ export default function CategoriasServiciosPanel() {
     });
   }, []);
 
-  // =============================
-  // Crear categoría
-  // =============================
   async function crearCategoria() {
     try {
       const nombre = nombreNueva.trim();
+      const descripcion = descripcionNueva.trim();
+
       if (!nombre) {
         await swalError({
           title: "Nombre requerido",
@@ -84,12 +76,14 @@ export default function CategoriasServiciosPanel() {
       await addDoc(collection(db, "categorias_servicio"), {
         nombre,
         nombreNormalizado: normalizar(nombre),
+        descripcion,
         activo: true,
         creadoEn: serverTimestamp(),
         actualizadoEn: serverTimestamp(),
       });
 
       setNombreNueva("");
+      setDescripcionNueva("");
 
       await swalSuccess({
         title: "Categoría creada",
@@ -104,16 +98,22 @@ export default function CategoriasServiciosPanel() {
     }
   }
 
-  // =============================
-  // Editar categoría
-  // =============================
   async function editarCategoria(cat) {
     try {
       const res = await Swal.fire({
         title: "Editar categoría",
-        input: "text",
-        inputValue: cat.nombre || "",
-        inputPlaceholder: "Nuevo nombre",
+        html: `
+          <div style="display:grid;gap:12px;text-align:left;">
+            <div>
+              <label for="swal-categoria-nombre" style="display:block;margin:0 0 6px;font-weight:700;">Nombre</label>
+              <input id="swal-categoria-nombre" class="swal2-input" style="margin:0;" placeholder="Nuevo nombre" value="${String(cat.nombre || "").replace(/"/g, "&quot;")}">
+            </div>
+            <div>
+              <label for="swal-categoria-descripcion" style="display:block;margin:0 0 6px;font-weight:700;">Descripción</label>
+              <textarea id="swal-categoria-descripcion" class="swal2-textarea" style="margin:0;min-height:110px;" placeholder="Descripción de la categoría">${String(cat.descripcion || "")}</textarea>
+            </div>
+          </div>
+        `,
         showCancelButton: true,
         confirmButtonText: "Guardar",
         cancelButtonText: "Cancelar",
@@ -123,10 +123,17 @@ export default function CategoriasServiciosPanel() {
         },
         buttonsStyling: false,
         reverseButtons: true,
-        inputValidator: (value) => {
-          const limpio = String(value || "").trim();
+        preConfirm: () => {
+          const nombreInput = document.getElementById("swal-categoria-nombre");
+          const descripcionInput = document.getElementById(
+            "swal-categoria-descripcion",
+          );
+          const limpio = String(nombreInput?.value || "").trim();
 
-          if (!limpio) return "Ingresá un nombre válido";
+          if (!limpio) {
+            Swal.showValidationMessage("Ingresá un nombre válido");
+            return false;
+          }
 
           const yaExiste = categorias.some(
             (c) =>
@@ -135,25 +142,30 @@ export default function CategoriasServiciosPanel() {
                 normalizar(limpio),
           );
 
-          if (yaExiste) return "Ya existe una categoría con ese nombre";
+          if (yaExiste) {
+            Swal.showValidationMessage("Ya existe una categoría con ese nombre");
+            return false;
+          }
 
-          return null;
+          return {
+            nombre: limpio,
+            descripcion: String(descripcionInput?.value || "").trim(),
+          };
         },
       });
 
       if (!res.isConfirmed) return;
 
-      const limpio = String(res.value || "").trim();
-
       await updateDoc(doc(db, "categorias_servicio", cat.id), {
-        nombre: limpio,
-        nombreNormalizado: normalizar(limpio),
+        nombre: String(res.value?.nombre || "").trim(),
+        nombreNormalizado: normalizar(res.value?.nombre),
+        descripcion: String(res.value?.descripcion || "").trim(),
         actualizadoEn: serverTimestamp(),
       });
 
       await swalSuccess({
         title: "Categoría actualizada",
-        text: "El nombre se actualizó correctamente.",
+        text: "La categoría se actualizó correctamente.",
       });
     } catch (error) {
       console.error("Error editando categoría:", error);
@@ -164,9 +176,6 @@ export default function CategoriasServiciosPanel() {
     }
   }
 
-  // =============================
-  // Activar / Desactivar
-  // =============================
   async function toggleActivo(cat) {
     try {
       const accion = cat.activo ? "desactivar" : "activar";
@@ -174,13 +183,13 @@ export default function CategoriasServiciosPanel() {
       const res = await swalConfirmWarning({
         title: `¿${cat.activo ? "Desactivar" : "Activar"} categoría?`,
         html: `
-        <div style="text-align:left;font-size:14px;">
-          <div><b>Categoría:</b> ${cat.nombre}</div>
-          <div style="margin-top:8px;">
-            Se va a ${accion} esta categoría.
+          <div style="text-align:left;font-size:14px;">
+            <div><b>Categoría:</b> ${cat.nombre}</div>
+            <div style="margin-top:8px;">
+              Se va a ${accion} esta categoría.
+            </div>
           </div>
-        </div>
-      `,
+        `,
         confirmText: cat.activo ? "Desactivar" : "Activar",
         cancelText: "Cancelar",
       });
@@ -205,24 +214,21 @@ export default function CategoriasServiciosPanel() {
     }
   }
 
-  // =============================
-  // Eliminar (soft delete)
-  // =============================
   async function eliminarCategoria(cat) {
     try {
       const res = await swalConfirmDanger({
         title: "¿Eliminar categoría?",
         html: `
-    <div style="text-align:left;font-size:14px;">
-      <div><b>Categoría:</b> ${cat.nombre}</div>
-      <div style="margin-top:8px;color:#b02a37;">
-        Esta acción elimina la categoría.
-      </div>
-      <div style="margin-top:6px;">
-        No elimina automáticamente los servicios asociados.
-      </div>
-    </div>
-  `,
+          <div style="text-align:left;font-size:14px;">
+            <div><b>Categoría:</b> ${cat.nombre}</div>
+            <div style="margin-top:8px;color:#b02a37;">
+              Esta acción elimina la categoría.
+            </div>
+            <div style="margin-top:6px;">
+              No elimina automáticamente los servicios asociados.
+            </div>
+          </div>
+        `,
         confirmText: "Eliminar",
         cancelText: "Cancelar",
         customClass: {
@@ -261,6 +267,12 @@ export default function CategoriasServiciosPanel() {
             placeholder="Ej: Masajes"
             value={nombreNueva}
             onChange={(e) => setNombreNueva(e.target.value)}
+          />
+          <textarea
+            className="admin-input categorias-create-input categorias-create-textarea"
+            placeholder="Descripción de la categoría"
+            value={descripcionNueva}
+            onChange={(e) => setDescripcionNueva(e.target.value)}
           />
           <button
             className="swal-btn-confirm categorias-create-btn"
@@ -302,6 +314,16 @@ export default function CategoriasServiciosPanel() {
                         )}
                       </div>
                     </div>
+
+                    <p
+                      className={`categoria-card-descripcion ${
+                        cat.descripcion
+                          ? ""
+                          : "categoria-card-descripcion-empty"
+                      }`}
+                    >
+                      {cat.descripcion || "Sin descripción."}
+                    </p>
 
                     <div className="categoria-actions categoria-actions-pro">
                       <button

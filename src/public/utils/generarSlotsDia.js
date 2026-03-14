@@ -24,6 +24,7 @@ function startOfDay(date) {
 
 function parseISODateLocal(value) {
   const text = String(value || "").trim();
+  if (!text || text === "null" || text === "undefined") return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
 
   const [year, month, day] = text.split("-").map(Number);
