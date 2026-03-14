@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useServicios } from "../../context/ServiciosContext";
 import TurnosPanel from "../../components/turnos/TurnosPanel";
 import { calcularMontosTurno } from "../../config/comisiones.js";
@@ -186,6 +186,14 @@ export default function TurnosSection({
   const { servicios, loadingServicios } = useServicios();
   const [categorias, setCategorias] = useState([]);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
+  const turnosTopRef = useRef(null);
+
+  function scrollToTurnosTop() {
+    turnosTopRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
 
   useEffect(() => {
     setServicioSeleccionado(null);
@@ -282,6 +290,12 @@ export default function TurnosSection({
     });
   }, []);
 
+  useEffect(() => {
+    if (!categoriaSeleccionada && !servicioSeleccionado) return;
+
+    scrollToTurnosTop();
+  }, [categoriaSeleccionada, servicioSeleccionado]);
+
   const gruposServiciosCategoria = useMemo(
     () => agruparServiciosPorNombre(serviciosCategoria),
     [serviciosCategoria],
@@ -289,6 +303,7 @@ export default function TurnosSection({
 
   return (
     <>
+      <div ref={turnosTopRef} />
       {loadingServicios && (
         <div
           className="d-flex justify-content-center align-items-center"

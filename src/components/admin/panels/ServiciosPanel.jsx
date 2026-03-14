@@ -224,6 +224,15 @@ function tieneHorariosServicioValidos(lista = []) {
   );
 }
 
+function tieneAgendaSemanalConfigurada(lista = []) {
+  return serializarHorariosServicio(lista).some(
+    (horario) =>
+      horario.activo &&
+      Array.isArray(horario.franjas) &&
+      horario.franjas.length > 0,
+  );
+}
+
 function crearAgendaMensualBase() {
   return [];
 }
@@ -1407,6 +1416,13 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
 
     if (
       agendaTipo !== "mensual" &&
+      !tieneAgendaSemanalConfigurada(horariosServicio)
+    ) {
+      return showError("Sin agenda semanal configurada");
+    }
+
+    if (
+      agendaTipo !== "mensual" &&
       !tieneHorariosServicioValidos(horariosServicio)
     ) {
       return showError(
@@ -2166,6 +2182,13 @@ export default function ServiciosPanel() {
       return showError(
         "Revisa la agenda mensual. Debe haber al menos un dia del mes con una franja valida.",
       );
+    }
+
+    if (
+      agendaTipo !== "mensual" &&
+      !tieneAgendaSemanalConfigurada(horariosServicio)
+    ) {
+      return showError("Sin agenda semanal configurada");
     }
 
     if (
