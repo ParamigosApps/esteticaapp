@@ -16,7 +16,76 @@ function franjaValida(franja) {
   );
 }
 
-function obtenerFranjasServicioDelDia(servicio, diaSemana, rangoGabinete) {
+function startOfDay(date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function parseISODateLocal(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+
+  const [year, month, day] = text.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function mismaFecha(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function obtenerFranjasMensualesDelDia(servicio, fecha, rangoGabinete) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesesPermitidos = [mesBaseOffset];
+
+  if (Boolean(servicio?.agendaMensualRepiteMesSiguiente)) {
+    mesesPermitidos.push(mesBaseOffset + 1);
+  }
+
+  const coincideMesPermitido = mesesPermitidos.some((offset) => {
+    const mesPermitido = new Date(hoy.getFullYear(), hoy.getMonth() + offset, 1);
+    return (
+      fecha.getFullYear() === mesPermitido.getFullYear() &&
+      fecha.getMonth() === mesPermitido.getMonth()
+    );
+  });
+
+  if (!coincideMesPermitido) {
+    return [];
+  }
+
+  const diaMes = fecha.getDate();
+  const agendaMensual = Array.isArray(servicio?.agendaMensual)
+    ? servicio.agendaMensual
+    : [];
+
+  const configDia = agendaMensual.find(
+    (item) => Number(item?.diaMes) === Number(diaMes),
+  );
+
+  if (!configDia?.activo) return [];
+
+  const franjasMensuales = Array.isArray(configDia.franjas)
+    ? configDia.franjas.filter(franjaValida)
+    : [];
+
+  if (!franjasMensuales.length) return [];
+
+  return franjasMensuales.map((franja) => ({
+    desde: mayorHora(rangoGabinete.desde, franja.desde),
+    hasta: menorHora(rangoGabinete.hasta, franja.hasta),
+  }));
+}
+
+function obtenerFranjasSemanalesDelDia(servicio, diaSemana, rangoGabinete) {
   let franjasFinales = [
     {
       desde: rangoGabinete.desde,
@@ -43,6 +112,19 @@ function obtenerFranjasServicioDelDia(servicio, diaSemana, rangoGabinete) {
     }));
   }
 
+  return franjasFinales;
+}
+
+function obtenerFranjasServicioDelDia(servicio, fecha, rangoGabinete) {
+  const diaSemana = fecha.getDay();
+  const diaMes = fecha.getDate();
+  const agendaTipo = servicio?.agendaTipo === "mensual" ? "mensual" : "semanal";
+
+  let franjasFinales =
+    agendaTipo === "mensual"
+      ? obtenerFranjasMensualesDelDia(servicio, fecha, rangoGabinete)
+      : obtenerFranjasSemanalesDelDia(servicio, diaSemana, rangoGabinete);
+
   const restriccion = servicio.restricciones?.find(
     (r) => Number(r.dia) === Number(diaSemana),
   );
@@ -64,6 +146,9 @@ function obtenerFranjasServicioDelDia(servicio, diaSemana, rangoGabinete) {
 export function generarSlotsDia(agenda, servicio, fecha = new Date()) {
   if (!agenda || !servicio) return [];
 
+  const fechaAgendaDesde = parseISODateLocal(servicio?.agendaDisponibleDesde);
+  if (fechaAgendaDesde && startOfDay(fecha) < fechaAgendaDesde) return [];
+
   const duracionMin = Number(servicio.duracionMin);
   if (!duracionMin || duracionMin <= 0) return [];
 
@@ -83,11 +168,7 @@ export function generarSlotsDia(agenda, servicio, fecha = new Date()) {
   for (const rango of rangosDelDia) {
     if (!rango.desde || !rango.hasta) continue;
 
-    const franjasDisponibles = obtenerFranjasServicioDelDia(
-      servicio,
-      diaSemana,
-      rango,
-    );
+    const franjasDisponibles = obtenerFranjasServicioDelDia(servicio, dia, rango);
 
     if (!franjasDisponibles.length) continue;
 

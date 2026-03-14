@@ -28,6 +28,11 @@ function normalizar(str) {
   return str.trim().toLowerCase();
 }
 
+function normalizarFechaAgendaDesde(value) {
+  const text = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+}
+
 function obtenerCategoriaServicio(valor) {
   const categoria = (valor || "").trim();
   return categoria || "General";
@@ -49,6 +54,55 @@ function getPrecioEfectivo(servicio) {
   }
 
   return 0;
+}
+
+function crearItemPrecioVariableBase() {
+  return {
+    nombre: "",
+    monto: 0,
+    activo: true,
+  };
+}
+
+function normalizarItemsPrecioVariable(lista = []) {
+  if (!Array.isArray(lista)) return [];
+
+  return lista.map((item) => ({
+    nombre: String(item?.nombre || "").trim(),
+    monto: Math.max(0, Number(item?.monto || 0)),
+    activo: item?.activo !== false,
+  }));
+}
+
+function serializarItemsPrecioVariable(lista = []) {
+  return normalizarItemsPrecioVariable(lista).filter(
+    (item) => item.nombre && Number(item.monto) > 0,
+  );
+}
+
+function tieneItemsPrecioVariableValidos(lista = []) {
+  return serializarItemsPrecioVariable(lista).length > 0;
+}
+
+function getResumenPrecioVariable(servicio = {}) {
+  const items = serializarItemsPrecioVariable(
+    servicio.itemsPrecioVariable || [],
+  );
+  if (!items.length) return "Sin adicionales configurados";
+
+  return items
+    .map(
+      (item) =>
+        `${item.nombre} +$${Number(item.monto).toLocaleString("es-AR")}`,
+    )
+    .join(" · ");
+}
+
+function servicioTienePrecioVariableActivo(servicio = {}) {
+  return (
+    Boolean(servicio?.precioVariable) &&
+    serializarItemsPrecioVariable(servicio.itemsPrecioVariable || []).length > 0
+  );
 }
 
 function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
@@ -85,6 +139,11 @@ const DIAS_SEMANA = [
   { value: 4, label: "Jueves" },
   { value: 5, label: "Viernes" },
   { value: 6, label: "Sábado" },
+];
+
+const AGENDA_TIPOS = [
+  { value: "semanal", label: "Semanal" },
+  { value: "mensual", label: "Dias especificos del mes" },
 ];
 
 function crearFranjaBase() {
@@ -152,6 +211,186 @@ function tieneHorariosServicioValidos(lista = []) {
   return serializarHorariosServicio(lista).every(
     (h) => !h.activo || h.franjas.length > 0,
   );
+}
+
+function crearAgendaMensualBase() {
+  return [];
+}
+
+function normalizarAgendaMensual(lista = []) {
+  if (!Array.isArray(lista)) return [];
+
+  return lista
+    .map((item) => ({
+      diaMes: Math.min(31, Math.max(1, Number(item?.diaMes || 1))),
+      activo: item?.activo !== false,
+      franjas: normalizarFranjas(item?.franjas),
+    }))
+    .sort((a, b) => Number(a.diaMes) - Number(b.diaMes));
+}
+
+function serializarAgendaMensual(lista = []) {
+  return normalizarAgendaMensual(lista).map((item) => ({
+    diaMes: Math.min(31, Math.max(1, Number(item?.diaMes || 1))),
+    activo: item?.activo !== false,
+    franjas: item.activo
+      ? (item.franjas || [])
+          .map((f) => ({
+            desde: f?.desde || "09:00",
+            hasta: f?.hasta || "18:00",
+          }))
+          .filter((f) => f.desde && f.hasta && f.desde < f.hasta)
+      : [],
+  }));
+}
+
+function tieneAgendaMensualValida(lista = []) {
+  const serializada = serializarAgendaMensual(lista);
+  if (!serializada.length) return false;
+
+  return serializada.every(
+    (item) =>
+      Number(item.diaMes) >= 1 &&
+      Number(item.diaMes) <= 31 &&
+      (!item.activo || item.franjas.length > 0),
+  );
+}
+
+function getAgendaTipoServicio(servicio = {}) {
+  if (servicio?.agendaTipo === "mensual") return "mensual";
+  if (Array.isArray(servicio?.agendaMensual) && servicio.agendaMensual.length) {
+    return "mensual";
+  }
+  return "semanal";
+}
+
+function getAgendaMensualModoServicio(servicio = {}) {
+  const modo = String(servicio?.agendaMensualModo || "mes_actual");
+  return modo === "mes_siguiente" ? "mes_siguiente" : "mes_actual";
+}
+
+function getAgendaMensualRepiteMesSiguiente(servicio = {}) {
+  return Boolean(servicio?.agendaMensualRepiteMesSiguiente);
+}
+
+function getAgendaMensualMesOffset(servicio = {}) {
+  return getAgendaMensualModoServicio(servicio) === "mes_siguiente" ? 1 : 0;
+}
+
+function getMesAgendaLabel(mesOffset = 0) {
+  const fecha = new Date();
+  fecha.setMonth(fecha.getMonth() + Number(mesOffset || 0));
+  return String(fecha.getMonth() + 1).padStart(2, "0");
+}
+
+function getMesAgendaNombre(mesOffset = 0) {
+  const fecha = new Date();
+  fecha.setMonth(fecha.getMonth() + Number(mesOffset || 0));
+  return fecha.toLocaleDateString("es-AR", { month: "long" });
+}
+
+function servicioMensualSinFechasPendientes(servicio = {}) {
+  if (getAgendaTipoServicio(servicio) !== "mensual") return false;
+
+  const agendaMensual = serializarAgendaMensual(
+    servicio.agendaMensual || [],
+  ).filter((item) => item.activo && item.franjas.length);
+
+  const hoy = new Date();
+  const mesOffset = getAgendaMensualMesOffset(servicio);
+  const mesesARevisar = [mesOffset];
+
+  if (getAgendaMensualRepiteMesSiguiente(servicio)) {
+    mesesARevisar.push(mesOffset + 1);
+  }
+
+  return !mesesARevisar.some((offset) =>
+    agendaMensual.some((item) => {
+      const fechaItem = new Date(
+        hoy.getFullYear(),
+        hoy.getMonth() + offset,
+        Number(item.diaMes || 1),
+      );
+      fechaItem.setHours(23, 59, 59, 999);
+      return fechaItem >= hoy;
+    }),
+  );
+}
+
+function formatDiaMesLabel(diaMes, repetirMesSiguiente = false, mesOffset = 0) {
+  return repetirMesSiguiente
+    ? `${diaMes} de cada mes`
+    : `${diaMes} / ${getMesAgendaLabel(mesOffset)}`;
+}
+
+function compactarDiasMes(dias = []) {
+  return [...new Set(dias)]
+    .map((dia) => Number(dia))
+    .filter((dia) => Number.isFinite(dia) && dia >= 1 && dia <= 31)
+    .sort((a, b) => a - b)
+    .join(", ");
+}
+
+function getAgendaMensualToggleLabel(
+  agendaMensual = [],
+  repetirMesSiguiente = false,
+) {
+  if (!repetirMesSiguiente) {
+    return "Repetir estas mismas fechas en el mes siguiente";
+  }
+
+  const dias = compactarDiasMes(
+    (agendaMensual || []).map((item) => Number(item?.diaMes || 0)),
+  );
+
+  if (!dias) {
+    return "Repetir estas mismas fechas X de cada mes";
+  }
+
+  return `Repetir estas mismas fechas: ${dias} de cada mes`;
+}
+
+function getResumenAgendaServicio(servicio = {}) {
+  const agendaTipo = getAgendaTipoServicio(servicio);
+
+  if (agendaTipo === "mensual") {
+    const agendaMensual = serializarAgendaMensual(servicio.agendaMensual || []);
+    if (!agendaMensual.length) return "Sin agenda mensual configurada";
+    const mesOffset = getAgendaMensualMesOffset(servicio);
+
+    const gruposPorRango = new Map();
+
+    agendaMensual.forEach((item) => {
+      (item.franjas || []).forEach((franja) => {
+        const key = `${franja.desde}-${franja.hasta}`;
+        if (!gruposPorRango.has(key)) gruposPorRango.set(key, []);
+        gruposPorRango.get(key).push(Number(item.diaMes));
+      });
+    });
+
+    return Array.from(gruposPorRango.entries())
+      .map(([rango, dias]) => {
+        const [desde, hasta] = rango.split("-");
+        return `Dias ${compactarDiasMes(dias)} / ${getMesAgendaLabel(mesOffset)} ${desde}-${hasta}`;
+      })
+      .join(" · ");
+  }
+
+  const horarios = serializarHorariosServicio(
+    servicio.horariosServicio || [],
+  ).filter((item) => item.activo && item.franjas.length);
+
+  if (!horarios.length) return "Sin agenda semanal configurada";
+
+  return horarios
+    .map((item) => {
+      const dia = DIAS_SEMANA.find((d) => d.value === Number(item.diaSemana));
+      const rangos = item.franjas.map(
+        (franja) => `${franja.desde}-${franja.hasta}`,
+      );
+      return `${dia?.label || "Dia"} ${rangos.join(", ")}`;
+    })
+    .join(" · ");
 }
 
 function HorariosServicioEditor({ horarios, setHorarios }) {
@@ -243,7 +482,7 @@ function HorariosServicioEditor({ horarios, setHorarios }) {
                   onClick={() => agregarFranja(dia.value)}
                   disabled={!item.activo}
                 >
-                  Añadir horario
+                  Sumar horario
                 </button>
               </div>
 
@@ -301,6 +540,550 @@ function HorariosServicioEditor({ horarios, setHorarios }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AgendaMensualEditor({
+  agendaMensual,
+  setAgendaMensual,
+  agendaMensualModo,
+  setAgendaMensualModo,
+  repetirMesSiguiente,
+  setRepetirMesSiguiente,
+}) {
+  function agregarDiaMes() {
+    setAgendaMensual((prev) => [
+      ...prev,
+      {
+        diaMes: 1,
+        activo: true,
+        franjas: [crearFranjaBase()],
+      },
+    ]);
+  }
+
+  function updateDia(index, patch) {
+    setAgendaMensual((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    );
+  }
+
+  function updateFranja(index, franjaIndex, patch) {
+    setAgendaMensual((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        return {
+          ...item,
+          franjas: (item.franjas || []).map((franja, currentIndex) =>
+            currentIndex === franjaIndex ? { ...franja, ...patch } : franja,
+          ),
+        };
+      }),
+    );
+  }
+
+  function agregarFranja(index) {
+    setAgendaMensual((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              activo: true,
+              franjas: [...(item.franjas || []), crearFranjaBase()],
+            }
+          : item,
+      ),
+    );
+  }
+
+  function eliminarFranja(index, franjaIndex) {
+    setAgendaMensual((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        const nuevasFranjas = (item.franjas || []).filter(
+          (_, currentIndex) => currentIndex !== franjaIndex,
+        );
+
+        return {
+          ...item,
+          franjas: nuevasFranjas.length ? nuevasFranjas : [crearFranjaBase()],
+        };
+      }),
+    );
+  }
+
+  function eliminarDia(index) {
+    setAgendaMensual((prev) =>
+      prev.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
+  return (
+    <div>
+      <div className="agenda-tipo-header">
+        <label className="horarios-servicio-label mt-3 mb-0">
+          Agenda mensual del servicio
+        </label>
+
+        <button
+          type="button"
+          className="swal-btn-editar btn-editar-nombre"
+          onClick={agregarDiaMes}
+        >
+          Añadir dia del mes
+        </button>
+      </div>
+
+      <div className="field-group service-field-sm">
+        <label>Mes de agenda</label>
+        <select
+          className="admin-input"
+          value={agendaMensualModo}
+          onChange={(e) => setAgendaMensualModo(e.target.value)}
+        >
+          <option value="mes_actual">
+            Mes actual ({getMesAgendaNombre(0)})
+          </option>
+          <option value="mes_siguiente">
+            Mes siguiente ({getMesAgendaNombre(1)})
+          </option>
+        </select>
+      </div>
+
+      <label className="checkbox-inline text-muted service-check-row agenda-repeat-toggle">
+        <input
+          type="checkbox"
+          checked={repetirMesSiguiente}
+          onChange={(e) => setRepetirMesSiguiente(e.target.checked)}
+        />
+        {getAgendaMensualToggleLabel(agendaMensual, repetirMesSiguiente)}
+      </label>
+
+      {!agendaMensual.length ? (
+        <div className="horario-dia-inactivo">
+          Añadir 1, 2 o 3 dias del mes con sus horarios. Ejemplo: 5, 15 y 25.
+        </div>
+      ) : (
+        <div className="service-horarios-servicio">
+          {agendaMensual.map((item, index) => (
+            <div
+              key={`${item.diaMes}-${index}`}
+              className="horario-dia-card horario-dia-card-mensual"
+            >
+              <div className="horario-dia-header">
+                <div className="agenda-mensual-dia-head">
+                  <label>Dia del mes</label>
+                  <input
+                    type="number"
+                    className="admin-input agenda-dia-mes-input"
+                    min={1}
+                    max={31}
+                    value={item.diaMes}
+                    onChange={(e) =>
+                      updateDia(index, { diaMes: Number(e.target.value || 1) })
+                    }
+                  />
+                  <small>
+                    {formatDiaMesLabel(
+                      item.diaMes,
+                      repetirMesSiguiente,
+                      agendaMensualModo === "mes_siguiente" ? 1 : 0,
+                    )}
+                  </small>
+                </div>
+
+                <button
+                  type="button"
+                  className="swal-btn-eliminar horario-btn-quitar"
+                  onClick={() => eliminarDia(index)}
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="horario-dia-header">
+                <label className="checkbox-inline text-muted horario-dia-check">
+                  <input
+                    type="checkbox"
+                    checked={item.activo}
+                    onChange={(e) =>
+                      updateDia(index, { activo: e.target.checked })
+                    }
+                  />
+                  Disponible
+                </label>
+
+                <button
+                  type="button"
+                  className="swal-btn-editar btn-editar-nombre"
+                  onClick={() => agregarFranja(index)}
+                  disabled={!item.activo}
+                >
+                  Sumar horario
+                </button>
+              </div>
+
+              {!item.activo ? (
+                <div className="horario-dia-inactivo">
+                  Este dia del mes no ofrece turnos
+                </div>
+              ) : (
+                <div className="horario-franjas-list">
+                  {(item.franjas || []).map((franja, franjaIndex) => (
+                    <div
+                      key={`${item.diaMes}-${index}-${franjaIndex}`}
+                      className="horario-franja-row"
+                    >
+                      <input
+                        type="time"
+                        className="admin-input horario-franja-input"
+                        value={franja.desde}
+                        onChange={(e) =>
+                          updateFranja(index, franjaIndex, {
+                            desde: e.target.value,
+                          })
+                        }
+                      />
+
+                      <input
+                        type="time"
+                        className="admin-input horario-franja-input"
+                        value={franja.hasta}
+                        onChange={(e) =>
+                          updateFranja(index, franjaIndex, {
+                            hasta: e.target.value,
+                          })
+                        }
+                      />
+
+                      <button
+                        type="button"
+                        className="swal-btn-eliminar horario-btn-quitar"
+                        onClick={() => eliminarFranja(index, franjaIndex)}
+                        disabled={(item.franjas || []).length <= 1}
+                      >
+                        X
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrecioVariableEditor({
+  precioVariable,
+  setPrecioVariable,
+  itemsPrecioVariable,
+  setItemsPrecioVariable,
+}) {
+  function agregarItem() {
+    setItemsPrecioVariable((prev) => [...prev, crearItemPrecioVariableBase()]);
+  }
+
+  function updateItem(index, patch) {
+    setItemsPrecioVariable((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    );
+  }
+
+  function eliminarItem(index) {
+    setItemsPrecioVariable((prev) =>
+      prev.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
+  return (
+    <div className="service-variable-shell">
+      <label className="checkbox-inline text-muted service-check-row">
+        <input
+          type="checkbox"
+          checked={precioVariable}
+          onChange={(e) => setPrecioVariable(e.target.checked)}
+        />
+        Este servicio tiene precio variable con adicionales
+      </label>
+
+      {precioVariable && (
+        <div className="service-variable-box">
+          <div className="agenda-tipo-header">
+            <label className="horarios-servicio-label mb-0">
+              Items que suman al valor total
+            </label>
+
+            <button
+              type="button"
+              className="swal-btn-editar btn-editar-nombre"
+              onClick={agregarItem}
+            >
+              Anadir item
+            </button>
+          </div>
+
+          {!itemsPrecioVariable.length ? (
+            <div className="horario-dia-inactivo">
+              Crea opciones como diseno simple, nail art o piedras.
+            </div>
+          ) : (
+            <div className="service-variable-list">
+              {itemsPrecioVariable.map((item, index) => (
+                <div
+                  key={`item-variable-${index}`}
+                  className="service-variable-row"
+                >
+                  <input
+                    className="admin-input"
+                    placeholder="Nombre del item"
+                    value={item.nombre}
+                    onChange={(e) =>
+                      updateItem(index, { nombre: e.target.value })
+                    }
+                  />
+
+                  <input
+                    type="number"
+                    min={0}
+                    className="admin-input precio-admin"
+                    placeholder="Monto"
+                    value={item.monto}
+                    onChange={(e) =>
+                      updateItem(index, { monto: Number(e.target.value || 0) })
+                    }
+                  />
+
+                  <label className="checkbox-inline text-muted service-variable-check">
+                    <input
+                      type="checkbox"
+                      checked={item.activo}
+                      onChange={(e) =>
+                        updateItem(index, { activo: e.target.checked })
+                      }
+                    />
+                    Activo
+                  </label>
+
+                  <button
+                    type="button"
+                    className="swal-btn-eliminar horario-btn-quitar"
+                    onClick={() => eliminarItem(index)}
+                  >
+                    X
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgendaCadaXDiasEditor({ agendaCadaXDias, setAgendaCadaXDias }) {
+  function updateAgenda(patch) {
+    setAgendaCadaXDias((prev) => ({ ...prev, ...patch }));
+  }
+
+  function updateFranja(index, patch) {
+    setAgendaCadaXDias((prev) => ({
+      ...prev,
+      franjas: (prev?.franjas || []).map((franja, currentIndex) =>
+        currentIndex === index ? { ...franja, ...patch } : franja,
+      ),
+    }));
+  }
+
+  function agregarFranja() {
+    setAgendaCadaXDias((prev) => ({
+      ...prev,
+      franjas: [...(prev?.franjas || []), crearFranjaBase()],
+    }));
+  }
+
+  function eliminarFranja(index) {
+    setAgendaCadaXDias((prev) => {
+      const nuevasFranjas = (prev?.franjas || []).filter(
+        (_, currentIndex) => currentIndex !== index,
+      );
+
+      return {
+        ...prev,
+        franjas: nuevasFranjas.length ? nuevasFranjas : [crearFranjaBase()],
+      };
+    });
+  }
+
+  return (
+    <div>
+      <label className="horarios-servicio-label mt-3">Agenda automatica</label>
+
+      <div className="agenda-cada-xdias-grid">
+        <div className="field-group service-field-sm">
+          <label>Cada cuantos dias</label>
+          <input
+            type="number"
+            min={1}
+            className="admin-input"
+            value={agendaCadaXDias.intervaloDias}
+            onChange={(e) =>
+              updateAgenda({ intervaloDias: Number(e.target.value || 1) })
+            }
+          />
+        </div>
+
+        <div className="field-group">
+          <label>Fecha de inicio</label>
+          <input
+            type="date"
+            className="admin-input"
+            value={agendaCadaXDias.fechaInicio}
+            onChange={(e) => updateAgenda({ fechaInicio: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="agenda-tipo-header">
+        <label className="horarios-servicio-label mt-3 mb-0">
+          Horarios de cada repeticion
+        </label>
+
+        <button
+          type="button"
+          className="swal-btn-editar btn-editar-nombre"
+          onClick={agregarFranja}
+        >
+          AÃ±adir horario
+        </button>
+      </div>
+
+      <div className="horario-franjas-list agenda-cada-xdias-franjas">
+        {(agendaCadaXDias.franjas || []).map((franja, index) => (
+          <div key={`cada-x-${index}`} className="horario-franja-row">
+            <input
+              type="time"
+              className="admin-input horario-franja-input"
+              value={franja.desde}
+              onChange={(e) =>
+                updateFranja(index, {
+                  desde: e.target.value,
+                })
+              }
+            />
+
+            <input
+              type="time"
+              className="admin-input horario-franja-input"
+              value={franja.hasta}
+              onChange={(e) =>
+                updateFranja(index, {
+                  hasta: e.target.value,
+                })
+              }
+            />
+
+            <button
+              type="button"
+              className="swal-btn-eliminar horario-btn-quitar"
+              onClick={() => eliminarFranja(index)}
+              disabled={(agendaCadaXDias.franjas || []).length <= 1}
+            >
+              X
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AgendaServicioEditor({
+  agendaTipo,
+  setAgendaTipo,
+  agendaMaxDias,
+  setAgendaMaxDias,
+  agendaDisponibleDesde,
+  setAgendaDisponibleDesde,
+  horariosServicio,
+  setHorariosServicio,
+  agendaMensual,
+  setAgendaMensual,
+  agendaMensualModo,
+  setAgendaMensualModo,
+  repetirMesSiguiente,
+  setRepetirMesSiguiente,
+}) {
+  return (
+    <div className="agenda-tipo-shell">
+      <div className="service-agenda-toprow">
+        <div className="field-group service-field-sm">
+          <label>Tipo de agenda</label>
+          <select
+            className="admin-input"
+            value={agendaTipo}
+            onChange={(e) => setAgendaTipo(e.target.value)}
+          >
+            {AGENDA_TIPOS.map((tipo) => (
+              <option key={tipo.value} value={tipo.value}>
+                {tipo.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field-group service-field-sm">
+          <label>Habilitar agenda desde</label>
+          <input
+            type="date"
+            className="admin-input"
+            value={agendaDisponibleDesde}
+            onChange={(e) =>
+              setAgendaDisponibleDesde(normalizarFechaAgendaDesde(e.target.value))
+            }
+          />
+        </div>
+
+        {agendaTipo !== "mensual" && (
+          <div className="field-group service-field-sm">
+            <label>Días a mostrar en la agenda</label>
+            <input
+              type="number"
+              className="admin-input"
+              value={agendaMaxDias}
+              onChange={(e) => setAgendaMaxDias(e.target.value)}
+              min={1}
+              max={180}
+            />
+          </div>
+        )}
+      </div>
+
+      {agendaTipo === "mensual" ? (
+        <AgendaMensualEditor
+          agendaMensual={agendaMensual}
+          setAgendaMensual={setAgendaMensual}
+          agendaMensualModo={agendaMensualModo}
+          setAgendaMensualModo={setAgendaMensualModo}
+          repetirMesSiguiente={repetirMesSiguiente}
+          setRepetirMesSiguiente={setRepetirMesSiguiente}
+        />
+      ) : (
+        <HorariosServicioEditor
+          horarios={horariosServicio}
+          setHorarios={setHorariosServicio}
+        />
+      )}
     </div>
   );
 }
@@ -423,6 +1206,12 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [precioEfectivo, setPrecioEfectivo] = useState(
     servicio.precioEfectivo || 0,
   );
+  const [precioVariable, setPrecioVariable] = useState(
+    Boolean(servicio.precioVariable),
+  );
+  const [itemsPrecioVariable, setItemsPrecioVariable] = useState(
+    normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
+  );
   const [responsableGestion, setResponsableGestion] = useState(
     servicio.responsableGestion || "admin",
   );
@@ -441,9 +1230,22 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [agendaMaxDias, setAgendaMaxDias] = useState(
     Number(servicio.agendaMaxDias || 14),
   );
+  const [agendaDisponibleDesde, setAgendaDisponibleDesde] = useState(
+    normalizarFechaAgendaDesde(servicio.agendaDisponibleDesde),
+  );
+  const [agendaTipo, setAgendaTipo] = useState(getAgendaTipoServicio(servicio));
+  const [agendaMensualModo, setAgendaMensualModo] = useState(
+    getAgendaMensualModoServicio(servicio),
+  );
+  const agendaCadaXDias = null;
+  const [agendaMensualRepiteMesSiguiente, setAgendaMensualRepiteMesSiguiente] =
+    useState(getAgendaMensualRepiteMesSiguiente(servicio));
 
   const [horariosServicio, setHorariosServicio] = useState(
     normalizarHorariosServicio(servicio.horariosServicio || []),
+  );
+  const [agendaMensual, setAgendaMensual] = useState(
+    normalizarAgendaMensual(servicio.agendaMensual || []),
   );
 
   const [seleccionados, setSeleccionados] = useState(
@@ -459,14 +1261,27 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     setDuracion(servicio.duracionMin ?? 60);
     setPrecio(servicio.precio ?? 0);
     setPrecioEfectivo(servicio.precioEfectivo ?? 0);
+    setPrecioVariable(Boolean(servicio.precioVariable));
+    setItemsPrecioVariable(
+      normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
+    );
     setResponsableGestion(servicio.responsableGestion || "admin");
     setModoReserva(servicio.modoReserva || "automatico");
     setPedirAnticipo(Boolean(servicio.pedirAnticipo));
     setPorcentajeAnticipo(servicio.porcentajeAnticipo ?? 50);
     setAgendaMaxDias(Number(servicio.agendaMaxDias || 14));
+    setAgendaDisponibleDesde(
+      normalizarFechaAgendaDesde(servicio.agendaDisponibleDesde),
+    );
+    setAgendaTipo(getAgendaTipoServicio(servicio));
+    setAgendaMensualModo(getAgendaMensualModoServicio(servicio));
+    setAgendaMensualRepiteMesSiguiente(
+      getAgendaMensualRepiteMesSiguiente(servicio),
+    );
     setHorariosServicio(
       normalizarHorariosServicio(servicio.horariosServicio || []),
     );
+    setAgendaMensual(normalizarAgendaMensual(servicio.agendaMensual || []));
     setSeleccionados(servicio.gabinetes?.map((g) => g.id) ?? []);
     setEditando(true);
   }
@@ -530,8 +1345,41 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
         "Debes vincular un profesional si el servicio sera gestionado por profesionales",
       );
     }
+    if (
+      precioVariable &&
+      !tieneItemsPrecioVariableValidos(itemsPrecioVariable)
+    ) {
+      return showError(
+        "Si activas precio variable, debes cargar al menos un adicional valido.",
+      );
+    }
 
-    if (!tieneHorariosServicioValidos(horariosServicio)) {
+    if (agendaTipo === "mensual" && !tieneAgendaMensualValida(agendaMensual)) {
+      return showError(
+        "RevisÃ¡ la agenda mensual. Debe haber al menos un dia del mes con una franja valida.",
+      );
+    }
+
+    if (agendaTipo === "mensual" && !tieneAgendaMensualValida(agendaMensual)) {
+      return showError(
+        "RevisÃ¡ la agenda automatica. Debe tener fecha de inicio, intervalo y horarios validos.",
+      );
+    }
+
+    if (
+      agendaTipo === "mensual" &&
+      agendaMensualModo === "mes_actual" &&
+      !tieneAgendaMensualValida(agendaMensual)
+    ) {
+      return showError(
+        "RevisÃ¡ la agenda mensual. Debe haber al menos un dia del mes con una franja vÃ¡lida.",
+      );
+    }
+
+    if (
+      agendaTipo !== "mensual" &&
+      !tieneHorariosServicioValidos(horariosServicio)
+    ) {
       return showError(
         "Revisá los horarios del servicio. Cada día activo debe tener al menos una franja válida.",
       );
@@ -550,12 +1398,23 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       duracionMin: Number(duracion),
       precio: Number(precio),
       precioEfectivo: Number(precioEfectivo || 0),
+      precioVariable,
+      itemsPrecioVariable: precioVariable
+        ? serializarItemsPrecioVariable(itemsPrecioVariable)
+        : [],
       responsableGestion,
       modoReserva,
       pedirAnticipo,
       porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
       agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
+      agendaDisponibleDesde: normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
+      agendaTipo,
+      agendaMensualModo,
       horariosServicio: serializarHorariosServicio(horariosServicio),
+      agendaMensual:
+        agendaTipo === "mensual" ? serializarAgendaMensual(agendaMensual) : [],
+      agendaMensualRepiteMesSiguiente,
+      agendaCadaXDias: null,
 
       gabinetes: seleccionados
         .map((id) => {
@@ -646,6 +1505,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             {!servicio.activo && (
               <span className="badge inactive">Inactivo</span>
             )}
+            {servicioMensualSinFechasPendientes(servicio) && (
+              <span className="badge service-alert-badge">Agenda agotada</span>
+            )}
           </div>
         </div>
 
@@ -721,11 +1583,19 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
           Duración: <strong>{servicio.duracionMin}</strong> min
         </span>
         <span>
-          Valor: <strong>${servicio.precio}</strong>
+          {servicioTienePrecioVariableActivo(servicio) ? "Precio desde:" : "Valor:"}{" "}
+          <strong>${servicio.precio}</strong>
         </span>
         {getPrecioEfectivo(servicio) > 0 && (
           <span>
-            Efectivo: <strong>${getPrecioEfectivo(servicio)}</strong>
+            {servicioTienePrecioVariableActivo(servicio) ? "Efectivo desde:" : "Efectivo:"}{" "}
+            <strong>${getPrecioEfectivo(servicio)}</strong>
+          </span>
+        )}
+        {servicio.precioVariable && (
+          <span title={getResumenPrecioVariable(servicio)}>
+            Precio variable:{" "}
+            <strong>{getResumenPrecioVariable(servicio)}</strong>
           </span>
         )}
         <span>
@@ -734,6 +1604,39 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             {servicio.gabinetes?.map((g) => g.nombreGabinete).join(", ") || "—"}
           </strong>
         </span>
+        <span>
+          Agenda:{" "}
+          <strong>
+            {getAgendaTipoServicio(servicio) === "mensual"
+              ? getAgendaMensualRepiteMesSiguiente(servicio)
+                ? `Mes ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio))} + ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio) + 1)}`
+                : `Solo ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio))}`
+              : "Semanal"}
+          </strong>
+        </span>
+        {servicio.agendaDisponibleDesde && (
+          <span>
+            Disponible desde: <strong>{servicio.agendaDisponibleDesde}</strong>
+          </span>
+        )}
+        <span title={getResumenAgendaServicio(servicio)}>
+          Disponibilidad: <strong>{getResumenAgendaServicio(servicio)}</strong>
+        </span>
+        {servicioMensualSinFechasPendientes(servicio) && (
+          <span className="service-alert-text">
+            Este servicio ya no tiene fechas disponibles para este mes. Quieres
+            anadir nuevas fechas?
+          </span>
+        )}
+        {servicioMensualSinFechasPendientes(servicio) && !editando && (
+          <button
+            type="button"
+            className="swal-btn-editar service-alert-action"
+            onClick={abrirEditor}
+          >
+            Anadir fechas
+          </button>
+        )}
       </div>
 
       {/* EDITOR */}
@@ -847,6 +1750,16 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                   />
                 </div>
 
+                <div className="field-group service-field-full">
+                  <label>Precio variable</label>
+                  <PrecioVariableEditor
+                    precioVariable={precioVariable}
+                    setPrecioVariable={setPrecioVariable}
+                    itemsPrecioVariable={itemsPrecioVariable}
+                    setItemsPrecioVariable={setItemsPrecioVariable}
+                  />
+                </div>
+
                 <div className="field-group">
                   <label>Quien gestiona este servicio</label>
                   <select
@@ -906,28 +1819,42 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             </section>
 
             {/* BLOQUE 4: AGENDA */}
-            <section className="service-editor-block service-editor-block-full">
+            <section className="service-editor-block service-editor-block-full service-agenda-block">
               <div className="service-editor-block-title">
                 Agenda del servicio
               </div>
 
-              <div className="service-editor-fields service-editor-fields-1">
-                <div className="field-group service-field-sm">
-                  <label>Anticipación máxima (días)</label>
-                  <input
-                    type="number"
-                    className="admin-input"
-                    value={agendaMaxDias}
-                    onChange={(e) => setAgendaMaxDias(e.target.value)}
-                    min={1}
-                    max={180}
-                  />
+              {agendaTipo !== "mensual" && (
+                <div className="service-editor-fields service-editor-fields-1 service-agenda-maxdias">
+                  <div className="field-group service-field-sm">
+                    <label>Anticipación máxima (días)</label>
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={agendaMaxDias}
+                      onChange={(e) => setAgendaMaxDias(e.target.value)}
+                      min={1}
+                      max={180}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <HorariosServicioEditor
-                horarios={horariosServicio}
-                setHorarios={setHorariosServicio}
+              <AgendaServicioEditor
+                agendaTipo={agendaTipo}
+                setAgendaTipo={setAgendaTipo}
+                agendaMaxDias={agendaMaxDias}
+                setAgendaMaxDias={setAgendaMaxDias}
+                agendaDisponibleDesde={agendaDisponibleDesde}
+                setAgendaDisponibleDesde={setAgendaDisponibleDesde}
+                horariosServicio={horariosServicio}
+                setHorariosServicio={setHorariosServicio}
+                agendaMensual={agendaMensual}
+                setAgendaMensual={setAgendaMensual}
+                agendaMensualModo={agendaMensualModo}
+                setAgendaMensualModo={setAgendaMensualModo}
+                repetirMesSiguiente={agendaMensualRepiteMesSiguiente}
+                setRepetirMesSiguiente={setAgendaMensualRepiteMesSiguiente}
               />
             </section>
 
@@ -988,6 +1915,7 @@ export default function ServiciosPanel() {
   const [gabinetes, setGabinetes] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [empleados, setEmpleados] = useState([]);
+  const [filtroServicios, setFiltroServicios] = useState("");
 
   const [categorias, setCategorias] = useState([]);
   const [categoriaId, setCategoriaId] = useState("");
@@ -999,14 +1927,23 @@ export default function ServiciosPanel() {
   const [duracion, setDuracion] = useState(60);
   const [precio, setPrecio] = useState(0);
   const [precioEfectivo, setPrecioEfectivo] = useState(0);
+  const [precioVariable, setPrecioVariable] = useState(false);
+  const [itemsPrecioVariable, setItemsPrecioVariable] = useState([]);
   const [responsableGestion, setResponsableGestion] = useState("admin");
   const [modoReserva, setModoReserva] = useState("reserva");
   const [pedirAnticipo, setPedirAnticipo] = useState(true);
   const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(50);
   const [agendaMaxDias, setAgendaMaxDias] = useState(14);
+  const [agendaDisponibleDesde, setAgendaDisponibleDesde] = useState("");
+  const [agendaTipo, setAgendaTipo] = useState("semanal");
+  const [agendaMensualModo, setAgendaMensualModo] = useState("mes_actual");
+  const agendaCadaXDias = null;
+  const [agendaMensualRepiteMesSiguiente, setAgendaMensualRepiteMesSiguiente] =
+    useState(false);
   const [horariosServicio, setHorariosServicio] = useState(
     crearHorariosServicioBase(),
   );
+  const [agendaMensual, setAgendaMensual] = useState(crearAgendaMensualBase());
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [abierto, setAbierto] = useState(true);
@@ -1177,8 +2114,25 @@ export default function ServiciosPanel() {
         "Debes vincular un profesional si el servicio sera gestionado por profesionales",
       );
     }
+    if (
+      precioVariable &&
+      !tieneItemsPrecioVariableValidos(itemsPrecioVariable)
+    ) {
+      return showError(
+        "Si activas precio variable, debes cargar al menos un adicional valido.",
+      );
+    }
 
-    if (!tieneHorariosServicioValidos(horariosServicio)) {
+    if (agendaTipo === "mensual" && !tieneAgendaMensualValida(agendaMensual)) {
+      return showError(
+        "Revisa la agenda mensual. Debe haber al menos un dia del mes con una franja valida.",
+      );
+    }
+
+    if (
+      agendaTipo !== "mensual" &&
+      !tieneHorariosServicioValidos(horariosServicio)
+    ) {
       return showError(
         "Revisa los horarios del servicio. Cada dia activo debe tener al menos una franja valida.",
       );
@@ -1207,12 +2161,25 @@ export default function ServiciosPanel() {
         duracionMin: Number(duracion),
         precio: Number(precio),
         precioEfectivo: Number(precioEfectivo || 0),
+        precioVariable,
+        itemsPrecioVariable: precioVariable
+          ? serializarItemsPrecioVariable(itemsPrecioVariable)
+          : [],
         responsableGestion,
         modoReserva,
         pedirAnticipo,
         porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
         agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
+        agendaDisponibleDesde: normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
+        agendaTipo,
+        agendaMensualModo,
         horariosServicio: serializarHorariosServicio(horariosServicio),
+        agendaMensual:
+          agendaTipo === "mensual"
+            ? serializarAgendaMensual(agendaMensual)
+            : [],
+        agendaMensualRepiteMesSiguiente,
+        agendaCadaXDias: null,
 
         gabinetes: seleccionados
           .map((id) => {
@@ -1234,12 +2201,19 @@ export default function ServiciosPanel() {
       setDuracion(60);
       setPrecio(0);
       setPrecioEfectivo(0);
+      setPrecioVariable(false);
+      setItemsPrecioVariable([]);
       setResponsableGestion("admin");
       setModoReserva("reserva");
       setPedirAnticipo(true);
       setPorcentajeAnticipo(50);
       setAgendaMaxDias(14);
+      setAgendaDisponibleDesde("");
+      setAgendaTipo("semanal");
+      setAgendaMensualModo("mes_actual");
+      setAgendaMensualRepiteMesSiguiente(false);
       setHorariosServicio(crearHorariosServicioBase());
+      setAgendaMensual(crearAgendaMensualBase());
       setSeleccionados([]);
 
       await swalSuccess({
@@ -1256,6 +2230,15 @@ export default function ServiciosPanel() {
       hideLoading();
     }
   }
+
+  const filtroServiciosNormalizado = normalizar(filtroServicios || "");
+  const serviciosFiltrados = servicios.filter((servicio) => {
+    if (!filtroServiciosNormalizado) return true;
+
+    return normalizar(servicio?.nombreServicio || "").includes(
+      filtroServiciosNormalizado,
+    );
+  });
 
   return (
     <div className="admin-panel servicios-admin-page">
@@ -1278,7 +2261,7 @@ export default function ServiciosPanel() {
             </div>
 
             <div className="admin-servicios-create servicios-form-shell">
-              <div className="servicios-form-block">
+              <div className="servicios-form-block servicios-form-block-agenda">
                 <div className="servicios-form-block-title">
                   Datos principales
                 </div>
@@ -1380,6 +2363,16 @@ export default function ServiciosPanel() {
                     />
                   </div>
 
+                  <div className="form-field service-field-full">
+                    <label>Precio variable</label>
+                    <PrecioVariableEditor
+                      precioVariable={precioVariable}
+                      setPrecioVariable={setPrecioVariable}
+                      itemsPrecioVariable={itemsPrecioVariable}
+                      setItemsPrecioVariable={setItemsPrecioVariable}
+                    />
+                  </div>
+
                   <div className="form-field">
                     <label>Quien gestiona este servicio</label>
                     <select
@@ -1440,26 +2433,40 @@ export default function ServiciosPanel() {
                 </div>
               </div>
 
-              <div className="servicios-form-block">
+              <div className="servicios-form-block servicios-form-block-agenda">
                 <div className="servicios-form-block-title">
                   Agenda del servicio
                 </div>
                 {/* GABINETES */}
-                <div className="form-field">
-                  <label>Anticipación máxima (días)</label>
-                  <input
-                    className="admin-input"
-                    type="number"
-                    value={agendaMaxDias}
-                    onChange={(e) => setAgendaMaxDias(e.target.value)}
-                    min={1}
-                    max={180}
-                  />
-                </div>
+                {agendaTipo !== "mensual" && (
+                  <div className="form-field servicios-agenda-maxdias">
+                    <label>Anticipación máxima (días)</label>
+                    <input
+                      className="admin-input"
+                      type="number"
+                      value={agendaMaxDias}
+                      onChange={(e) => setAgendaMaxDias(e.target.value)}
+                      min={1}
+                      max={180}
+                    />
+                  </div>
+                )}
 
-                <HorariosServicioEditor
-                  horarios={horariosServicio}
-                  setHorarios={setHorariosServicio}
+                <AgendaServicioEditor
+                  agendaTipo={agendaTipo}
+                  setAgendaTipo={setAgendaTipo}
+                  agendaMaxDias={agendaMaxDias}
+                  setAgendaMaxDias={setAgendaMaxDias}
+                  agendaDisponibleDesde={agendaDisponibleDesde}
+                  setAgendaDisponibleDesde={setAgendaDisponibleDesde}
+                  horariosServicio={horariosServicio}
+                  setHorariosServicio={setHorariosServicio}
+                  agendaMensual={agendaMensual}
+                  setAgendaMensual={setAgendaMensual}
+                  agendaMensualModo={agendaMensualModo}
+                  setAgendaMensualModo={setAgendaMensualModo}
+                  repetirMesSiguiente={agendaMensualRepiteMesSiguiente}
+                  setRepetirMesSiguiente={setAgendaMensualRepiteMesSiguiente}
                 />
               </div>
 
@@ -1516,9 +2523,21 @@ export default function ServiciosPanel() {
             {abierto && (
               <>
                 <section className="admin-servicios-create">
+                  <div className="servicios-filtro-bar">
+                    <input
+                      className="admin-input servicios-filtro-input"
+                      placeholder="Filtrar servicios por nombre"
+                      value={filtroServicios}
+                      onChange={(e) => setFiltroServicios(e.target.value)}
+                    />
+                    <span className="servicios-filtro-count">
+                      {serviciosFiltrados.length} resultado(s)
+                    </span>
+                  </div>
+
                   <div className="">
                     {Object.entries(
-                      servicios.reduce((acc, servicio) => {
+                      serviciosFiltrados.reduce((acc, servicio) => {
                         const categoria = getCategoriaLabel(servicio);
                         if (!acc[categoria]) acc[categoria] = [];
                         acc[categoria].push(servicio);
@@ -1554,6 +2573,12 @@ export default function ServiciosPanel() {
                             ))}
                         </div>
                       ))}
+
+                    {!serviciosFiltrados.length && (
+                      <div className="servicios-empty-state">
+                        No hay servicios que coincidan con ese nombre.
+                      </div>
+                    )}
                   </div>
                 </section>
               </>

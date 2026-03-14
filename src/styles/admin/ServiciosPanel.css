@@ -84,6 +84,34 @@
   margin-bottom: 16px;
 }
 
+.servicios-filtro-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.servicios-filtro-input {
+  max-width: 360px;
+}
+
+.servicios-filtro-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.servicios-empty-state {
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  background: #fff;
+  color: #6b7280;
+  font-weight: 600;
+}
+
 /* =========================
    FORM NUEVO SERVICIO
 ========================= */
@@ -382,6 +410,11 @@ input[type="time"]:focus {
   color: #b91c1c;
 }
 
+.service-alert-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .service-actions {
   display: flex;
   flex-wrap: wrap;
@@ -403,6 +436,19 @@ input[type="time"]:focus {
   padding: 7px 10px;
   font-size: 13px;
   color: #4b5563;
+}
+
+.service-info .service-alert-text {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.service-alert-action {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 /* =========================
@@ -461,6 +507,10 @@ input[type="time"]:focus {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.service-field-full {
+  grid-column: 1 / -1;
+}
+
 .service-field-sm {
   max-width: 220px;
 }
@@ -471,6 +521,36 @@ input[type="time"]:focus {
   gap: 8px;
   min-height: 42px;
   padding: 0 2px;
+}
+
+.service-variable-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.service-variable-box {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.service-variable-list {
+  display: grid;
+  gap: 10px;
+}
+
+.service-variable-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 120px auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.service-variable-check {
+  min-height: 40px;
 }
 
 .service-editor .field-group {
@@ -492,6 +572,40 @@ input[type="time"]:focus {
   padding-top: 4px;
 }
 
+.service-agenda-block,
+.servicios-form-block-agenda {
+  display: flex;
+  flex-direction: column;
+}
+
+.service-agenda-block .agenda-tipo-shell,
+.servicios-form-block-agenda .agenda-tipo-shell {
+  order: 1;
+}
+
+.service-agenda-block .service-agenda-maxdias,
+.servicios-form-block-agenda .servicios-agenda-maxdias {
+  order: 2;
+}
+
+.service-agenda-toprow {
+  display: flex;
+  gap: 14px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.service-agenda-toprow .field-group {
+  flex: 1;
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.service-agenda-maxdias,
+.servicios-agenda-maxdias {
+  display: none;
+}
+
 /* =========================
    HORARIOS DEL SERVICIO
 ========================= */
@@ -502,6 +616,19 @@ input[type="time"]:focus {
   font-size: 1rem;
   font-weight: 700;
   color: #111827;
+}
+
+.agenda-tipo-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.agenda-tipo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .service-horarios-servicio {
@@ -516,6 +643,11 @@ input[type="time"]:focus {
   border-radius: 14px;
   padding: 14px;
   background: #fff;
+}
+
+.horario-dia-card-mensual {
+  width: 100%;
+  max-width: 320px;
 }
 
 .horario-dia-header {
@@ -538,6 +670,36 @@ input[type="time"]:focus {
 .horario-dia-inactivo {
   font-size: 13px;
   opacity: 0.7;
+}
+
+.agenda-repeat-toggle {
+  margin: 6px 0 2px;
+  color: #6b7280;
+}
+
+.agenda-mensual-dia-head {
+  display: grid;
+  gap: 6px;
+}
+
+.agenda-mensual-dia-head small {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agenda-dia-mes-input {
+  max-width: 120px;
+}
+
+.agenda-cada-xdias-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.agenda-cada-xdias-franjas {
+  max-width: 480px;
 }
 
 .horario-franjas-list {

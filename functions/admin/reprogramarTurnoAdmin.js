@@ -9,19 +9,58 @@ const {
 
 function estaDentroVentanaAgenda(servicio, fechaIso) {
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const diasVentana = maxDias <= 1 ? 90 : maxDias;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
   const fecha = new Date(`${fechaIso}T00:00:00`);
   fecha.setHours(0, 0, 0, 0);
+  const fechaAgendaDesde =
+    typeof servicio?.agendaDisponibleDesde === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(servicio.agendaDisponibleDesde)
+      ? new Date(`${servicio.agendaDisponibleDesde}T00:00:00`)
+      : null;
+
+  if (fechaAgendaDesde) {
+    fechaAgendaDesde.setHours(0, 0, 0, 0);
+    if (fecha < fechaAgendaDesde) return false;
+  }
 
   const limite = new Date(hoy);
-  limite.setDate(limite.getDate() + (maxDias - 1));
+  limite.setDate(limite.getDate() + (diasVentana - 1));
+
+  if (servicio?.agendaTipo === "mensual") {
+    const mesBaseOffset =
+      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+      ? mesBaseOffset + 2
+      : mesBaseOffset + 1;
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+    finMes.setHours(0, 0, 0, 0);
+
+    if (finMes < limite) {
+      limite.setTime(finMes.getTime());
+    }
+  }
 
   return fecha >= hoy && fecha <= limite;
 }
 
 function getDiaConfig(servicio, fechaIso) {
+  if (servicio?.agendaTipo === "mensual") {
+    const fecha = new Date(`${fechaIso}T00:00:00`);
+    const diaMes = fecha.getDate();
+    const agendaMensual = Array.isArray(servicio?.agendaMensual)
+      ? servicio.agendaMensual
+      : [];
+
+    return (
+      agendaMensual.find(
+        (item) => Number(item?.diaMes) === Number(diaMes),
+      ) || null
+    );
+  }
+
   const fecha = new Date(`${fechaIso}T00:00:00`);
   const diaSemana = fecha.getDay();
 

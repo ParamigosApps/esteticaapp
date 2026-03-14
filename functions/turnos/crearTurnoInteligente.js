@@ -250,6 +250,7 @@ const {
   modoAsignacion,
   origenSolicitud = "web",
   metodoPagoSolicitado = null,
+  precioVariableItemsSeleccionados = [],
 } = request.data || {};
 
     if (!servicioId || !fecha || horaInicio == null || horaFin == null) {
@@ -329,6 +330,17 @@ const {
       throw new HttpsError(
         "failed-precondition",
         "No se pueden reservar turnos en fechas pasadas",
+      );
+    }
+
+    if (
+      typeof servicio?.agendaDisponibleDesde === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(servicio.agendaDisponibleDesde) &&
+      fecha < servicio.agendaDisponibleDesde
+    ) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Este servicio habilita agenda a partir del ${servicio.agendaDisponibleDesde}`,
       );
     }
 
@@ -498,8 +510,34 @@ const {
       // ============================================
       // 📌 ESTADOS INICIALES
       // ============================================
+      const itemsDisponibles = Array.isArray(servicio.itemsPrecioVariable)
+        ? servicio.itemsPrecioVariable.filter(
+            (item) =>
+              item &&
+              item.activo !== false &&
+              String(item.nombre || "").trim() &&
+              Number(item.monto || 0) > 0,
+          )
+        : [];
+
+      const nombresSolicitados = Array.isArray(precioVariableItemsSeleccionados)
+        ? precioVariableItemsSeleccionados
+            .map((item) => String(item?.nombre || "").trim())
+            .filter(Boolean)
+        : [];
+
+      const itemsVariableSeleccionados = itemsDisponibles.filter((item) =>
+        nombresSolicitados.includes(String(item.nombre || "").trim()),
+      );
+
+      const ajusteServicio = itemsVariableSeleccionados.reduce(
+        (acc, item) => acc + Math.max(0, Number(item?.monto || 0)),
+        0,
+      );
+
       const pricing = calcularMontosTurno({
         precioServicio: Number(servicio.precio || 0),
+        ajusteServicio,
         porcentajeAnticipo: pedirAnticipoServicio ? porcentajeAnticipo : 0,
         cobrarComision: true,
       });
@@ -578,6 +616,12 @@ const {
           requiereAnticipo,
           tipoAnticipo,
           montoServicio,
+          precioVariable: Boolean(servicio.precioVariable),
+          itemsPrecioVariable: itemsVariableSeleccionados.map((item) => ({
+            nombre: String(item.nombre || "").trim(),
+            monto: Math.max(0, Number(item.monto || 0)),
+          })),
+          montoExtraServicio: ajusteServicio,
           comisionTurno,
           montoAnticipoServicio,
           montoAnticipo: montoAnticipoCalculado,

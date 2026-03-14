@@ -26,16 +26,48 @@ function toISODateLocal(date) {
   return `${y}-${m}-${d}`;
 }
 
+function parseISODateLocal(value) {
+  if (!value || typeof value !== "string") return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [, y, m, d] = match;
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function getFechaMaxReservable(servicio) {
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
+  const diasVentana = maxDias <= 1 ? 90 : maxDias;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
   const max = new Date(hoy);
-  max.setDate(max.getDate() + maxDias - 1);
+  max.setDate(max.getDate() + diasVentana - 1);
   max.setHours(0, 0, 0, 0);
 
   return max;
+}
+
+function getFechaMaxReservableReal(servicio) {
+  const fechaMaxBase = getFechaMaxReservable(servicio);
+
+  if (servicio?.agendaTipo === "mensual") {
+    const hoy = new Date();
+    const mesBaseOffset =
+      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+      ? mesBaseOffset + 2
+      : mesBaseOffset + 1;
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+    finMes.setHours(0, 0, 0, 0);
+
+    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+  }
+
+  return fechaMaxBase;
 }
 
 function extraerGabineteIds(servicio) {
@@ -100,14 +132,17 @@ async function pedirNuevaFechaDesdeAgenda(turno) {
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  const fechaMaxReservable = getFechaMaxReservable(servicio);
+  const fechaAgendaDesde = parseISODateLocal(servicio?.agendaDisponibleDesde);
+  const fechaMinReservable =
+    fechaAgendaDesde && fechaAgendaDesde > hoy ? fechaAgendaDesde : hoy;
+  const fechaMaxReservable = getFechaMaxReservableReal(servicio);
   const fechaInicial = (() => {
-    if (!turno?.fecha) return toISODateLocal(hoy);
+    if (!turno?.fecha) return toISODateLocal(fechaMinReservable);
 
     const parsed = new Date(`${turno.fecha}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return toISODateLocal(hoy);
-    if (parsed < hoy) return toISODateLocal(hoy);
-    if (parsed > fechaMaxReservable) return toISODateLocal(hoy);
+    if (Number.isNaN(parsed.getTime())) return toISODateLocal(fechaMinReservable);
+    if (parsed < fechaMinReservable) return toISODateLocal(fechaMinReservable);
+    if (parsed > fechaMaxReservable) return toISODateLocal(fechaMinReservable);
 
     return turno.fecha;
   })();
@@ -129,7 +164,11 @@ async function pedirNuevaFechaDesdeAgenda(turno) {
       agenda,
       { ...servicio, id: servicio.id },
       new Date(`${fechaIso}T00:00:00`),
-    ).filter((slot) => !slot.ocupado);
+    ).filter(
+      (slot) =>
+        !slot.ocupado &&
+        Number(slot?.inicio) <= Number(fechaMaxReservable.getTime() + 86400000 - 1),
+    );
   }
 
   return Swal.fire({
@@ -137,7 +176,7 @@ async function pedirNuevaFechaDesdeAgenda(turno) {
     html: `
       <div style="text-align:left">
         <label for="swal-fecha-reprogramar" style="display:block;margin:0 0 6px;font-weight:600;">Fecha</label>
-        <input id="swal-fecha-reprogramar" type="date" class="swal2-input" value="${fechaInicial}" min="${toISODateLocal(hoy)}" max="${toISODateLocal(fechaMaxReservable)}" style="margin-top:0;">
+        <input id="swal-fecha-reprogramar" type="date" class="swal2-input" value="${fechaInicial}" min="${toISODateLocal(fechaMinReservable)}" max="${toISODateLocal(fechaMaxReservable)}" style="margin-top:0;">
         <label for="swal-slot-reprogramar" style="display:block;margin:12px 0 6px;font-weight:600;">Horario disponible</label>
         <select id="swal-slot-reprogramar" class="swal2-select" style="width:100%;margin:0;">
           <option value="">Cargando horarios...</option>

@@ -7,6 +7,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -239,6 +240,8 @@ export default function AdminConfiguracion() {
   const [nombreProfesional, setNombreProfesional] = useState("");
   const [generoProfesional, setGeneroProfesional] = useState("femenino");
   const [fileProfesional, setFileProfesional] = useState(null);
+  const [profesionalEditandoId, setProfesionalEditandoId] = useState("");
+  const [imagenProfesionalActual, setImagenProfesionalActual] = useState("");
   const [homeVisuales, setHomeVisuales] = useState({
     imgPrincipalHome: "",
     imgSecundariaHome: "",
@@ -247,6 +250,7 @@ export default function AdminConfiguracion() {
   const [fileHomeSecundaria, setFileHomeSecundaria] = useState(null);
 
   const fileInputProfesionalRef = useRef(null);
+  const profesionalFormRef = useRef(null);
   const fileInputHomePrincipalRef = useRef(null);
   const fileInputHomeSecundariaRef = useRef(null);
 
@@ -348,6 +352,18 @@ export default function AdminConfiguracion() {
 
   async function cargarProfesionales() {
     setProfesionales(await obtenerProfesionales());
+  }
+
+  function resetProfesionalForm() {
+    setNombreProfesional("");
+    setGeneroProfesional("femenino");
+    setFileProfesional(null);
+    setProfesionalEditandoId("");
+    setImagenProfesionalActual("");
+
+    if (fileInputProfesionalRef.current) {
+      fileInputProfesionalRef.current.value = "";
+    }
   }
 
   useEffect(() => {
@@ -591,14 +607,7 @@ export default function AdminConfiguracion() {
           creadoEn: new Date(),
         });
 
-        setNombreProfesional("");
-        setGeneroProfesional("femenino");
-        setFileProfesional(null);
-
-        if (fileInputProfesionalRef.current) {
-          fileInputProfesionalRef.current.value = "";
-        }
-
+        resetProfesionalForm();
         await cargarProfesionales();
       },
       {
@@ -609,6 +618,68 @@ export default function AdminConfiguracion() {
 
     swalSuccess({
       title: "Profesional agregado",
+    });
+  }
+
+  async function guardarEdicionProfesional() {
+    if (!nombreProfesional.trim() || !profesionalEditandoId) {
+      swalError({
+        title: "Error",
+        text: "El nombre del profesional es obligatorio.",
+      });
+      return;
+    }
+
+    const profesionalActual = profesionales.find(
+      (item) => item.id === profesionalEditandoId,
+    );
+
+    await runWithLoading(
+      async () => {
+        let urlImagen = profesionalActual?.imgProfesional || "";
+
+        if (fileProfesional) {
+          const nombreArchivo = `${Date.now()}_${fileProfesional.name}`;
+          const storageRef = ref(storage, `profesionales/${nombreArchivo}`);
+
+          await uploadBytes(storageRef, fileProfesional);
+          urlImagen = await getDownloadURL(storageRef);
+        }
+
+        await updateDoc(doc(db, "profesionales", profesionalEditandoId), {
+          nombreProfesional: nombreProfesional.trim(),
+          generoProfesional,
+          imgProfesional: urlImagen,
+        });
+
+        resetProfesionalForm();
+        await cargarProfesionales();
+      },
+      {
+        title: "Guardando cambios",
+        text: "Actualizando profesional...",
+      },
+    );
+
+    swalSuccess({
+      title: "Profesional actualizado",
+    });
+  }
+
+  function editarProfesional(profesional) {
+    setProfesionalEditandoId(profesional.id);
+    setNombreProfesional(profesional.nombreProfesional || "");
+    setGeneroProfesional(profesional.generoProfesional || "femenino");
+    setFileProfesional(null);
+    setImagenProfesionalActual(profesional.imgProfesional || "");
+
+    if (fileInputProfesionalRef.current) {
+      fileInputProfesionalRef.current.value = "";
+    }
+
+    profesionalFormRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
     });
   }
 
@@ -1174,7 +1245,7 @@ export default function AdminConfiguracion() {
           loading={sectionLoading.profesionales}
         >
           <div className="config-prof-layout">
-            <div className="config-prof-form">
+            <div ref={profesionalFormRef} className="config-prof-form">
               <label className="config-field">
                 <span>Nombre del profesional</span>
                 <input
@@ -1211,10 +1282,13 @@ export default function AdminConfiguracion() {
               </label>
 
               <div className="config-prof-preview">
-                {fileProfesionalPreview || generoProfesional ? (
+                {fileProfesionalPreview ||
+                imagenProfesionalActual ||
+                generoProfesional ? (
                   <ImageWithLoader
                     src={
                       fileProfesionalPreview ||
+                      imagenProfesionalActual ||
                       getProfesionalFallback({ generoProfesional })
                     }
                     alt="Preview profesional"
@@ -1228,10 +1302,24 @@ export default function AdminConfiguracion() {
             <div className="config-actions config-actions-inline">
               <button
                 className="btn swal-btn-confirm"
-                onClick={agregarProfesional}
+                onClick={
+                  profesionalEditandoId
+                    ? guardarEdicionProfesional
+                    : agregarProfesional
+                }
               >
-                Agregar profesional
+                {profesionalEditandoId
+                  ? "Guardar cambios"
+                  : "Agregar profesional"}
               </button>
+              {profesionalEditandoId && (
+                <button
+                  className="btn swal-btn-cancel"
+                  onClick={resetProfesionalForm}
+                >
+                  Cancelar edicion
+                </button>
+              )}
             </div>
           </div>
 
@@ -1248,12 +1336,21 @@ export default function AdminConfiguracion() {
 
                   <strong>{profesional.nombreProfesional}</strong>
 
-                  <button
-                    className="swal-btn-eliminar-sm"
-                    onClick={() => eliminarProfesional(profesional.id)}
-                  >
-                    Eliminar
-                  </button>
+                  <div className="config-prof-card-actions">
+                    <button
+                      className="swal-btn-editar"
+                      onClick={() => editarProfesional(profesional)}
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      className="swal-btn-eliminar-sm"
+                      onClick={() => eliminarProfesional(profesional.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </article>
               ))
             ) : (

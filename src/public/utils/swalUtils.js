@@ -461,6 +461,7 @@ export function swalResumenTurno({
   duracion,
   precio,
   precioAnticipo,
+  itemsPrecioVariable = [],
   modoReserva,
 }) {
   const esManual = modoReserva === "reserva";
@@ -509,6 +510,21 @@ export function swalResumenTurno({
             <div class="swal-label">Duración</div>
             <div class="swal-value">${duracion} min</div>
           </div>
+
+          ${
+            itemsPrecioVariable.length
+              ? itemsPrecioVariable
+                  .map(
+                    (item) => `
+              <div class="swal-row">
+                <div class="swal-label">${item.nombre}</div>
+                <div class="swal-value">+$${formatMoney(item.monto)}</div>
+              </div>
+            `,
+                  )
+                  .join("")
+              : ""
+          }
 
           ${
             precio > 0

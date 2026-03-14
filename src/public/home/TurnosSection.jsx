@@ -21,6 +21,28 @@ function getPrecioEfectivo(servicio) {
   return 0;
 }
 
+function getPrecioOnlineServicio(servicio) {
+  return Number(
+    calcularMontosTurno({
+      precioServicio: Number(servicio?.precio || 0),
+      porcentajeAnticipo: servicio?.pedirAnticipo
+        ? Number(servicio?.porcentajeAnticipo || 0)
+        : 0,
+      cobrarComision: true,
+    }).montoTotal || 0,
+  );
+}
+
+function servicioTienePrecioVariableActivo(servicio) {
+  return (
+    Boolean(servicio?.precioVariable) &&
+    Array.isArray(servicio?.itemsPrecioVariable) &&
+    servicio.itemsPrecioVariable.some(
+      (item) => item?.activo !== false && Number(item?.monto || 0) > 0,
+    )
+  );
+}
+
 function agruparServiciosPorNombre(lista = []) {
   const acc = {};
 
@@ -67,7 +89,11 @@ function ServicioVariante({
         </span>
         {precioOnline > 0 ? (
           <span className="servicio-precio">
-            {etiquetaPrecio} ${precioOnline.toLocaleString("es-AR")}
+            {(servicioTienePrecioVariableActivo(servicio) &&
+            etiquetaPrecio === "Precio"
+              ? "Precio desde"
+              : etiquetaPrecio) + " "}
+            ${precioOnline.toLocaleString("es-AR")}
           </span>
         ) : null}
       </div>
@@ -267,28 +293,29 @@ export default function TurnosSection({
                   <div className="servicio-card-count">
                     {data.servicios.length} opciones
                   </div>
-                  {data.servicios.some(
-                    (servicio) => Number(servicio.precio || 0) > 0,
-                  ) ? (
-                    <div className="servicio-precio">
-                      Precios desde $
-                      {Math.min(
-                        ...data.servicios
-                          .map((servicio) =>
-                            Number(
-                              calcularMontosTurno({
-                                precioServicio: Number(servicio.precio || 0),
-                                porcentajeAnticipo: servicio.pedirAnticipo
-                                  ? Number(servicio.porcentajeAnticipo || 0)
-                                  : 0,
-                                cobrarComision: true,
-                              }).montoTotal || 0,
-                            ),
-                          )
-                          .filter((precio) => precio > 0),
-                      ).toLocaleString("es-AR")}
-                    </div>
-                  ) : null}
+                  {(() => {
+                    const precios = data.servicios
+                      .map((servicio) => getPrecioOnlineServicio(servicio))
+                      .filter((precio) => precio > 0);
+
+                    if (!precios.length) return null;
+
+                    const hayPrecioVariable = data.servicios.some((servicio) =>
+                      servicioTienePrecioVariableActivo(servicio),
+                    );
+
+                    const hayMasDeUnPrecio =
+                      new Set(precios.map((precio) => Number(precio))).size > 1;
+
+                    return (
+                      <div className="servicio-precio">
+                        {hayMasDeUnPrecio || hayPrecioVariable
+                          ? "Precio desde $"
+                          : "Precio $"}
+                        {Math.min(...precios).toLocaleString("es-AR")}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

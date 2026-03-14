@@ -281,9 +281,12 @@ export default function MisTurnos() {
   }, [user?.uid]);
 
   useEffect(() => {
-    const unsubSocial = onSnapshot(doc(db, "configuracion", "social"), (snap) => {
-      if (snap.exists()) setSocial(snap.data());
-    });
+    const unsubSocial = onSnapshot(
+      doc(db, "configuracion", "social"),
+      (snap) => {
+        if (snap.exists()) setSocial(snap.data());
+      },
+    );
 
     const unsubUbic = onSnapshot(
       doc(db, "configuracion", "ubicacion"),
@@ -675,10 +678,14 @@ export default function MisTurnos() {
               )}
             </div>
 
-            <h3 className="turno-card-title">{t.nombreServicio || "Servicio"}</h3>
+            <h3 className="turno-card-title">
+              {t.nombreServicio || "Servicio"}
+            </h3>
 
             <div className="turno-card-meta">
-              <span>{t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}</span>
+              <span>
+                {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
+              </span>
               {start ? <span>{formatHora(t.horaInicio)}</span> : null}
               {!!ubicacion?.mapsDireccion && (
                 <span>{ubicacion.mapsDireccion}</span>
@@ -708,7 +715,7 @@ export default function MisTurnos() {
           </div>
           {anticipo > 0 && (
             <div className="turno-stat">
-              <span>Senia</span>
+              <span>Seña</span>
               <strong>${anticipo.toLocaleString("es-AR")}</strong>
               <small>Reserva solicitada para este servicio</small>
             </div>
@@ -717,8 +724,7 @@ export default function MisTurnos() {
 
         {mostrarResumenPago && (
           <div className="turno-card-payment-note">
-            Te queda pendiente abonar ${saldoPendiente.toLocaleString("es-AR")}
-            .
+            Te queda pendiente abonar ${saldoPendiente.toLocaleString("es-AR")}.
           </div>
         )}
 

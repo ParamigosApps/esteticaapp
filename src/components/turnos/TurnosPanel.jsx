@@ -125,6 +125,16 @@ function endOfDay(date) {
   return next;
 }
 
+function parseISODateLocal(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+
+  const [year, month, day] = text.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function readPendingLoginAction() {
   if (typeof window === "undefined") return null;
 
@@ -148,7 +158,7 @@ function getMonthRange(baseDate, fechaMax = null) {
   };
 }
 
-function generarDiasDelMes(baseDate, fechaMax = null) {
+function generarDiasDelMes(baseDate, fechaMax = null, fechaMin = null) {
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();
 
@@ -165,9 +175,7 @@ function generarDiasDelMes(baseDate, fechaMax = null) {
     const copia = new Date(cursor);
 
     if (
-      (copia >= hoy ||
-        copia.getMonth() !== hoy.getMonth() ||
-        copia.getFullYear() !== hoy.getFullYear()) &&
+      copia >= (fechaMin || hoy) &&
       (!fechaMax || copia <= fechaMax)
     ) {
       dias.push(copia);
@@ -201,7 +209,35 @@ function getReservasConfigDefault() {
   };
 }
 
-const ANTICIPACION_MINIMA_TURNOS_MANANA_HORAS = 48;
+function getFechaMaxReservableReal(servicio, fechaMaxBase) {
+  if (servicio?.agendaTipo === "mensual") {
+    const hoy = new Date();
+    const mesBaseOffset =
+      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+      ? mesBaseOffset + 2
+      : mesBaseOffset + 1;
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+    finMes.setHours(0, 0, 0, 0);
+
+    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+  }
+
+  return fechaMaxBase;
+}
+
+function getFechaMinReservable(servicio) {
+  const hoy = startOfDay(new Date());
+  const fechaAgendaDesde = parseISODateLocal(servicio?.agendaDisponibleDesde);
+
+  if (fechaAgendaDesde && fechaAgendaDesde > hoy) {
+    return fechaAgendaDesde;
+  }
+
+  return hoy;
+}
+
+const ANTICIPACION_MINIMA_TURNOS_MANANA_HORAS = 12;
 
 function cumpleReglaAnticipacionManana(inicioMs, reservasConfig, servicio = null) {
   if (!reservasConfig?.bloquearTurnosMananaSin12h) return true;
@@ -259,6 +295,68 @@ function getPrecioEfectivo(servicio) {
   return 0;
 }
 
+function formatearFechaCorta(date) {
+  return new Date(date).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function unirFechasLegibles(fechas = []) {
+  if (!fechas.length) return "";
+  if (fechas.length === 1) return fechas[0];
+  if (fechas.length === 2) return `${fechas[0]} y ${fechas[1]}`;
+
+  return `${fechas.slice(0, -1).join(", ")} y ${fechas[fechas.length - 1]}`;
+}
+
+function getFechasAgendaMensualTexto(
+  servicio,
+  fechaMinReservable,
+  fechaMaxReservable,
+) {
+  if (servicio?.agendaTipo !== "mensual") return "";
+
+  const agendaMensual = Array.isArray(servicio?.agendaMensual)
+    ? servicio.agendaMensual.filter(
+        (item) => item?.activo !== false && Array.isArray(item?.franjas) && item.franjas.length,
+      )
+    : [];
+
+  if (!agendaMensual.length) return "";
+
+  const mesBaseOffset = servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const meses = servicio?.agendaMensualRepiteMesSiguiente ? 2 : 1;
+  const fechas = [];
+  const fechaMin = startOfDay(fechaMinReservable || new Date());
+
+  for (let offset = 0; offset < meses; offset += 1) {
+    const year = fechaMin.getFullYear();
+    const month = fechaMin.getMonth() + mesBaseOffset + offset;
+    const ultimoDiaMes = new Date(year, month + 1, 0).getDate();
+
+    agendaMensual.forEach((item) => {
+      const dia = Number(item?.diaMes || 0);
+      if (!Number.isFinite(dia) || dia < 1 || dia > ultimoDiaMes) return;
+
+      const fecha = startOfDay(new Date(year, month, dia));
+      if (fecha < fechaMin || fecha > fechaMaxReservable) return;
+
+      fechas.push(fecha);
+    });
+  }
+
+  const fechasTexto = unirFechasLegibles(
+    fechas
+      .sort((a, b) => a.getTime() - b.getTime())
+      .map((fecha) => formatearFechaCorta(fecha)),
+  );
+
+  if (!fechasTexto) return "";
+
+  return `Agenda disponible solo para ${fechasTexto}`;
+}
+
 export default function TurnosPanel({ servicio }) {
   const { user, loading: authLoading } = useAuth();
 
@@ -269,15 +367,30 @@ export default function TurnosPanel({ servicio }) {
   );
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
-    startOfDay(new Date()),
+    getFechaMinReservable(servicio),
   );
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
+  const [itemsSeleccionados, setItemsSeleccionados] = useState([]);
   const [loadingReserva, setLoadingReserva] = useState(false);
 
   const fn = httpsCallable(getFunctions(), "crearTurnoInteligente");
+  const itemsPrecioVariable = Array.isArray(servicio?.itemsPrecioVariable)
+    ? servicio.itemsPrecioVariable.filter(
+        (item) => item?.activo !== false && Number(item?.monto || 0) > 0,
+      )
+    : [];
+  const itemsVariablesSeleccionados = itemsPrecioVariable.filter((item) =>
+    itemsSeleccionados.includes(String(item?.nombre || "")),
+  );
+  const ajusteServicio = itemsVariablesSeleccionados.reduce(
+    (acc, item) => acc + Math.max(0, Number(item?.monto || 0)),
+    0,
+  );
+  const precioBaseServicio = Math.max(0, Number(servicio?.precio || 0));
 
   const pricingTurno = calcularMontosTurno({
     precioServicio: Number(servicio?.precio || 0),
+    ajusteServicio,
     porcentajeAnticipo: servicio?.pedirAnticipo
       ? Number(servicio?.porcentajeAnticipo || 0)
       : 0,
@@ -290,7 +403,9 @@ export default function TurnosPanel({ servicio }) {
   const montoAnticipo = pricingTurno.montoAnticipoTotal;
   const saldoPendiente = Math.max(0, precioTotal - montoAnticipo);
   const requiereAnticipoTurno = montoAnticipo > 0;
-  const precioEfectivo = getPrecioEfectivo(servicio);
+  const precioEfectivoBase = getPrecioEfectivo(servicio);
+  const precioEfectivo =
+    precioEfectivoBase > 0 ? precioEfectivoBase + ajusteServicio : 0;
   const ahorroEfectivo = Math.max(0, precioServicio - precioEfectivo);
   const saldoServicioEfectivo = Math.max(
     0,
@@ -311,7 +426,37 @@ export default function TurnosPanel({ servicio }) {
       : 0;
   const agendaEs24Horas = Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
   const limiteReservableMs = getLimiteReservableMs(servicio);
-  const fechaMaxReservable = getFechaMaxReservable(servicio);
+  const fechaMinReservable = getFechaMinReservable(servicio);
+  const fechaMaxReservable = getFechaMaxReservableReal(
+    servicio,
+    getFechaMaxReservable(servicio),
+  );
+  const agendaMensualTexto = getFechasAgendaMensualTexto(
+    servicio,
+    fechaMinReservable,
+    fechaMaxReservable,
+  );
+
+  useEffect(() => {
+    setItemsSeleccionados([]);
+  }, [servicio?.id]);
+
+  useEffect(() => {
+    if (fechaSeleccionada >= fechaMinReservable) return;
+
+    const nuevaFecha = new Date(fechaMinReservable);
+    nuevaFecha.setHours(0, 0, 0, 0);
+    setFechaSeleccionada(nuevaFecha);
+    setSlotSeleccionado(null);
+  }, [fechaSeleccionada, fechaMinReservable]);
+
+  function toggleItemVariable(nombre) {
+    setItemsSeleccionados((prev) =>
+      prev.includes(nombre)
+        ? prev.filter((item) => item !== nombre)
+        : [...prev, nombre],
+    );
+  }
 
   useEffect(() => {
     if (!user || !servicio?.id) return;
@@ -414,7 +559,11 @@ export default function TurnosPanel({ servicio }) {
   useEffect(() => {
     if (!agenda) return;
 
-    const dias = generarDiasDelMes(fechaSeleccionada, fechaMaxReservable);
+    const dias = generarDiasDelMes(
+      fechaSeleccionada,
+      fechaMaxReservable,
+      fechaMinReservable,
+    );
     if (!dias.length) return;
 
     const fechaActualKey = toISODateLocal(fechaSeleccionada);
@@ -453,6 +602,7 @@ export default function TurnosPanel({ servicio }) {
     agenda,
     servicio,
     fechaSeleccionada,
+    fechaMinReservable,
     fechaMaxReservable,
     limiteReservableMs,
     reservasConfig,
@@ -532,6 +682,12 @@ export default function TurnosPanel({ servicio }) {
         horaFin: fin,
         modoAsignacion: servicio.modoAsignacion || "auto",
         metodoPagoSolicitado,
+        precioVariableItemsSeleccionados: itemsVariablesSeleccionados.map(
+          (item) => ({
+            nombre: String(item?.nombre || "").trim(),
+            monto: Math.max(0, Number(item?.monto || 0)),
+          }),
+        ),
       });
 
       if (servicio.modoReserva === "reserva") {
@@ -611,7 +767,10 @@ export default function TurnosPanel({ servicio }) {
       setSlotSeleccionado(null);
 
       const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
-      const { fechaDesde, fechaHasta } = getMonthRange(fechaSeleccionada);
+      const { fechaDesde, fechaHasta } = getMonthRange(
+        fechaSeleccionada,
+        fechaMaxReservable,
+      );
 
       const resultAgenda = await getAgendaFn({
         gabineteIds,
@@ -700,10 +859,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
       precio: precioServicio,
-      precioTotal,
       precioAnticipo: montoAnticipo || null,
-      comisionTurno,
-      anticipoServicio: montoAnticipoServicio,
+      itemsPrecioVariable: itemsVariablesSeleccionados,
       modoReserva: servicio.modoReserva,
     });
 
@@ -739,9 +896,13 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     );
   if (!agenda) return null;
 
-  const dias = generarDiasDelMes(fechaSeleccionada, fechaMaxReservable);
+  const dias = generarDiasDelMes(
+    fechaSeleccionada,
+    fechaMaxReservable,
+    fechaMinReservable,
+  );
   const slots =
-    fechaSeleccionada > fechaMaxReservable
+    fechaSeleccionada < fechaMinReservable || fechaSeleccionada > fechaMaxReservable
       ? []
       : generarSlotsDia(agenda, servicio, fechaSeleccionada).filter((slot) =>
           cumpleReglaAnticipacionManana(slot.inicio, reservasConfig, servicio) &&
@@ -773,7 +934,11 @@ Turno ID: ${data.turnoId.slice(0, 8)}
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  const primerDiaMesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const primerDiaMesActual = new Date(
+    fechaMinReservable.getFullYear(),
+    fechaMinReservable.getMonth(),
+    1,
+  );
 
   const primerDiaMesAnterior = new Date(
     fechaSeleccionada.getFullYear(),
@@ -816,6 +981,15 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           <small className="agenda-disponibilidad">
             Si el dia siguiente ya no tiene horarios, te mostramos la primera
             fecha disponible.
+          </small>
+        ) : agendaMensualTexto ? (
+          <small className="agenda-disponibilidad">
+            <b>{agendaMensualTexto}</b>
+          </small>
+        ) : fechaMinReservable > hoy ? (
+          <small className="agenda-disponibilidad">
+            Agenda disponible desde el{" "}
+            <b>{formatearSoloFecha(endOfDay(fechaMinReservable))}</b>
           </small>
         ) : (
           <small className="agenda-disponibilidad">
@@ -884,6 +1058,39 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         </div>
       )}
 
+      {itemsPrecioVariable.length > 0 && (
+        <div className="agenda-variable-box">
+          <div className="agenda-variable-title">Personaliza tu servicio</div>
+          <div className="agenda-variable-list">
+            {itemsPrecioVariable.map((item) => {
+              const nombre = String(item?.nombre || "").trim();
+              const activo = itemsSeleccionados.includes(nombre);
+
+              return (
+                <label
+                  key={`item-turno-${nombre}`}
+                  className={`agenda-variable-item ${activo ? "activo" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={activo}
+                    onChange={() => toggleItemVariable(nombre)}
+                  />
+                  <span>{nombre}</span>
+                  <strong>
+                    +${Number(item?.monto || 0).toLocaleString("es-AR")}
+                  </strong>
+                </label>
+              );
+            })}
+          </div>
+          <div className="agenda-variable-total">
+            Total pagando con transferencia:{" "}
+            <strong>${precioServicio.toLocaleString("es-AR")}</strong>
+          </div>
+        </div>
+      )}
+
       <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
         <div className="text-center mb-2"></div>
         <button
@@ -920,7 +1127,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         {dias.map((d) => {
           const activo = d.toDateString() === fechaSeleccionada.toDateString();
           const pasado = d < hoy;
-          const fueraDeAgenda = d > fechaMaxReservable;
+          const fueraDeAgenda =
+            d < fechaMinReservable || d > fechaMaxReservable;
           const diaSemana = d.getDay();
 
           const hayHorarioEseDia = agenda.horarios?.some(
@@ -1026,9 +1234,18 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {precioTotal > 0 && (
             <div className="resumen-turno-pricing">
               <div className="resumen-turno-row">
-                <strong>Valor del servicio:</strong> $
-                {precioServicio.toLocaleString("es-AR")}
+                <strong>Valor base del servicio:</strong> $
+                {precioBaseServicio.toLocaleString("es-AR")}
               </div>
+              {itemsVariablesSeleccionados.map((item) => (
+                <div
+                  key={`resumen-item-${item.nombre}`}
+                  className="resumen-turno-row resumen-turno-row-muted"
+                >
+                  <strong>{item.nombre}:</strong> +$
+                  {Number(item.monto || 0).toLocaleString("es-AR")}
+                </div>
+              ))}
               {precioEfectivo > 0 && (
                 <div className="resumen-turno-row resumen-turno-row-cash">
                   <strong>Valor abonando en efectivo:</strong> $

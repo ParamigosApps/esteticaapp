@@ -26,10 +26,13 @@ function obtenerComisionTurno() {
 
 function calcularMontosTurno({
   precioServicio = 0,
+  ajusteServicio = 0,
   porcentajeAnticipo = 0,
   cobrarComision = true,
 } = {}) {
-  const precioBase = Math.max(0, Number(precioServicio || 0))
+  const precioBase =
+    Math.max(0, Number(precioServicio || 0)) +
+    Math.max(0, Number(ajusteServicio || 0))
   const porcentaje = Math.max(0, Number(porcentajeAnticipo || 0))
   const comision = cobrarComision ? obtenerComisionTurno() : 0
 
