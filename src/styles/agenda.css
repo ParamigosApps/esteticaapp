@@ -14,6 +14,41 @@
     background 0.2s ease;
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(151, 112, 197, 0.72) rgba(244, 238, 250, 0.9);
+}
+
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(251, 247, 255, 0.96), rgba(243, 236, 251, 0.96));
+  border-radius: 999px;
+}
+
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(207, 164, 228, 0.96), rgba(154, 116, 193, 0.96));
+  border-radius: 999px;
+  border: 2px solid rgba(247, 242, 251, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(197, 145, 223, 0.98), rgba(138, 98, 183, 0.98));
+}
+
+body::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .slot.libre {
   background: linear-gradient(180deg, #ffffff, #eefaf3);
   color: #0f5132;
