@@ -14,6 +14,10 @@ import whatsappIcon from "../assets/icons/whatsapp.png";
 const GOOGLE_REVIEWS_URL = "https://maps.app.goo.gl/gCBk4DB8cvrS6Pac9";
 
 function getReviewsState(homeVisuales) {
+  const displayCount = Math.min(
+    4,
+    Math.max(1, Number(homeVisuales?.reviewsDisplayCount || 2)),
+  );
   const googlePromedio = Number(homeVisuales?.googleReviewsRating || 0);
   const googleTotal = Number(homeVisuales?.googleReviewsTotal || 0);
   const googleItems = Array.isArray(homeVisuales?.googleReviewsItems)
@@ -26,7 +30,7 @@ function getReviewsState(homeVisuales) {
       texto: String(review?.texto || "").trim(),
     }))
     .filter((review) => review.texto)
-    .slice(0, 2);
+    .slice(0, displayCount);
 
   if (googlePromedio > 0 || googleTotal > 0 || googleReviews.length > 0) {
     return {
@@ -47,7 +51,7 @@ function getReviewsState(homeVisuales) {
       texto: String(review?.texto || "").trim(),
     }))
     .filter((review) => review.texto)
-    .slice(0, 2);
+    .slice(0, displayCount);
 
   return {
     promedio: Number(homeVisuales?.manualReviewsRating || 0),
@@ -87,11 +91,14 @@ function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
   const tieneTotal = reviewsData.total > 0;
   const tieneReviews =
     Array.isArray(reviewsData.reviews) && reviewsData.reviews.length > 0;
+  const tieneContenido = tienePromedio || tieneReviews;
+
+  if (!tieneContenido) {
+    return null;
+  }
 
   return (
-    <div
-      className={`home-reviews-inline ${tienePromedio ? "" : "home-reviews-inline-cta"}`.trim()}
-    >
+    <div className="home-reviews-inline">
       <div className="home-reviews-inline-head">
         <div>
           <span className="home-section-chip reseñas-google">
@@ -167,6 +174,8 @@ export default function Home() {
     googleReviewsTotal: 0,
     googleReviewsItems: [],
     googleReviewsUpdatedAt: null,
+    reviewsEnabled: true,
+    reviewsDisplayCount: "2",
     manualReviewsRating: "",
     manualReviewsTotal: "",
     manualReviewsItems: [],
@@ -176,6 +185,7 @@ export default function Home() {
     String(homeVisuales.googleReviewsUrl || "").trim() || GOOGLE_REVIEWS_URL;
   const reviewsData = getReviewsState(homeVisuales);
   const reviewsUpdatedAt = formatUpdatedAt(homeVisuales.googleReviewsUpdatedAt);
+  const showReviews = homeVisuales.reviewsEnabled !== false;
 
   useEffect(() => {
     const aviso = localStorage.getItem("avisoPostPago");
@@ -322,11 +332,13 @@ export default function Home() {
                 </div>
               </div>
 
-              <GoogleReviewsInline
-                reviewsUrl={googleReviewsUrl}
-                reviewsData={reviewsData}
-                updatedAt={reviewsUpdatedAt}
-              />
+              {showReviews ? (
+                <GoogleReviewsInline
+                  reviewsUrl={googleReviewsUrl}
+                  reviewsData={reviewsData}
+                  updatedAt={reviewsUpdatedAt}
+                />
+              ) : null}
             </div>
           </div>
 

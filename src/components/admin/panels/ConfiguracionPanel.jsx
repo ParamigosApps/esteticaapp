@@ -95,11 +95,6 @@ function esWhatsappValido(value) {
   return /^[0-9]{8,15}$/.test(text);
 }
 
-function esCbuValido(value) {
-  const text = toStr(value);
-  return /^[0-9]{22}$/.test(text);
-}
-
 function getProfesionalFallback(profesional) {
   if (profesional?.imgProfesional) return profesional.imgProfesional;
   if (profesional?.generoProfesional === "masculino") return profesionalMascImg;
@@ -124,11 +119,6 @@ async function obtenerProfesionales() {
     id: item.id,
     ...item.data(),
   }));
-}
-
-async function obtenerDatosBancarios() {
-  const snap = await getDoc(doc(db, "configuracion", "datosBancarios"));
-  return snap.exists() ? snap.data() : null;
 }
 
 async function obtenerRedes() {
@@ -274,7 +264,6 @@ export default function AdminConfiguracion() {
   const [sectionLoading, setSectionLoading] = useState({
     auth: true,
     profesionales: true,
-    banco: true,
     redes: true,
     ubicacion: true,
     horarios: true,
@@ -294,6 +283,8 @@ export default function AdminConfiguracion() {
     faviconUrl: "",
     googleReviewsUrl: "",
     googlePlaceId: "",
+    reviewsEnabled: true,
+    reviewsDisplayCount: "2",
     manualReviewsRating: "",
     manualReviewsTotal: "",
     manualReviewsItems: [
@@ -312,7 +303,6 @@ export default function AdminConfiguracion() {
   const fileInputHomeFaviconRef = useRef(null);
 
   const [open, setOpen] = useState({
-    banco: true,
     redes: false,
     ubicacion: false,
     auth: true,
@@ -320,13 +310,6 @@ export default function AdminConfiguracion() {
     empleados: false,
     profesionales: false,
     homeVisuales: false,
-  });
-
-  const [datosBanco, setDatosBanco] = useState({
-    aliasBanco: "",
-    cbuBanco: "",
-    nombreBanco: "",
-    titularBanco: "",
   });
 
   const [social, setSocial] = useState({
@@ -440,7 +423,6 @@ export default function AdminConfiguracion() {
       setSectionLoading({
         auth: true,
         profesionales: true,
-        banco: true,
         redes: true,
         ubicacion: true,
         horarios: true,
@@ -453,13 +435,6 @@ export default function AdminConfiguracion() {
         [
           "profesionales",
           async () => setProfesionales(await obtenerProfesionales()),
-        ],
-        [
-          "banco",
-          async () => {
-            const bancoData = await obtenerDatosBancarios();
-            if (bancoData) setDatosBanco((prev) => ({ ...prev, ...bancoData }));
-          },
         ],
         [
           "redes",
@@ -759,28 +734,6 @@ export default function AdminConfiguracion() {
     );
   }
 
-  async function guardarBanco() {
-    if (!esCbuValido(datosBanco.cbuBanco)) {
-      swalError({
-        title: "Error",
-        text: "CBU invalido. Debe tener 22 digitos.",
-      });
-      return;
-    }
-
-    await runWithLoading(
-      () => setDoc(doc(db, "configuracion", "datosBancarios"), datosBanco),
-      {
-        title: "Guardando datos bancarios",
-        text: "Actualizando informacion de cobro...",
-      },
-    );
-    swalSuccess({
-      title: "Datos bancarios",
-      text: "Actualizados con exito",
-    });
-  }
-
   async function guardarRedes() {
     await runWithLoading(
       () => setDoc(doc(db, "configuracion", "social"), social),
@@ -849,6 +802,10 @@ export default function AdminConfiguracion() {
           homeVisuales.googleReviewsUrl || "",
         ).trim();
         const googlePlaceId = String(homeVisuales.googlePlaceId || "").trim();
+        const reviewsEnabled = homeVisuales.reviewsEnabled !== false;
+        const reviewsDisplayCount = String(
+          homeVisuales.reviewsDisplayCount || "2",
+        ).trim();
         const manualReviewsRating = String(
           homeVisuales.manualReviewsRating || "",
         ).trim();
@@ -886,6 +843,8 @@ export default function AdminConfiguracion() {
           faviconUrl,
           googleReviewsUrl,
           googlePlaceId,
+          reviewsEnabled,
+          reviewsDisplayCount,
           manualReviewsRating,
           manualReviewsTotal,
           manualReviewsItems,
@@ -959,12 +918,6 @@ export default function AdminConfiguracion() {
         : "La configuracion fue actualizada correctamente",
     });
   }
-
-  const bancoCompleto =
-    Boolean(datosBanco.aliasBanco) &&
-    esCbuValido(datosBanco.cbuBanco) &&
-    Boolean(datosBanco.titularBanco) &&
-    Boolean(datosBanco.nombreBanco);
 
   const redesCompletas = Object.entries(social).every(([key, value]) => {
     if (!value) return true;
@@ -1284,45 +1237,6 @@ export default function AdminConfiguracion() {
         </Seccion>
 
         <Seccion
-          title="Datos bancarios"
-          subtitle="Cuenta visible para transferencias y pagos manuales."
-          open={open.banco}
-          onToggle={() => toggle("banco")}
-          completo={bancoCompleto}
-          loading={sectionLoading.banco}
-        >
-          <div className="config-form-grid">
-            {[
-              ["cbuBanco", "CBU (22 digitos)"],
-              ["aliasBanco", "Alias"],
-              ["titularBanco", "Titular"],
-              ["nombreBanco", "Banco"],
-            ].map(([key, label]) => (
-              <label key={key} className="config-field">
-                <span>{label}</span>
-                <input
-                  className="form-control"
-                  placeholder={label}
-                  value={datosBanco[key] || ""}
-                  onChange={(event) =>
-                    setDatosBanco((current) => ({
-                      ...current,
-                      [key]: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className="config-actions">
-            <button className="btn swal-btn-confirm" onClick={guardarBanco}>
-              Guardar datos
-            </button>
-          </div>
-        </Seccion>
-
-        <Seccion
           title="Redes sociales"
           subtitle="Canales de contacto y presencia online del negocio."
           open={open.redes}
@@ -1506,7 +1420,7 @@ export default function AdminConfiguracion() {
           loading={sectionLoading.homeVisuales}
         >
           <div className="config-home-media-grid">
-            <div className="config-subcard">
+            <div className="config-subcard config-home-reviews-card-shell">
               <div className="config-subcard-header">
                 <h3>Imagen principal</h3>
                 <span>Hero</span>
@@ -1645,6 +1559,39 @@ export default function AdminConfiguracion() {
                 />
               </label>
 
+              <label className="config-toggle-line config-toggle-line-card">
+                <input
+                  type="checkbox"
+                  checked={homeVisuales.reviewsEnabled !== false}
+                  onChange={(event) =>
+                    setHomeVisuales((prev) => ({
+                      ...prev,
+                      reviewsEnabled: event.target.checked,
+                    }))
+                  }
+                />
+                <span>Mostrar bloque de reseñas en el home</span>
+              </label>
+
+              <label className="config-field">
+                <span>Cantidad de reseñas a mostrar</span>
+                <select
+                  className="form-control"
+                  value={homeVisuales.reviewsDisplayCount || "2"}
+                  onChange={(event) =>
+                    setHomeVisuales((prev) => ({
+                      ...prev,
+                      reviewsDisplayCount: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="1">1 reseña</option>
+                  <option value="2">2 reseñas</option>
+                  <option value="3">3 reseñas</option>
+                  <option value="4">4 reseñas</option>
+                </select>
+              </label>
+
               <small className="config-field-help">
                 Si lo completas, las reseñas se sincronizan automáticamente desde Google.
               </small>
@@ -1681,13 +1628,13 @@ export default function AdminConfiguracion() {
               </div>
             </div>
 
-            <div className="config-subcard">
+            <div className="config-subcard config-home-manual-shell">
               <div className="config-subcard-header">
                 <h3>Reseñas manuales</h3>
                 <span>Resumen</span>
               </div>
 
-              <div className="config-form-grid">
+              <div className="config-form-grid config-form-grid-compact">
                 <label className="config-field">
                   <span>Puntaje</span>
                   <input

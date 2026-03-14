@@ -80,7 +80,6 @@ function ServicioVariante({
 
   const precioOnline = Number(pricingTurno.montoTotal || 0);
   const precioEfectivo = getPrecioEfectivo(servicio);
-
   const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
 
   const contenido = (
@@ -110,7 +109,7 @@ function ServicioVariante({
           {ahorroEfectivo > 0 ? (
             <span>
               {" "}
-              ${precioEfectivo.toLocaleString("es-AR")} y ahorrás{" "}
+              ${precioEfectivo.toLocaleString("es-AR")} y ahorras{" "}
               <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
             </span>
           ) : null}
@@ -145,7 +144,11 @@ function ServicioVariante({
           </strong>
           )
         </div>
-      ) : null}
+      ) : (
+        <div className="servicio-anticipo servicio-anticipo-gratis mt-2">
+          Reserva gratis
+        </div>
+      )}
     </>
   );
 
@@ -275,7 +278,9 @@ export default function TurnosSection({
   }, [serviciosActivos, categoriaSeleccionada]);
 
   const categoriaActual = useMemo(
-    () => categorias.find((categoria) => categoria.id === categoriaSeleccionada) || null,
+    () =>
+      categorias.find((categoria) => categoria.id === categoriaSeleccionada) ||
+      null,
     [categorias, categoriaSeleccionada],
   );
 
@@ -292,7 +297,6 @@ export default function TurnosSection({
 
   useEffect(() => {
     if (!categoriaSeleccionada && !servicioSeleccionado) return;
-
     scrollToTurnosTop();
   }, [categoriaSeleccionada, servicioSeleccionado]);
 
@@ -354,17 +358,29 @@ export default function TurnosSection({
               </div>
 
               <div className="servicio-sub mb-1">
-                <span className="servicio-sub-listado">
-                  {data.servicios
-                    .slice(0, 3)
-                    .map((s) =>
-                      s.nombreProfesional
-                        ? `${s.nombreServicio} - ${s.nombreProfesional}`
-                        : s.nombreServicio,
-                    )
-                    .join(" · ")}
-                  {data.servicios.length > 3 ? " · ..." : ""}
-                </span>
+                <div className="servicio-sub-listado">
+                  {data.servicios.slice(0, 5).map((s) => (
+                    <span
+                      key={`${categoriaId}-${s.id}`}
+                      className="servicio-sub-pill"
+                    >
+                      <strong>{s.nombreServicio}</strong>
+                      {s.nombreProfesional ? (
+                        <span className="servicio-sub-profesional">
+                          <span className="servicio-sub-separator">-</span>
+                          <span className="servicio-sub-profesional-name">
+                            {s.nombreProfesional}
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
+                  ))}
+                  {data.servicios.length > 5 ? (
+                    <span className="servicio-sub-more">
+                      +{data.servicios.length - 5} mas
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}

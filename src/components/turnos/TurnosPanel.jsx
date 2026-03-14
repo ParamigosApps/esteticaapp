@@ -316,6 +316,17 @@ function unirFechasLegibles(fechas = []) {
   return `${fechas.slice(0, -1).join(", ")} y ${fechas[fechas.length - 1]}`;
 }
 
+function getWhatsappUrl(numero, mensaje) {
+  const soloDigitos = String(numero || "").replace(/\D/g, "");
+  if (!soloDigitos) return "";
+
+  const numeroConPais = soloDigitos.startsWith("54")
+    ? soloDigitos
+    : `54${soloDigitos}`;
+
+  return `https://wa.me/${numeroConPais}?text=${encodeURIComponent(mensaje)}`;
+}
+
 function getFechasAgendaMensualTexto(
   servicio,
   fechaMinReservable,
@@ -374,6 +385,7 @@ export default function TurnosPanel({ servicio }) {
   const [reservasConfig, setReservasConfig] = useState(
     getReservasConfigDefault(),
   );
+  const [socialConfig, setSocialConfig] = useState({ whatsappContacto: "" });
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
     getFechaMinReservable(servicio),
@@ -521,6 +533,34 @@ export default function TurnosPanel({ servicio }) {
     }
 
     void cargarReservasConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function cargarSocialConfig() {
+      try {
+        const snap = await getDoc(doc(db, "configuracion", "social"));
+        if (!cancelled) {
+          setSocialConfig(
+            snap.exists()
+              ? { whatsappContacto: snap.data()?.whatsappContacto || "" }
+              : { whatsappContacto: "" },
+          );
+        }
+      } catch (error) {
+        console.error("Error cargando contacto de WhatsApp", error);
+        if (!cancelled) {
+          setSocialConfig({ whatsappContacto: "" });
+        }
+      }
+    }
+
+    void cargarSocialConfig();
 
     return () => {
       cancelled = true;
@@ -831,16 +871,19 @@ export default function TurnosPanel({ servicio }) {
     const data = await reservarTurno("manual");
     if (!data?.turnoId) return;
 
-    const mensaje = encodeURIComponent(`
+    const mensaje = `
 Hola! Me gustaria reservar el siguiente turno:
 
 Servicio: ${servicio.nombreServicio}
 Fecha: ${fechaFormateada}
 Horario: ${horaInicioFormateada} - ${horaFinFormateada}
 Turno ID: ${data.turnoId.slice(0, 8)}
-`);
+`;
 
-    window.open(`https://wa.me/5491130580879?text=${mensaje}`, "_blank");
+    const whatsappUrl = getWhatsappUrl(socialConfig?.whatsappContacto, mensaje);
+    if (whatsappUrl) {
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    }
   }
 
   async function handleReservaAutomaticaMP() {
@@ -1320,10 +1363,10 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {requierePagoOnline && (
             <div className="mb-3 mt-1">
               <span className="total-sena text-success fw-semibold">
-                Abonas <b>${montoAnticipo.toLocaleString("es-AR")}</b> para
+                Pagás <b>${montoAnticipo.toLocaleString("es-AR")}</b> para
                 confirmar el turno online.{" "}
                 {montoAnticipo !== precioTotal && (
-                  <span>El dia del servicio abonas el saldo restante.</span>
+                  <span>El día del servicio abonas el saldo restante.</span>
                 )}
               </span>
             </div>
@@ -1351,8 +1394,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {esReservaManual &&
             (!requiereAnticipoTurno || montoAnticipo <= 0) && (
               <div className="mb-3 mt-1">
-                <span className="total-sena text-danger fw-semibold">
-                  Este turno se confirma por WhatsApp.
+                <span className="total-sena text-success fw-semibold">
+                  Reserva gratis. Este turno se confirma por WhatsApp.
                 </span>
               </div>
             )}

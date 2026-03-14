@@ -34,12 +34,13 @@ function calcularMontosTurno({
     Math.max(0, Number(precioServicio || 0)) +
     Math.max(0, Number(ajusteServicio || 0))
   const porcentaje = Math.max(0, Number(porcentajeAnticipo || 0))
-  const comision = cobrarComision ? obtenerComisionTurno() : 0
 
   const montoAnticipoServicio =
     precioBase > 0 && porcentaje > 0
       ? Math.round((precioBase * porcentaje) / 100)
       : 0
+  const comision =
+    cobrarComision && montoAnticipoServicio > 0 ? obtenerComisionTurno() : 0
 
   return {
     precioServicio: precioBase,
