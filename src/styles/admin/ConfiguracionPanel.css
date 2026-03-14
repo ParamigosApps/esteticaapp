@@ -578,6 +578,21 @@
   background: #faf7fb;
 }
 
+.config-home-preview-favicon {
+  min-height: 150px;
+}
+
+.config-home-preview-favicon img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  border-radius: 22px;
+  border: 1px solid #eadcf8;
+  background: linear-gradient(180deg, #ffffff, #faf5ff);
+  box-shadow: 0 14px 28px rgba(91, 63, 126, 0.08);
+  padding: 14px;
+}
+
 .config-team-shell {
   display: grid;
   gap: 16px;
@@ -618,6 +633,42 @@
 .config-team-copy small,
 .config-field small {
   color: #746a81;
+}
+
+.config-field-help-error {
+  color: #b24747 !important;
+  font-weight: 600;
+}
+
+.config-google-debug {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.config-google-debug-pre {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(123, 104, 137, 0.2);
+  background: rgba(246, 242, 250, 0.85);
+  color: #3a2d46;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.config-google-manual-card {
+  display: none;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(123, 104, 137, 0.16);
+}
+
+.config-google-manual-card strong {
+  color: #24192f;
 }
 
 .config-team-actions {

@@ -39,6 +39,52 @@ const AUTH_CONFIG_BASE = {
 
 const toStr = (value) => (typeof value === "string" ? value.trim() : "");
 
+function formatConfigDate(value) {
+  if (!value) return "";
+
+  const date =
+    typeof value?.toDate === "function"
+      ? value.toDate()
+      : value instanceof Date
+        ? value
+        : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatConfigJson(value) {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return "";
+  }
+}
+
+function normalizeManualReviews(items = []) {
+  const safeItems = Array.isArray(items) ? items : [];
+  const next = safeItems
+    .slice(0, 2)
+    .map((item) => ({
+      autor: toStr(item?.autor),
+      fecha: toStr(item?.fecha),
+      texto: toStr(item?.texto),
+    }));
+
+  while (next.length < 2) {
+    next.push({ autor: "", fecha: "", texto: "" });
+  }
+
+  return next;
+}
+
 function esUrlValida(value) {
   const text = toStr(value);
   return /^https?:\/\/.+\..+/i.test(text);
@@ -245,14 +291,25 @@ export default function AdminConfiguracion() {
   const [homeVisuales, setHomeVisuales] = useState({
     imgPrincipalHome: "",
     imgSecundariaHome: "",
+    faviconUrl: "",
+    googleReviewsUrl: "",
+    googlePlaceId: "",
+    manualReviewsRating: "",
+    manualReviewsTotal: "",
+    manualReviewsItems: [
+      { autor: "", fecha: "", texto: "" },
+      { autor: "", fecha: "", texto: "" },
+    ],
   });
   const [fileHomePrincipal, setFileHomePrincipal] = useState(null);
   const [fileHomeSecundaria, setFileHomeSecundaria] = useState(null);
+  const [fileHomeFavicon, setFileHomeFavicon] = useState(null);
 
   const fileInputProfesionalRef = useRef(null);
   const profesionalFormRef = useRef(null);
   const fileInputHomePrincipalRef = useRef(null);
   const fileInputHomeSecundariaRef = useRef(null);
+  const fileInputHomeFaviconRef = useRef(null);
 
   const [open, setOpen] = useState({
     banco: true,
@@ -335,6 +392,10 @@ export default function AdminConfiguracion() {
     () => (fileHomeSecundaria ? URL.createObjectURL(fileHomeSecundaria) : ""),
     [fileHomeSecundaria],
   );
+  const fileHomeFaviconPreview = useMemo(
+    () => (fileHomeFavicon ? URL.createObjectURL(fileHomeFavicon) : ""),
+    [fileHomeFavicon],
+  );
 
   useEffect(() => {
     return () => {
@@ -343,11 +404,13 @@ export default function AdminConfiguracion() {
         URL.revokeObjectURL(fileHomePrincipalPreview);
       if (fileHomeSecundariaPreview)
         URL.revokeObjectURL(fileHomeSecundariaPreview);
+      if (fileHomeFaviconPreview) URL.revokeObjectURL(fileHomeFaviconPreview);
     };
   }, [
     fileProfesionalPreview,
     fileHomePrincipalPreview,
     fileHomeSecundariaPreview,
+    fileHomeFaviconPreview,
   ]);
 
   async function cargarProfesionales() {
@@ -781,6 +844,20 @@ export default function AdminConfiguracion() {
       async () => {
         let imgPrincipalHome = homeVisuales.imgPrincipalHome || "";
         let imgSecundariaHome = homeVisuales.imgSecundariaHome || "";
+        let faviconUrl = homeVisuales.faviconUrl || "";
+        const googleReviewsUrl = String(
+          homeVisuales.googleReviewsUrl || "",
+        ).trim();
+        const googlePlaceId = String(homeVisuales.googlePlaceId || "").trim();
+        const manualReviewsRating = String(
+          homeVisuales.manualReviewsRating || "",
+        ).trim();
+        const manualReviewsTotal = String(
+          homeVisuales.manualReviewsTotal || "",
+        ).trim();
+        const manualReviewsItems = normalizeManualReviews(
+          homeVisuales.manualReviewsItems,
+        );
 
         if (fileHomePrincipal) {
           const nombreArchivo = `${Date.now()}_${fileHomePrincipal.name}`;
@@ -796,15 +873,66 @@ export default function AdminConfiguracion() {
           imgSecundariaHome = await getDownloadURL(storageRef);
         }
 
+        if (fileHomeFavicon) {
+          const nombreArchivo = `${Date.now()}_${fileHomeFavicon.name}`;
+          const storageRef = ref(storage, `home/favicon/${nombreArchivo}`);
+          await uploadBytes(storageRef, fileHomeFavicon);
+          faviconUrl = await getDownloadURL(storageRef);
+        }
+
         const next = {
           imgPrincipalHome,
           imgSecundariaHome,
+          faviconUrl,
+          googleReviewsUrl,
+          googlePlaceId,
+          manualReviewsRating,
+          manualReviewsTotal,
+          manualReviewsItems,
         };
 
-        await setDoc(doc(db, "configuracion", "homeVisuales"), next);
-        setHomeVisuales(next);
+        await setDoc(doc(db, "configuracion", "homeVisuales"), next, {
+          merge: true,
+        });
+
+        let syncedData = null;
+        let syncError = "";
+
+        if (googlePlaceId) {
+          try {
+            const callable = httpsCallable(
+              firebaseFunctions,
+              "sincronizarGoogleReviewsAdmin",
+            );
+            const response = await callable();
+            syncedData = response?.data || null;
+          } catch (error) {
+            console.error("No se pudieron sincronizar las reseñas", error);
+            syncError =
+              error?.message?.replace("FirebaseError: ", "") ||
+              "No se pudieron sincronizar las reseñas de Google";
+          }
+        }
+
+        setHomeVisuales((prev) => ({
+          ...prev,
+          ...next,
+          googleReviewsSyncError: syncError,
+          ...(syncedData || {}),
+        }));
+
+        if (syncError) {
+          await setDoc(
+            doc(db, "configuracion", "homeVisuales"),
+            {
+              googleReviewsSyncError: syncError,
+            },
+            { merge: true },
+          );
+        }
         setFileHomePrincipal(null);
         setFileHomeSecundaria(null);
+        setFileHomeFavicon(null);
 
         if (fileInputHomePrincipalRef.current) {
           fileInputHomePrincipalRef.current.value = "";
@@ -812,6 +940,10 @@ export default function AdminConfiguracion() {
 
         if (fileInputHomeSecundariaRef.current) {
           fileInputHomeSecundariaRef.current.value = "";
+        }
+
+        if (fileInputHomeFaviconRef.current) {
+          fileInputHomeFaviconRef.current.value = "";
         }
       },
       {
@@ -821,8 +953,10 @@ export default function AdminConfiguracion() {
     );
 
     swalSuccess({
-      title: "Imagenes del home",
-      text: "Las imagenes fueron actualizadas correctamente",
+      title: "Visuales del home",
+      text: homeVisuales.googlePlaceId
+        ? "La configuracion fue actualizada. Si las reseñas no cambian, revisa el estado de sincronizacion."
+        : "La configuracion fue actualizada correctamente",
     });
   }
 
@@ -850,7 +984,9 @@ export default function AdminConfiguracion() {
     (dia) => dia?.abierto,
   ).length;
   const homeVisualesCompleto = Boolean(
-    homeVisuales.imgPrincipalHome && homeVisuales.imgSecundariaHome,
+    homeVisuales.imgPrincipalHome &&
+      homeVisuales.imgSecundariaHome &&
+      homeVisuales.faviconUrl,
   );
 
   return (
@@ -1438,6 +1574,244 @@ export default function AdminConfiguracion() {
                 )}
               </div>
             </div>
+
+            <div className="config-subcard">
+              <div className="config-subcard-header">
+                <h3>Favicon</h3>
+                <span>Pestana del sitio</span>
+              </div>
+
+              <label className="config-field">
+                <span>Subir favicon</span>
+                <input
+                  ref={fileInputHomeFaviconRef}
+                  type="file"
+                  accept="image/png,image/x-icon,image/svg+xml,image/jpeg,image/webp"
+                  className="form-control"
+                  onChange={(event) =>
+                    setFileHomeFavicon(event.target.files?.[0] || null)
+                  }
+                />
+              </label>
+
+              <div className="config-home-preview config-home-preview-favicon">
+                {fileHomeFaviconPreview || homeVisuales.faviconUrl ? (
+                  <ImageWithLoader
+                    src={fileHomeFaviconPreview || homeVisuales.faviconUrl}
+                    alt="Preview favicon"
+                    wrapperClassName="config-home-preview-shell"
+                  />
+                ) : (
+                  <div className="config-prof-preview-empty">Sin favicon</div>
+                )}
+              </div>
+            </div>
+
+            <div className="config-subcard">
+              <div className="config-subcard-header">
+                <h3>Link de reseñas</h3>
+                <span>Google Maps</span>
+              </div>
+
+              <label className="config-field">
+                <span>Enlace para Mostrar en Google</span>
+                <input
+                  type="url"
+                  className="form-control"
+                  placeholder="https://maps.app.goo.gl/..."
+                  value={homeVisuales.googleReviewsUrl || ""}
+                  onChange={(event) =>
+                    setHomeVisuales((prev) => ({
+                      ...prev,
+                      googleReviewsUrl: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="config-field">
+                <span>Google Place ID</span>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="ChIJ..."
+                  value={homeVisuales.googlePlaceId || ""}
+                  onChange={(event) =>
+                    setHomeVisuales((prev) => ({
+                      ...prev,
+                      googlePlaceId: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <small className="config-field-help">
+                Si lo completas, las reseñas se sincronizan automáticamente desde Google.
+              </small>
+
+              {homeVisuales.googleReviewsUpdatedAt ? (
+                <small className="config-field-help">
+                  Ultima sincronizacion: {formatConfigDate(homeVisuales.googleReviewsUpdatedAt)}
+                </small>
+              ) : null}
+
+              {homeVisuales.googleReviewsSyncError ? (
+                <small className="config-field-help config-field-help-error">
+                  Error de sincronizacion: {homeVisuales.googleReviewsSyncError}
+                </small>
+              ) : null}
+
+              <div className="config-google-debug">
+                <small className="config-field-help">
+                  Rating sincronizado: {Number(homeVisuales.googleReviewsRating || 0) || 0}
+                </small>
+                <small className="config-field-help">
+                  Total sincronizado: {Number(homeVisuales.googleReviewsTotal || 0) || 0}
+                </small>
+                <small className="config-field-help">
+                  Reviews sincronizadas: {Array.isArray(homeVisuales.googleReviewsItems) ? homeVisuales.googleReviewsItems.length : 0}
+                </small>
+
+                {Array.isArray(homeVisuales.googleReviewsItems) &&
+                homeVisuales.googleReviewsItems.length ? (
+                  <pre className="config-google-debug-pre">
+                    {formatConfigJson(homeVisuales.googleReviewsItems[0])}
+                  </pre>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="config-subcard">
+              <div className="config-subcard-header">
+                <h3>Reseñas manuales</h3>
+                <span>Resumen</span>
+              </div>
+
+              <div className="config-form-grid">
+                <label className="config-field">
+                  <span>Puntaje</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    className="form-control"
+                    placeholder="Ej: 4.9"
+                    value={homeVisuales.manualReviewsRating || ""}
+                    onChange={(event) =>
+                      setHomeVisuales((prev) => ({
+                        ...prev,
+                        manualReviewsRating: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="config-field">
+                  <span>Total de reseñas</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="form-control"
+                    placeholder="Ej: 120"
+                    value={homeVisuales.manualReviewsTotal || ""}
+                    onChange={(event) =>
+                      setHomeVisuales((prev) => ({
+                        ...prev,
+                        manualReviewsTotal: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              {normalizeManualReviews(homeVisuales.manualReviewsItems).map(
+                (review, index) => (
+                  <div
+                    key={`manual-review-${index}`}
+                    className="config-google-manual-card"
+                  >
+                    <strong>Reseña {index + 1}</strong>
+
+                    <label className="config-field">
+                      <span>Autor</span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Ej: Maria"
+                        value={review.autor}
+                        onChange={(event) =>
+                          setHomeVisuales((prev) => {
+                            const nextItems = normalizeManualReviews(
+                              prev.manualReviewsItems,
+                            );
+                            nextItems[index] = {
+                              ...nextItems[index],
+                              autor: event.target.value,
+                            };
+                            return {
+                              ...prev,
+                              manualReviewsItems: nextItems,
+                            };
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="config-field">
+                      <span>Fecha</span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Ej: Hace 2 semanas"
+                        value={review.fecha}
+                        onChange={(event) =>
+                          setHomeVisuales((prev) => {
+                            const nextItems = normalizeManualReviews(
+                              prev.manualReviewsItems,
+                            );
+                            nextItems[index] = {
+                              ...nextItems[index],
+                              fecha: event.target.value,
+                            };
+                            return {
+                              ...prev,
+                              manualReviewsItems: nextItems,
+                            };
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="config-field">
+                      <span>Texto</span>
+                      <textarea
+                        className="form-control"
+                        rows="3"
+                        placeholder="Escribe la reseña..."
+                        value={review.texto}
+                        onChange={(event) =>
+                          setHomeVisuales((prev) => {
+                            const nextItems = normalizeManualReviews(
+                              prev.manualReviewsItems,
+                            );
+                            nextItems[index] = {
+                              ...nextItems[index],
+                              texto: event.target.value,
+                            };
+                            return {
+                              ...prev,
+                              manualReviewsItems: nextItems,
+                            };
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                ),
+              )}
+            </div>
           </div>
 
           <div className="config-actions">
@@ -1445,7 +1819,7 @@ export default function AdminConfiguracion() {
               className="btn swal-btn-confirm"
               onClick={guardarHomeVisuales}
             >
-              Guardar imagenes
+              Guardar visuales
             </button>
           </div>
         </Seccion>

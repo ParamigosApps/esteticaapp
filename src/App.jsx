@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
+import { doc, onSnapshot } from "firebase/firestore";
 
 import PublicLayout from "./public/layout/PublicLayout.jsx";
 
@@ -29,6 +30,7 @@ import MisTurnos from "./public/pages/MisTurnos.jsx";
 import MiPerfil from "./public/pages/MiPerfil.jsx";
 
 import { ToastContainer } from "react-toastify";
+import { db } from "./Firebase.js";
 
 const DEFAULT_TITLE = "EsteticApp";
 
@@ -78,11 +80,34 @@ function TitleManager() {
   return null;
 }
 
+function FaviconManager() {
+  useEffect(() => {
+    return onSnapshot(doc(db, "configuracion", "homeVisuales"), (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      const faviconUrl = String(data?.faviconUrl || "").trim();
+
+      if (!faviconUrl) return;
+
+      let link = document.querySelector("link[rel='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.setAttribute("rel", "icon");
+        document.head.appendChild(link);
+      }
+
+      link.setAttribute("href", faviconUrl);
+    });
+  }, []);
+
+  return null;
+}
+
 export default function App() {
   return (
     <ServiciosProvider>
       <>
         <TitleManager />
+        <FaviconManager />
 
         <ToastContainer
           position="top-center"

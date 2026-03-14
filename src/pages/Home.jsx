@@ -1,11 +1,8 @@
-// src/pages/Home.jsx
-
-import { db } from "../Firebase";
-import { doc, getDoc } from "firebase/firestore";
-
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
+import { Timestamp, doc, getDoc } from "firebase/firestore";
 
+import { db } from "../Firebase";
 import BuscadorServicios from "../public/components/buscador/BuscadorServicios";
 import TurnosSection from "../public/home/TurnosSection.jsx";
 import InfoContactoPanel from "../public/components/contacto/InfoContactoPanel.jsx";
@@ -14,6 +11,149 @@ import imgPrincipal from "../assets/img/local.jpg";
 import imgSecundaria from "../assets/img/secundaria.png";
 import whatsappIcon from "../assets/icons/whatsapp.png";
 
+const GOOGLE_REVIEWS_URL = "https://maps.app.goo.gl/gCBk4DB8cvrS6Pac9";
+
+function getReviewsState(homeVisuales) {
+  const googlePromedio = Number(homeVisuales?.googleReviewsRating || 0);
+  const googleTotal = Number(homeVisuales?.googleReviewsTotal || 0);
+  const googleItems = Array.isArray(homeVisuales?.googleReviewsItems)
+    ? homeVisuales.googleReviewsItems
+    : [];
+  const googleReviews = googleItems
+    .map((review) => ({
+      autor: String(review?.autor || "").trim() || "Cliente de Google",
+      fecha: String(review?.fecha || "").trim() || "Google",
+      texto: String(review?.texto || "").trim(),
+    }))
+    .filter((review) => review.texto)
+    .slice(0, 2);
+
+  if (googlePromedio > 0 || googleTotal > 0 || googleReviews.length > 0) {
+    return {
+      promedio: googlePromedio,
+      total: googleTotal,
+      reviews: googleReviews,
+      source: "google",
+    };
+  }
+
+  const manualItems = Array.isArray(homeVisuales?.manualReviewsItems)
+    ? homeVisuales.manualReviewsItems
+    : [];
+  const manualReviews = manualItems
+    .map((review) => ({
+      autor: String(review?.autor || "").trim() || "Cliente",
+      fecha: String(review?.fecha || "").trim() || "Resena verificada",
+      texto: String(review?.texto || "").trim(),
+    }))
+    .filter((review) => review.texto)
+    .slice(0, 2);
+
+  return {
+    promedio: Number(homeVisuales?.manualReviewsRating || 0),
+    total: Number(homeVisuales?.manualReviewsTotal || 0),
+    reviews: manualReviews,
+    source: "manual",
+  };
+}
+
+function formatUpdatedAt(value) {
+  if (!value) return "";
+
+  const date =
+    value instanceof Timestamp
+      ? value.toDate()
+      : value instanceof Date
+        ? value
+        : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
+  const estrellas = Array.from({ length: 5 }, (_, index) => (
+    <span key={`estrella-${index}`} className="reviews-star" aria-hidden="true">
+      {"\u2605"}
+    </span>
+  ));
+  const tienePromedio = reviewsData.promedio > 0;
+  const tieneTotal = reviewsData.total > 0;
+  const tieneReviews =
+    Array.isArray(reviewsData.reviews) && reviewsData.reviews.length > 0;
+
+  return (
+    <div
+      className={`home-reviews-inline ${tienePromedio ? "" : "home-reviews-inline-cta"}`.trim()}
+    >
+      <div className="home-reviews-inline-head">
+        <div>
+          <span className="home-section-chip reseñas-google">
+            Reseñas Google
+          </span>
+          {tienePromedio ? (
+            <div className="home-reviews-inline-rating">
+              <strong>{reviewsData.promedio.toFixed(1)}</strong>
+              <div className="home-reviews-stars" aria-label="5 estrellas">
+                {estrellas}
+              </div>
+              {tieneTotal ? <span>{reviewsData.total}+ reseñas</span> : null}
+            </div>
+          ) : null}
+          {updatedAt && reviewsData.source === "google" ? (
+            <small className="home-reviews-inline-meta">
+              Actualizado {updatedAt}
+            </small>
+          ) : null}
+        </div>
+
+        <div className="home-reviews-actions">
+          <a
+            className="home-reviews-btn home-reviews-btn-primary"
+            href={reviewsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver reseñas
+          </a>
+        </div>
+      </div>
+
+      {tieneReviews ? (
+        <div className="home-reviews-inline-grid">
+          {reviewsData.reviews.map((review, index) => (
+            <article
+              key={`${review.autor}-${index}`}
+              className="home-review-card home-review-card-inline"
+            >
+              <div className="home-review-card-top">
+                <div className="home-review-avatar" aria-hidden="true">
+                  {String(review.autor || "G")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+                <div>
+                  <strong>{review.autor}</strong>
+                  <span>{review.fecha}</span>
+                </div>
+              </div>
+
+              <p>{review.texto}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Home() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
@@ -21,8 +161,21 @@ export default function Home() {
   const [homeVisuales, setHomeVisuales] = useState({
     imgPrincipalHome: "",
     imgSecundariaHome: "",
+    googleReviewsUrl: "",
+    googlePlaceId: "",
+    googleReviewsRating: 0,
+    googleReviewsTotal: 0,
+    googleReviewsItems: [],
+    googleReviewsUpdatedAt: null,
+    manualReviewsRating: "",
+    manualReviewsTotal: "",
+    manualReviewsItems: [],
   });
   const agendaRef = useRef(null);
+  const googleReviewsUrl =
+    String(homeVisuales.googleReviewsUrl || "").trim() || GOOGLE_REVIEWS_URL;
+  const reviewsData = getReviewsState(homeVisuales);
+  const reviewsUpdatedAt = formatUpdatedAt(homeVisuales.googleReviewsUpdatedAt);
 
   useEffect(() => {
     const aviso = localStorage.getItem("avisoPostPago");
@@ -37,7 +190,7 @@ export default function Home() {
           title: "Turno confirmado",
           html: `
             <p style="text-align:center;font-size:15px;">
-              Tu seña fue acreditada correctamente.
+              Tu sena fue acreditada correctamente.
             </p>
             <p style="text-align:center;color:#555;">
               Te esperamos en el horario reservado.
@@ -87,7 +240,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function cargarWhatsapp() {
+    async function cargarHomeData() {
       const [socialSnap, homeSnap] = await Promise.all([
         getDoc(doc(db, "configuracion", "social")),
         getDoc(doc(db, "configuracion", "homeVisuales")),
@@ -105,7 +258,7 @@ export default function Home() {
       }
     }
 
-    cargarWhatsapp();
+    void cargarHomeData();
   }, []);
 
   useEffect(() => {
@@ -144,36 +297,36 @@ export default function Home() {
             </div>
 
             <div className="home-negocio-info">
-              <img
-                src={homeVisuales.imgSecundariaHome || imgSecundaria}
-                className="home-img-sec"
-                alt="Espacio de atencion estetica"
-              />
+              <div className="home-negocio-top">
+                <img
+                  src={homeVisuales.imgSecundariaHome || imgSecundaria}
+                  className="home-img-sec"
+                  alt="Espacio de atencion estetica"
+                />
 
-              <div className="home-descripcion-info">
-                <span className="home-kicker">Estetica facial y bienestar</span>
-                <h1>PIEL & CEJAS</h1>
+                <div className="home-descripcion-info">
+                  <span className="home-kicker">
+                    Estetica facial y bienestar
+                  </span>
+                  <h1>PIEL & CEJAS</h1>
 
-                <p className="home-sub">Cosmetologia • Estetica • Bienestar</p>
+                  <p className="home-sub">
+                    Cosmetologia • Estetica • Bienestar
+                  </p>
 
-                <p className="home-desc">
-                  Tratamientos faciales y corporales, masajes relajantes y
-                  cuidado profesional de la piel en un ambiente pensado para tu
-                  bienestar.
-                </p>
-
-                <div className="home-highlights">
-                  <div className="home-highlight-card">
-                    <strong>Atencion personalizada</strong>
-                    <span>Servicios adaptados a tu piel, objetivos y ritmo.</span>
-                  </div>
-
-                  <div className="home-highlight-card">
-                    <strong>Reserva simple</strong>
-                    <span>Elegi el servicio, el horario y confirma en minutos.</span>
-                  </div>
+                  <p className="home-desc">
+                    Tratamientos faciales y corporales, masajes relajantes y
+                    cuidado profesional de la piel en un ambiente pensado para
+                    tu bienestar.
+                  </p>
                 </div>
               </div>
+
+              <GoogleReviewsInline
+                reviewsUrl={googleReviewsUrl}
+                reviewsData={reviewsData}
+                updatedAt={reviewsUpdatedAt}
+              />
             </div>
           </div>
 

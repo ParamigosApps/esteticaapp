@@ -80,6 +80,8 @@ exports.validarEmailVerificado =
   require("./callables/validarEmailVerificado").validarEmailVerificado;
 exports.validarWhatsAppConfig =
   require("./callables/validarWhatsAppConfig").validarWhatsAppConfig;
+exports.sincronizarGoogleReviewsAdmin =
+  require("./callables/sincronizarGoogleReviewsAdmin").sincronizarGoogleReviewsAdmin;
 exports.cancelarTurnoAdmin =
   require("./admin/cancelarTurnoAdmin").cancelarTurnoAdmin;
 exports.marcarTurnoRealizadoAdmin =
@@ -550,3 +552,6 @@ exports.expirarPagosTurnos = onSchedule(
     }
   }
 )
+
+exports.sincronizarGoogleReviewsProgramado =
+  require("./google/sincronizarGoogleReviewsProgramado").sincronizarGoogleReviewsProgramado;
