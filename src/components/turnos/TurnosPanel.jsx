@@ -424,8 +424,10 @@ export default function TurnosPanel({ servicio }) {
   const comisionTurno = pricingTurno.comisionTurno;
   const montoAnticipoServicio = pricingTurno.montoAnticipoServicio;
   const montoAnticipo = pricingTurno.montoAnticipoTotal;
+  const montoReservaManual = montoAnticipoServicio;
   const saldoPendiente = Math.max(0, precioTotal - montoAnticipo);
-  const requiereAnticipoTurno = montoAnticipo > 0;
+  const requiereAnticipoTurno = montoAnticipoServicio > 0;
+  const tieneComisionTurno = comisionTurno > 0;
   const precioEfectivoBase = getPrecioEfectivo(servicio);
   const precioEfectivo =
     precioEfectivoBase > 0 ? precioEfectivoBase + ajusteServicio : 0;
@@ -440,13 +442,17 @@ export default function TurnosPanel({ servicio }) {
   );
   const esReservaManual = servicio?.modoReserva === "reserva";
   const usaCargoReservaOnline =
-    requiereAnticipoTurno && (servicio?.tipoAnticipo || "online") === "online";
+    tieneComisionTurno && (servicio?.tipoAnticipo || "online") === "online";
 
   const requierePagoOnline = usaCargoReservaOnline && !esReservaManual;
   const valorTotalAbonandoEfectivo =
     precioEfectivo > 0
       ? precioEfectivo + (usaCargoReservaOnline ? comisionTurno : 0)
       : 0;
+  const ahorroTotalEfectivo = Math.max(
+    0,
+    precioTotal - valorTotalAbonandoEfectivo,
+  );
   const agendaEs24Horas =
     Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
   const limiteReservableMs = getLimiteReservableMs(servicio);
@@ -928,7 +934,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
       precio: precioServicio,
-      precioAnticipo: montoAnticipo || null,
+      precioAnticipo: (esReservaManual ? montoReservaManual : montoAnticipo) || null,
       itemsPrecioVariable: itemsVariablesSeleccionados,
       modoReserva: servicio.modoReserva,
     });
@@ -1126,7 +1132,9 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {requierePagoOnline ? (
             <div className="agenda-cash-copy">
               <div>
-                Sena por transferencia:{" "}
+                {requiereAnticipoTurno
+                  ? "Sena por transferencia: "
+                  : "Reserva online por transferencia: "}
                 <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
               </div>
               <div>
@@ -1155,11 +1163,17 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             <div className="agenda-cash-copy">
               <div>
                 Precio abonando en efectivo:{" "}
-                <strong>${precioEfectivo.toLocaleString("es-AR")}</strong>.{" "}
-                {ahorroEfectivo > 0 ? (
+                <strong>
+                  ${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
+                </strong>
+                .{" "}
+                {ahorroTotalEfectivo > 0 ? (
                   <div>
-                    Ahorrás{" "}
-                    <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>.
+                    Ahorras{" "}
+                    <strong>
+                      ${ahorroTotalEfectivo.toLocaleString("es-AR")}
+                    </strong>
+                    .
                   </div>
                 ) : null}
               </div>
@@ -1324,6 +1338,12 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                 <strong>Valor base del servicio:</strong> $
                 {precioBaseServicio.toLocaleString("es-AR")}
               </div>
+              {comisionTurno > 0 && (
+                <div className="resumen-turno-row resumen-turno-row-muted">
+                  <strong>Costo de servicio:</strong> $
+                  {comisionTurno.toLocaleString("es-AR")}
+                </div>
+              )}
               {itemsVariablesSeleccionados.map((item) => (
                 <div
                   key={`resumen-item-${item.nombre}`}
@@ -1333,22 +1353,10 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                   {Number(item.monto || 0).toLocaleString("es-AR")}
                 </div>
               ))}
-              {precioEfectivo > 0 && (
-                <div className="resumen-turno-row resumen-turno-row-cash">
-                  <strong>Valor abonando en efectivo:</strong> $
-                  {valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
-                </div>
-              )}
               {requierePagoOnline && montoAnticipoServicio > 0 && (
                 <div className="resumen-turno-row resumen-turno-row-muted">
                   <strong>Seña del servicio:</strong> $
                   {montoAnticipoServicio.toLocaleString("es-AR")}
-                </div>
-              )}
-              {requierePagoOnline && comisionTurno > 0 && (
-                <div className="resumen-turno-row resumen-turno-row-muted">
-                  <strong>Cargo de reserva online:</strong> $
-                  {comisionTurno.toLocaleString("es-AR")}
                 </div>
               )}
               <div className="resumen-turno-row resumen-turno-total">
@@ -1363,42 +1371,43 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {requierePagoOnline && (
             <div className="mb-3 mt-1">
               <span className="total-sena text-success fw-semibold">
-                Pagás <b>${montoAnticipo.toLocaleString("es-AR")}</b> para
-                confirmar el turno online.{" "}
+                Pagas <b>${montoAnticipo.toLocaleString("es-AR")}</b>{" "}
+                {requiereAnticipoTurno
+                  ? "para confirmar el turno online."
+                  : "de cargo de reserva para confirmar el turno online."}{" "}
                 {montoAnticipo !== precioTotal && (
-                  <span>El día del servicio abonas el saldo restante.</span>
+                  <span>El dia del servicio abonas el saldo restante.</span>
                 )}
               </span>
             </div>
           )}
 
-          {esReservaManual && requiereAnticipoTurno && montoAnticipo > 0 && (
+          {esReservaManual && montoReservaManual > 0 && (
             <div className="mb-3 mt-1">
-              <span className="total-sena text-danger fw-semibold">
+              <span className="total-sena text-success fw-semibold">
                 Este turno se solicita por WhatsApp. Reservas este servicio con
-                <b> ${montoAnticipo.toLocaleString("es-AR")}</b>.
+                <b> ${montoReservaManual.toLocaleString("es-AR")}</b>.
               </span>
-              <div className="resumen-turno-meta">
-                Anticipo del servicio: $
-                {montoAnticipoServicio.toLocaleString("es-AR")}
-              </div>
               {comisionTurno > 0 && (
                 <div className="resumen-turno-meta-muted">
-                  Cargo de reserva online: $
-                  {comisionTurno.toLocaleString("es-AR")}.
+                  El costo de servicio se suma al total y se abona al pagar el turno.
                 </div>
               )}
             </div>
           )}
 
-          {esReservaManual &&
-            (!requiereAnticipoTurno || montoAnticipo <= 0) && (
-              <div className="mb-3 mt-1">
-                <span className="total-sena text-success fw-semibold">
-                  Reserva gratis. Este turno se confirma por WhatsApp.
-                </span>
-              </div>
-            )}
+          {esReservaManual && montoReservaManual <= 0 && (
+            <div className="mb-3 mt-1">
+              <span className="total-sena text-success fw-semibold">
+                Reserva gratis. Este turno se confirma por WhatsApp.
+              </span>
+              {comisionTurno > 0 && (
+                <div className="resumen-turno-meta-muted">
+                  El costo de servicio se suma al total y se abona al pagar el turno.
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             className="swal-btn-confirm d-block mx-auto"

@@ -81,6 +81,7 @@ function ServicioVariante({
   const precioOnline = Number(pricingTurno.montoTotal || 0);
   const precioEfectivo = getPrecioEfectivo(servicio);
   const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
+  const comisionTurno = Number(pricingTurno.comisionTurno || 0);
 
   const contenido = (
     <>
@@ -143,6 +144,12 @@ function ServicioVariante({
             ${pricingTurno.montoAnticipoTotal.toLocaleString("es-AR")}
           </strong>
           )
+        </div>
+      ) : comisionTurno > 0 ? (
+        <div className="servicio-anticipo mt-2">
+          Sin anticipo, pero con cargo de reserva de{" "}
+          <strong>${comisionTurno.toLocaleString("es-AR")}</strong>. Total:{" "}
+          <strong>${pricingTurno.montoTotal.toLocaleString("es-AR")}</strong>
         </div>
       ) : (
         <div className="servicio-anticipo servicio-anticipo-gratis mt-2">

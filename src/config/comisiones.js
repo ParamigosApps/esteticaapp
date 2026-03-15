@@ -48,8 +48,7 @@ export function calcularMontosTurno({
     precioBase > 0 && porcentaje > 0
       ? Math.round((precioBase * porcentaje) / 100)
       : 0
-  const comision =
-    cobrarComision && montoAnticipoServicio > 0 ? obtenerComisionTurno() : 0
+  const comision = cobrarComision && precioBase > 0 ? obtenerComisionTurno() : 0
 
   return {
     precioServicio: precioBase,
