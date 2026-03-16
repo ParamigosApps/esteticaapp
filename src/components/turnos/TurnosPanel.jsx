@@ -856,8 +856,9 @@ export default function TurnosPanel({ servicio }) {
     } catch (err) {
       console.error("Error reservando turno:", err);
       const alertConfig = getReservaErrorAlert(err);
+      hideLoading();
 
-      Swal.fire({
+      await Swal.fire({
         icon: alertConfig.icon,
         title: alertConfig.title,
         text: alertConfig.text,
@@ -1140,27 +1141,37 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                   </div>
                 )}
               </div>
-              <div>
-                El día del turno podes abonar lo restante en efectivo por{" "}
-                <strong>
-                  ${saldoServicioEfectivo.toLocaleString("es-AR")}
-                </strong>
-                {ahorroEfectivo > 0 ? (
-                  <>
-                    {" "}
-                    y ahorrar{" "}
-                    <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
-                  </>
-                ) : null}
-                .
-              </div>
-              <div>
-                O abonando por transferencia:{" "}
-                <strong>
-                  ${saldoServicioTransferencia.toLocaleString("es-AR")}
-                </strong>
-                .
-              </div>
+              {saldoServicioEfectivo <= 0 && saldoServicioTransferencia <= 0 ? (
+                <div>Con ese pago el servicio queda abonado en su totalidad.</div>
+              ) : (
+                <>
+                  {saldoServicioEfectivo > 0 && (
+                    <div>
+                      El día del turno podes abonar lo restante en efectivo por{" "}
+                      <strong>
+                        ${saldoServicioEfectivo.toLocaleString("es-AR")}
+                      </strong>
+                      {ahorroEfectivo > 0 ? (
+                        <>
+                          {" "}
+                          y ahorrar{" "}
+                          <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+                        </>
+                      ) : null}
+                      .
+                    </div>
+                  )}
+                  {saldoServicioTransferencia > 0 && (
+                    <div>
+                      O abonando por transferencia:{" "}
+                      <strong>
+                        ${saldoServicioTransferencia.toLocaleString("es-AR")}
+                      </strong>
+                      .
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <div className="agenda-cash-copy">

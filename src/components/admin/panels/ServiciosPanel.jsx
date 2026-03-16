@@ -151,6 +151,17 @@ function getPrecioVariableModoLabel(servicio = {}) {
     : "Varios adicionales";
 }
 
+function getModoReservaServicio(servicio = {}) {
+  const modo = String(servicio?.modoReserva || "").trim().toLowerCase();
+  return modo === "reserva" ? "reserva" : "automatico";
+}
+
+function getModoReservaLabel(servicio = {}) {
+  return getModoReservaServicio(servicio) === "reserva"
+    ? "Requiere aprobacion"
+    : "Confirmacion automatica";
+}
+
 function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
   return [
     normalizar(nombreServicio || ""),
@@ -1292,7 +1303,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     servicio.responsableGestion || "admin",
   );
   const [modoReserva, setModoReserva] = useState(
-    servicio.modoReserva || "automatico",
+    getModoReservaServicio(servicio),
   );
 
   const [pedirAnticipo, setPedirAnticipo] = useState(
@@ -1345,7 +1356,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
     );
     setResponsableGestion(servicio.responsableGestion || "admin");
-    setModoReserva(servicio.modoReserva || "automatico");
+    setModoReserva(getModoReservaServicio(servicio));
     setPedirAnticipo(Boolean(servicio.pedirAnticipo));
     setPorcentajeAnticipo(servicio.porcentajeAnticipo ?? 50);
     setAgendaMaxDias(Number(servicio.agendaMaxDias || 14));
@@ -1726,6 +1737,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
           </strong>
         </span>
         <span>
+          Reserva: <strong>{getModoReservaLabel(servicio)}</strong>
+        </span>
+        <span>
           Duración: <strong>{servicio.duracionMin}</strong> min
         </span>
         <span>
@@ -1817,13 +1831,13 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                       accept="image/*"
                       className="service-image-input"
                       onChange={(event) =>
-                        void handleImagenChange(
-                          event.target.files?.[0] || null,
-                        )
+                        void handleImagenChange(event.target.files?.[0] || null)
                       }
                     />
                     <span className="service-image-uploader-title">
-                      {imagenFile ? "Cambiar imagen" : "Subir o reemplazar imagen"}
+                      {imagenFile
+                        ? "Cambiar imagen"
+                        : "Subir o reemplazar imagen"}
                     </span>
                     <small>
                       {imagenFile?.name ||
@@ -1850,13 +1864,22 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                     </button>
                   </div>
                 ) : (
-                  <div className="service-image-empty">
-                    Sin imagen cargada
-                  </div>
+                  <div className="service-image-empty">Sin imagen cargada</div>
                 )}
               </div>
 
               <div className="service-editor-fields service-editor-fields-2">
+                <div className="field-group">
+                  <label>Modo de reserva</label>
+                  <select
+                    className="admin-input reserva"
+                    value={modoReserva}
+                    onChange={(e) => setModoReserva(e.target.value)}
+                  >
+                    <option value="automatico">Confirmacion automatica</option>
+                    <option value="reserva">Requiere aprobacion</option>
+                  </select>
+                </div>
                 <div className="field-group">
                   <label>Servicio madre</label>
                   <select
@@ -2158,7 +2181,7 @@ export default function ServiciosPanel() {
   const [agendaMensual, setAgendaMensual] = useState(crearAgendaMensualBase());
 
   const [seleccionados, setSeleccionados] = useState([]);
-  const [nuevoServicioAbierto, setNuevoServicioAbierto] = useState(true);
+  const [nuevoServicioAbierto, setNuevoServicioAbierto] = useState(false);
   const [abierto, setAbierto] = useState(true);
 
   // Categorías (catálogo)
@@ -2503,317 +2526,326 @@ export default function ServiciosPanel() {
               aria-expanded={nuevoServicioAbierto}
             >
               <div>
-                <h5 className="fw-bold mb-1">Nuevo servicio</h5>
+                <h5 className="fw-bold mb-1">Crear un servicio</h5>
                 <p className="servicios-section-desc mb-0">
                   Configurá categoría, datos, seña, agenda y gabinetes.
                 </p>
               </div>
               <span className="collapse-icon">
-                {nuevoServicioAbierto ? "â–¾" : "â–¸"}
+                {nuevoServicioAbierto ? "\u25BE" : "\u25B8"}
               </span>
             </button>
 
             {nuevoServicioAbierto && (
               <div className="admin-servicios-create servicios-form-shell">
-              <div className="servicios-form-block servicios-form-block-agenda">
-                <div className="servicios-form-block-title">
-                  Datos principales
-                </div>
+                <div className="servicios-form-block servicios-form-block-agenda">
+                  <div className="servicios-form-block-title">
+                    Datos principales
+                  </div>
 
-                <div className="service-image-panel">
-                  <div className="service-image-panel-copy">
-                    <label className="admin-label">Imagen del servicio</label>
-                    <span className="service-image-help">
-                      Opcional. Se muestra en la agenda de servicios.
-                    </span>
-                    <label className="service-image-uploader">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="service-image-input"
-                        onChange={(event) =>
-                          void handleNuevaImagenChange(
-                            event.target.files?.[0] || null,
-                          )
-                        }
-                      />
-                      <span className="service-image-uploader-title">
-                        {imagenFile ? "Cambiar imagen" : "Subir imagen"}
+                  <div className="service-image-panel">
+                    <div className="service-image-panel-copy">
+                      <label className="admin-label">Imagen del servicio</label>
+                      <span className="service-image-help">
+                        Opcional. Se muestra en la agenda de servicios.
                       </span>
-                      <small>
-                        {imagenFile?.name || "JPG, PNG o WEBP. Se adapta sola."}
-                      </small>
-                    </label>
+                      <label className="service-image-uploader">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="service-image-input"
+                          onChange={(event) =>
+                            void handleNuevaImagenChange(
+                              event.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                        <span className="service-image-uploader-title">
+                          {imagenFile ? "Cambiar imagen" : "Subir imagen"}
+                        </span>
+                        <small>
+                          {imagenFile?.name ||
+                            "JPG, PNG o WEBP. Se adapta sola."}
+                        </small>
+                      </label>
+                    </div>
+
+                    {imagenUrl ? (
+                      <div className="service-image-preview-card">
+                        <img
+                          src={imagenUrl}
+                          alt={nombreServicio || "Preview del servicio"}
+                          className="service-image-preview"
+                        />
+                        <button
+                          type="button"
+                          className="swal-btn-cancel service-image-clear"
+                          onClick={limpiarNuevaImagen}
+                        >
+                          Quitar imagen
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="service-image-empty">
+                        Sin imagen cargada
+                      </div>
+                    )}
                   </div>
 
-                  {imagenUrl ? (
-                    <div className="service-image-preview-card">
-                      <img
-                        src={imagenUrl}
-                        alt={nombreServicio || "Preview del servicio"}
-                        className="service-image-preview"
-                      />
-                      <button
-                        type="button"
-                        className="swal-btn-cancel service-image-clear"
-                        onClick={limpiarNuevaImagen}
+                  <div className="servicios-form-grid">
+                    <div className="form-field">
+                      <label className="admin-label">Servicio madre</label>
+                      <select
+                        className="admin-input servicio"
+                        value={categoriaId}
+                        onChange={(e) => setCategoriaId(e.target.value)}
                       >
-                        Quitar imagen
-                      </button>
+                        <option value="">Elegí una categoría</option>
+                        {categorias.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <div className="service-image-empty">
-                      Sin imagen cargada
-                    </div>
-                  )}
-                </div>
 
-                <div className="servicios-form-grid">
-
-                  <div className="form-field">
-                    <label className="admin-label">Servicio madre</label>
-                    <select
-                      className="admin-input servicio"
-                      value={categoriaId}
-                      onChange={(e) => setCategoriaId(e.target.value)}
-                    >
-                      <option value="">Elegí una categoría</option>
-                      {categorias.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label className="admin-label">Subservicio</label>
-                    <input
-                      className="admin-input servicio"
-                      placeholder="Ej: Masajes deportivos"
-                      value={nombreServicio}
-                      onChange={(e) => setNombreServicio(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Empleado vinculado</label>
-                    <select
-                      className="admin-input servicio"
-                      value={profesionalId}
-                      onChange={(e) => handleProfesionalChange(e.target.value)}
-                    >
-                      <option value="">Sin vincular</option>
-                      {empleados.map((empleado) => (
-                        <option key={empleado.id} value={empleado.id}>
-                          {empleado.nombre || empleado.email} |{" "}
-                          {getEmpleadoRoleLabel(empleado)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label>Profesional</label>
-                    <input
-                      className="admin-input profesional"
-                      placeholder="Nombre del profesional"
-                      value={nombreProfesional}
-                      onChange={(e) => setNombreProfesional(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Descripción</label>
-                    <input
-                      className="admin-input profesional"
-                      placeholder="Descripción breve"
-                      value={descripcion}
-                      onChange={(e) => setDescripcion(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Duración (min)</label>
-                    <input
-                      className="admin-input duracion"
-                      type="number"
-                      value={duracion}
-                      onChange={(e) => setDuracion(e.target.value)}
-                      min={1}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Precio general</label>
-                    <input
-                      className="admin-input precio-admin"
-                      type="number"
-                      value={precio}
-                      onChange={(e) => setPrecio(e.target.value)}
-                      min={0}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Precio en efectivo</label>
-                    <input
-                      className="admin-input precio-admin"
-                      type="number"
-                      value={precioEfectivo}
-                      onChange={(e) => setPrecioEfectivo(e.target.value)}
-                      min={0}
-                    />
-                  </div>
-
-                  <div className="form-field service-field-full">
-                    <label>Precio variable</label>
-                    <PrecioVariableEditor
-                      precioVariable={precioVariable}
-                      setPrecioVariable={setPrecioVariable}
-                      precioVariableModo={precioVariableModo}
-                      setPrecioVariableModo={setPrecioVariableModo}
-                      itemsPrecioVariable={itemsPrecioVariable}
-                      setItemsPrecioVariable={setItemsPrecioVariable}
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Quien gestiona este servicio</label>
-                    <select
-                      className="admin-input reserva"
-                      value={responsableGestion}
-                      onChange={(e) => setResponsableGestion(e.target.value)}
-                    >
-                      <option value="admin">Administrador</option>
-                      <option value="profesional">Profesional vinculado</option>
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label>Modo de reserva</label>
-                    <select
-                      className="admin-input reserva"
-                      value={modoReserva}
-                      onChange={(e) => setModoReserva(e.target.value)}
-                    >
-                      <option value="automatico">
-                        Confirmación automática
-                      </option>
-                      <option value="reserva">Requiere aprobación</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="servicios-form-block">
-                <div className="servicios-form-block-title">Reserva y pago</div>
-                {/* FILA 2 — SEÑA */}
-                <div className="service-row service-sena-row">
-                  <div className="field-group">
-                    <label>¿Pedir seña?</label>
-                    <label className="checkbox-inline text-muted">
-                      {"  "}
+                    <div className="form-field">
+                      <label className="admin-label">Subservicio</label>
                       <input
-                        type="checkbox"
-                        checked={pedirAnticipo}
-                        onChange={(e) => setPedirAnticipo(e.target.checked)}
+                        className="admin-input servicio"
+                        placeholder="Ej: Masajes deportivos"
+                        value={nombreServicio}
+                        onChange={(e) => setNombreServicio(e.target.value)}
                       />
-                      {pedirAnticipo ? "Solicitando seña" : "No pedir seña"}
-                    </label>
-                  </div>
+                    </div>
 
-                  <div className="field-group">
-                    <label>Porcentaje seña</label>
-                    <input
-                      type="number"
-                      className="admin-input anticipo"
-                      value={porcentajeAnticipo}
-                      onChange={(e) => setPorcentajeAnticipo(e.target.value)}
-                      min={5}
-                      max={100}
-                      disabled={!pedirAnticipo}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="servicios-form-block servicios-form-block-agenda">
-                <div className="servicios-form-block-title">
-                  Agenda del servicio
-                </div>
-                {/* GABINETES */}
-                {agendaTipo !== "mensual" && (
-                  <div className="form-field servicios-agenda-maxdias">
-                    <label>Anticipación máxima (días)</label>
-                    <input
-                      className="admin-input"
-                      type="number"
-                      value={agendaMaxDias}
-                      onChange={(e) => setAgendaMaxDias(e.target.value)}
-                      min={1}
-                      max={180}
-                    />
-                  </div>
-                )}
-
-                <AgendaServicioEditor
-                  agendaTipo={agendaTipo}
-                  setAgendaTipo={setAgendaTipo}
-                  agendaMaxDias={agendaMaxDias}
-                  setAgendaMaxDias={setAgendaMaxDias}
-                  agendaDisponibleDesde={agendaDisponibleDesde}
-                  setAgendaDisponibleDesde={setAgendaDisponibleDesde}
-                  horariosServicio={horariosServicio}
-                  setHorariosServicio={setHorariosServicio}
-                  agendaMensual={agendaMensual}
-                  setAgendaMensual={setAgendaMensual}
-                  agendaMensualModo={agendaMensualModo}
-                  setAgendaMensualModo={setAgendaMensualModo}
-                  repetirMesSiguiente={agendaMensualRepiteMesSiguiente}
-                  setRepetirMesSiguiente={setAgendaMensualRepiteMesSiguiente}
-                />
-              </div>
-
-              <div className="servicios-form-block">
-                <div className="servicios-form-block-title">Gabinetes</div>
-
-                {/* GABINETES */}
-                <div className="field-group">
-                  <label>Gabinetes a utilizar</label>
-                  <div className="service-gabinetes">
-                    {gabinetes.map((g) => (
-                      <label
-                        key={g.id}
-                        className="gabinete-checkbox gabinete-checkbox-card"
+                    <div className="form-field">
+                      <label>Empleado vinculado</label>
+                      <select
+                        className="admin-input servicio"
+                        value={profesionalId}
+                        onChange={(e) =>
+                          handleProfesionalChange(e.target.value)
+                        }
                       >
+                        <option value="">Sin vincular</option>
+                        {empleados.map((empleado) => (
+                          <option key={empleado.id} value={empleado.id}>
+                            {empleado.nombre || empleado.email} |{" "}
+                            {getEmpleadoRoleLabel(empleado)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-field">
+                      <label>Profesional</label>
+                      <input
+                        className="admin-input profesional"
+                        placeholder="Nombre del profesional"
+                        value={nombreProfesional}
+                        onChange={(e) => setNombreProfesional(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Descripción</label>
+                      <input
+                        className="admin-input profesional"
+                        placeholder="Descripción breve"
+                        value={descripcion}
+                        onChange={(e) => setDescripcion(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Duración (min)</label>
+                      <input
+                        className="admin-input duracion"
+                        type="number"
+                        value={duracion}
+                        onChange={(e) => setDuracion(e.target.value)}
+                        min={1}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Precio general</label>
+                      <input
+                        className="admin-input precio-admin"
+                        type="number"
+                        value={precio}
+                        onChange={(e) => setPrecio(e.target.value)}
+                        min={0}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Precio en efectivo</label>
+                      <input
+                        className="admin-input precio-admin"
+                        type="number"
+                        value={precioEfectivo}
+                        onChange={(e) => setPrecioEfectivo(e.target.value)}
+                        min={0}
+                      />
+                    </div>
+
+                    <div className="form-field service-field-full">
+                      <label>Precio variable</label>
+                      <PrecioVariableEditor
+                        precioVariable={precioVariable}
+                        setPrecioVariable={setPrecioVariable}
+                        precioVariableModo={precioVariableModo}
+                        setPrecioVariableModo={setPrecioVariableModo}
+                        itemsPrecioVariable={itemsPrecioVariable}
+                        setItemsPrecioVariable={setItemsPrecioVariable}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Quien gestiona este servicio</label>
+                      <select
+                        className="admin-input reserva"
+                        value={responsableGestion}
+                        onChange={(e) => setResponsableGestion(e.target.value)}
+                      >
+                        <option value="admin">Administrador</option>
+                        <option value="profesional">
+                          Profesional vinculado
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="form-field">
+                      <label>Modo de reserva</label>
+                      <select
+                        className="admin-input reserva"
+                        value={modoReserva}
+                        onChange={(e) => setModoReserva(e.target.value)}
+                      >
+                        <option value="automatico">
+                          Confirmación automática
+                        </option>
+                        <option value="reserva">Requiere aprobación</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="servicios-form-block">
+                  <div className="servicios-form-block-title">
+                    Reserva y pago
+                  </div>
+                  {/* FILA 2 — SEÑA */}
+                  <div className="service-row service-sena-row">
+                    <div className="field-group">
+                      <label>¿Pedir seña?</label>
+                      <label className="checkbox-inline text-muted">
+                        {"  "}
                         <input
                           type="checkbox"
-                          checked={seleccionados.includes(g.id)}
-                          onChange={() => toggleGabinete(g.id)}
+                          checked={pedirAnticipo}
+                          onChange={(e) => setPedirAnticipo(e.target.checked)}
                         />
-
-                        <div className="gabinete-checkbox-content">
-                          <span className="gabinete-checkbox-title">
-                            {g.nombreGabinete}
-                          </span>
-                          <span className="gabinete-checkbox-sub">
-                            {getResumenHorarioGabinete(g)}
-                          </span>
-                        </div>
+                        {pedirAnticipo ? "Solicitando seña" : "No pedir seña"}
                       </label>
-                    ))}
+                    </div>
+
+                    <div className="field-group">
+                      <label>Porcentaje seña</label>
+                      <input
+                        type="number"
+                        className="admin-input anticipo"
+                        value={porcentajeAnticipo}
+                        onChange={(e) => setPorcentajeAnticipo(e.target.value)}
+                        min={5}
+                        max={100}
+                        disabled={!pedirAnticipo}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="servicios-form-actions-wrap">
-                <div className="form-field button-field">
-                  <button className="swal-btn-agregar" onClick={crearServicio}>
-                    Crear servicio
-                  </button>
+                <div className="servicios-form-block servicios-form-block-agenda">
+                  <div className="servicios-form-block-title">
+                    Agenda del servicio
+                  </div>
+                  {/* GABINETES */}
+                  {agendaTipo !== "mensual" && (
+                    <div className="form-field servicios-agenda-maxdias">
+                      <label>Anticipación máxima (días)</label>
+                      <input
+                        className="admin-input"
+                        type="number"
+                        value={agendaMaxDias}
+                        onChange={(e) => setAgendaMaxDias(e.target.value)}
+                        min={1}
+                        max={180}
+                      />
+                    </div>
+                  )}
+
+                  <AgendaServicioEditor
+                    agendaTipo={agendaTipo}
+                    setAgendaTipo={setAgendaTipo}
+                    agendaMaxDias={agendaMaxDias}
+                    setAgendaMaxDias={setAgendaMaxDias}
+                    agendaDisponibleDesde={agendaDisponibleDesde}
+                    setAgendaDisponibleDesde={setAgendaDisponibleDesde}
+                    horariosServicio={horariosServicio}
+                    setHorariosServicio={setHorariosServicio}
+                    agendaMensual={agendaMensual}
+                    setAgendaMensual={setAgendaMensual}
+                    agendaMensualModo={agendaMensualModo}
+                    setAgendaMensualModo={setAgendaMensualModo}
+                    repetirMesSiguiente={agendaMensualRepiteMesSiguiente}
+                    setRepetirMesSiguiente={setAgendaMensualRepiteMesSiguiente}
+                  />
                 </div>
-              </div>
+
+                <div className="servicios-form-block">
+                  <div className="servicios-form-block-title">Gabinetes</div>
+
+                  {/* GABINETES */}
+                  <div className="field-group">
+                    <label>Gabinetes a utilizar</label>
+                    <div className="service-gabinetes">
+                      {gabinetes.map((g) => (
+                        <label
+                          key={g.id}
+                          className="gabinete-checkbox gabinete-checkbox-card"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={seleccionados.includes(g.id)}
+                            onChange={() => toggleGabinete(g.id)}
+                          />
+
+                          <div className="gabinete-checkbox-content">
+                            <span className="gabinete-checkbox-title">
+                              {g.nombreGabinete}
+                            </span>
+                            <span className="gabinete-checkbox-sub">
+                              {getResumenHorarioGabinete(g)}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="servicios-form-actions-wrap">
+                  <div className="form-field button-field">
+                    <button
+                      className="swal-btn-agregar"
+                      onClick={crearServicio}
+                    >
+                      Crear servicio
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -7,7 +7,7 @@ const { buildTurnoBaseCompat } = require("./turnoSchema");
 const { calcularMontosTurno } = require("../config/comisiones");
 const { WHATSAPP_TOKEN, enviarWhatsApp } = require("./whatsapp");
 
-const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 4;
+const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 8;
 const AGENDA_24HS_FALLBACK_DIAS = 90;
 
 function normalizarEstadoTurno(turno = {}) {
@@ -107,6 +107,23 @@ function horaTextoAMinutos(hora) {
   return h * 60 + m;
 }
 
+function franjaValida(franja) {
+  return (
+    franja &&
+    typeof franja.desde === "string" &&
+    typeof franja.hasta === "string" &&
+    franja.desde < franja.hasta
+  );
+}
+
+function mayorHora(a, b) {
+  return String(a || "") >= String(b || "") ? a : b;
+}
+
+function menorHora(a, b) {
+  return String(a || "") <= String(b || "") ? a : b;
+}
+
 function obtenerMinutosEnZona(ms, timeZone = "America/Argentina/Buenos_Aires") {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone,
@@ -120,6 +137,122 @@ function obtenerMinutosEnZona(ms, timeZone = "America/Argentina/Buenos_Aires") {
 
   if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
   return hour * 60 + minute;
+}
+
+function obtenerFechaEnZona(fechaISO, timeZone = "America/Argentina/Buenos_Aires") {
+  const [y, m, d] = String(fechaISO).split("-").map(Number);
+  if (!y || !m || !d) return null;
+
+  const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const zonedISO = toISODateEnZona(utcDate, timeZone);
+  const [zy, zm, zd] = zonedISO.split("-").map(Number);
+  return new Date(zy, zm - 1, zd);
+}
+
+function obtenerFranjasMensualesDelDia(servicio, fecha, rangoCompleto) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesesPermitidos = [mesBaseOffset];
+
+  if (Boolean(servicio?.agendaMensualRepiteMesSiguiente)) {
+    mesesPermitidos.push(mesBaseOffset + 1);
+  }
+
+  const coincideMesPermitido = mesesPermitidos.some((offset) => {
+    const mesPermitido = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth() + offset,
+      1,
+    );
+
+    return (
+      fecha.getFullYear() === mesPermitido.getFullYear() &&
+      fecha.getMonth() === mesPermitido.getMonth()
+    );
+  });
+
+  if (!coincideMesPermitido) return [];
+
+  const diaMes = fecha.getDate();
+  const agendaMensual = Array.isArray(servicio?.agendaMensual)
+    ? servicio.agendaMensual
+    : [];
+
+  const configDia = agendaMensual.find(
+    (item) => Number(item?.diaMes) === Number(diaMes),
+  );
+
+  if (!configDia?.activo) return [];
+
+  const franjasMensuales = Array.isArray(configDia.franjas)
+    ? configDia.franjas.filter(franjaValida)
+    : [];
+
+  if (!franjasMensuales.length) return [];
+
+  return franjasMensuales.map((franja) => ({
+    desde: mayorHora(rangoCompleto.desde, franja.desde),
+    hasta: menorHora(rangoCompleto.hasta, franja.hasta),
+  }));
+}
+
+function obtenerFranjasSemanalesDelDia(servicio, diaSemana, rangoCompleto) {
+  let franjasFinales = [
+    {
+      desde: rangoCompleto.desde,
+      hasta: rangoCompleto.hasta,
+    },
+  ];
+
+  if (Array.isArray(servicio.horariosServicio) && servicio.horariosServicio.length) {
+    const configDia = servicio.horariosServicio.find(
+      (h) => Number(h?.diaSemana) === Number(diaSemana),
+    );
+
+    if (!configDia?.activo) return [];
+
+    const franjasServicio = Array.isArray(configDia.franjas)
+      ? configDia.franjas.filter(franjaValida)
+      : [];
+
+    if (!franjasServicio.length) return [];
+
+    franjasFinales = franjasServicio.map((franja) => ({
+      desde: mayorHora(rangoCompleto.desde, franja.desde),
+      hasta: menorHora(rangoCompleto.hasta, franja.hasta),
+    }));
+  }
+
+  return franjasFinales;
+}
+
+function obtenerFranjasServicioDelDia(servicio, fecha) {
+  const diaSemana = fecha.getDay();
+  const agendaTipo = servicio?.agendaTipo === "mensual" ? "mensual" : "semanal";
+  const rangoCompleto = { desde: "00:00", hasta: "23:59" };
+
+  let franjasFinales =
+    agendaTipo === "mensual"
+      ? obtenerFranjasMensualesDelDia(servicio, fecha, rangoCompleto)
+      : obtenerFranjasSemanalesDelDia(servicio, diaSemana, rangoCompleto);
+
+  const restriccion = servicio?.restricciones?.find(
+    (r) => Number(r?.dia) === Number(diaSemana),
+  );
+
+  if (restriccion) {
+    franjasFinales = franjasFinales.map((franja) => ({
+      desde: restriccion.desde
+        ? mayorHora(franja.desde, restriccion.desde)
+        : franja.desde,
+      hasta: restriccion.hasta
+        ? menorHora(franja.hasta, restriccion.hasta)
+        : franja.hasta,
+    }));
+  }
+
+  return franjasFinales.filter(franjaValida);
 }
 
 function getReservasConfigDefault() {
@@ -196,21 +329,11 @@ function cumpleReglaAnticipacionManana(
 }
 
 function turnoDentroDeHorarioServicio(servicio, fechaISO, inicioMs, finMs) {
-  if (!Array.isArray(servicio.horariosServicio) || !servicio.horariosServicio.length) {
-    return true;
-  }
+  const fecha = obtenerFechaEnZona(fechaISO);
+  if (!fecha) return false;
 
-  const diaSemana = obtenerDiaSemanaISO(fechaISO);
-  if (diaSemana == null) return false;
-
-  const configDia = servicio.horariosServicio.find(
-    (h) => Number(h?.diaSemana) === Number(diaSemana),
-  );
-
-  if (!configDia?.activo) return false;
-
-  const franjas = Array.isArray(configDia.franjas) ? configDia.franjas : [];
-  if (!franjas.length) return false;
+  const franjas = obtenerFranjasServicioDelDia(servicio, fecha);
+  if (!franjas.length) return true;
 
   const inicioMin = obtenerMinutosEnZona(inicioMs);
   const finMin = obtenerMinutosEnZona(finMs);

@@ -29,6 +29,7 @@ export default function CategoriasServiciosPanel() {
   const [nombreNueva, setNombreNueva] = useState("");
   const [descripcionNueva, setDescripcionNueva] = useState("");
   const [loading, setLoading] = useState(true);
+  const [crearAbierto, setCrearAbierto] = useState(false);
   const [abierto, setAbierto] = useState(true);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function CategoriasServiciosPanel() {
       if (!nombre) {
         await swalError({
           title: "Nombre requerido",
-          text: "Ingresá un nombre para la categoría.",
+          text: "Ingresa un nombre para la categoria.",
         });
         return;
       }
@@ -67,8 +68,8 @@ export default function CategoriasServiciosPanel() {
 
       if (yaExiste) {
         await swalError({
-          title: "Categoría duplicada",
-          text: "Ya existe una categoría con ese nombre.",
+          title: "Categoria duplicada",
+          text: "Ya existe una categoria con ese nombre.",
         });
         return;
       }
@@ -84,16 +85,17 @@ export default function CategoriasServiciosPanel() {
 
       setNombreNueva("");
       setDescripcionNueva("");
+      setCrearAbierto(false);
 
       await swalSuccess({
-        title: "Categoría creada",
-        text: "La categoría se creó correctamente.",
+        title: "Categoria creada",
+        text: "La categoria se creo correctamente.",
       });
     } catch (error) {
-      console.error("Error creando categoría:", error);
+      console.error("Error creando categoria:", error);
       await swalError({
         title: "No se pudo crear",
-        text: "Ocurrió un error al crear la categoría.",
+        text: "Ocurrio un error al crear la categoria.",
       });
     }
   }
@@ -101,7 +103,7 @@ export default function CategoriasServiciosPanel() {
   async function editarCategoria(cat) {
     try {
       const res = await Swal.fire({
-        title: "Editar categoría",
+        title: "Editar categoria",
         html: `
           <div style="display:grid;gap:12px;text-align:left;">
             <div>
@@ -109,8 +111,8 @@ export default function CategoriasServiciosPanel() {
               <input id="swal-categoria-nombre" class="swal2-input" style="margin:0;" placeholder="Nuevo nombre" value="${String(cat.nombre || "").replace(/"/g, "&quot;")}">
             </div>
             <div>
-              <label for="swal-categoria-descripcion" style="display:block;margin:0 0 6px;font-weight:700;">Descripción</label>
-              <textarea id="swal-categoria-descripcion" class="swal2-textarea" style="margin:0;min-height:110px;" placeholder="Descripción de la categoría">${String(cat.descripcion || "")}</textarea>
+              <label for="swal-categoria-descripcion" style="display:block;margin:0 0 6px;font-weight:700;">Descripcion</label>
+              <textarea id="swal-categoria-descripcion" class="swal2-textarea" style="margin:0;min-height:110px;" placeholder="Descripcion de la categoria">${String(cat.descripcion || "")}</textarea>
             </div>
           </div>
         `,
@@ -131,7 +133,7 @@ export default function CategoriasServiciosPanel() {
           const limpio = String(nombreInput?.value || "").trim();
 
           if (!limpio) {
-            Swal.showValidationMessage("Ingresá un nombre válido");
+            Swal.showValidationMessage("Ingresa un nombre valido");
             return false;
           }
 
@@ -143,7 +145,7 @@ export default function CategoriasServiciosPanel() {
           );
 
           if (yaExiste) {
-            Swal.showValidationMessage("Ya existe una categoría con ese nombre");
+            Swal.showValidationMessage("Ya existe una categoria con ese nombre");
             return false;
           }
 
@@ -164,14 +166,14 @@ export default function CategoriasServiciosPanel() {
       });
 
       await swalSuccess({
-        title: "Categoría actualizada",
-        text: "La categoría se actualizó correctamente.",
+        title: "Categoria actualizada",
+        text: "La categoria se actualizo correctamente.",
       });
     } catch (error) {
-      console.error("Error editando categoría:", error);
+      console.error("Error editando categoria:", error);
       await swalError({
         title: "No se pudo editar",
-        text: "Ocurrió un error al actualizar la categoría.",
+        text: "Ocurrio un error al actualizar la categoria.",
       });
     }
   }
@@ -181,12 +183,12 @@ export default function CategoriasServiciosPanel() {
       const accion = cat.activo ? "desactivar" : "activar";
 
       const res = await swalConfirmWarning({
-        title: `¿${cat.activo ? "Desactivar" : "Activar"} categoría?`,
+        title: `¿${cat.activo ? "Desactivar" : "Activar"} categoria?`,
         html: `
           <div style="text-align:left;font-size:14px;">
-            <div><b>Categoría:</b> ${cat.nombre}</div>
+            <div><b>Categoria:</b> ${cat.nombre}</div>
             <div style="margin-top:8px;">
-              Se va a ${accion} esta categoría.
+              Se va a ${accion} esta categoria.
             </div>
           </div>
         `,
@@ -202,14 +204,14 @@ export default function CategoriasServiciosPanel() {
       });
 
       await swalSuccess({
-        title: cat.activo ? "Categoría desactivada" : "Categoría activada",
-        text: `La categoría "${cat.nombre}" fue actualizada.`,
+        title: cat.activo ? "Categoria desactivada" : "Categoria activada",
+        text: `La categoria "${cat.nombre}" fue actualizada.`,
       });
     } catch (error) {
-      console.error("Error cambiando estado categoría:", error);
+      console.error("Error cambiando estado categoria:", error);
       await swalError({
         title: "No se pudo actualizar",
-        text: "Ocurrió un error al cambiar el estado de la categoría.",
+        text: "Ocurrio un error al cambiar el estado de la categoria.",
       });
     }
   }
@@ -217,15 +219,15 @@ export default function CategoriasServiciosPanel() {
   async function eliminarCategoria(cat) {
     try {
       const res = await swalConfirmDanger({
-        title: "¿Eliminar categoría?",
+        title: "¿Eliminar categoria?",
         html: `
           <div style="text-align:left;font-size:14px;">
-            <div><b>Categoría:</b> ${cat.nombre}</div>
+            <div><b>Categoria:</b> ${cat.nombre}</div>
             <div style="margin-top:8px;color:#b02a37;">
-              Esta acción elimina la categoría.
+              Esta accion elimina la categoria.
             </div>
             <div style="margin-top:6px;">
-              No elimina automáticamente los servicios asociados.
+              No elimina automaticamente los servicios asociados.
             </div>
           </div>
         `,
@@ -242,14 +244,14 @@ export default function CategoriasServiciosPanel() {
       await deleteDoc(doc(db, "categorias_servicio", cat.id));
 
       await swalSuccess({
-        title: "Categoría eliminada",
-        text: `La categoría "${cat.nombre}" fue eliminada.`,
+        title: "Categoria eliminada",
+        text: `La categoria "${cat.nombre}" fue eliminada.`,
       });
     } catch (error) {
-      console.error("Error eliminando categoría:", error);
+      console.error("Error eliminando categoria:", error);
       await swalError({
         title: "No se pudo eliminar",
-        text: "Ocurrió un error al eliminar la categoría.",
+        text: "Ocurrio un error al eliminar la categoria.",
       });
     }
   }
@@ -258,43 +260,80 @@ export default function CategoriasServiciosPanel() {
     <div className="admin-categorias-panel">
       <div className="admin-panel-container categorias-panel-card">
         <div className="admin-categorias-header categorias-header-pro">
-          <h5 className="fw-bold mb-0">CATEGORÍAS DE SERVICIOS</h5>
+          <h5 className="fw-bold mb-0">CATEGORIAS DE SERVICIOS</h5>
         </div>
 
-        <div className="categorias-create-row">
-          <input
-            className="admin-input categorias-create-input"
-            placeholder="Ej: Masajes"
-            value={nombreNueva}
-            onChange={(e) => setNombreNueva(e.target.value)}
-          />
-          <textarea
-            className="admin-input categorias-create-input categorias-create-textarea"
-            placeholder="Descripción de la categoría"
-            value={descripcionNueva}
-            onChange={(e) => setDescripcionNueva(e.target.value)}
-          />
+        <div className="categorias-create-shell">
           <button
-            className="swal-btn-confirm categorias-create-btn"
-            onClick={crearCategoria}
+            type="button"
+            className="admin-categorias-sub categorias-subheader categorias-create-toggle"
+            onClick={() => setCrearAbierto((prev) => !prev)}
+            aria-expanded={crearAbierto}
           >
-            Crear
+            <div>
+              <h6 className="fw-bold mb-0">CREAR CATEGORIA</h6>
+              <p className="categorias-create-copy mb-0">
+                Agrega una nueva categoria con nombre y descripcion opcional.
+              </p>
+            </div>
+            <span className="collapse-icon" aria-hidden="true">
+              {crearAbierto ? "\u25BE" : "\u25B8"}
+            </span>
           </button>
+
+          {crearAbierto && (
+            <div className="categorias-create-card">
+              <div className="categorias-create-row">
+                <label className="categorias-create-field">
+                  <span>Nombre</span>
+                  <input
+                    className="admin-input categorias-create-input"
+                    placeholder="Ej: Masajes"
+                    value={nombreNueva}
+                    onChange={(e) => setNombreNueva(e.target.value)}
+                  />
+                </label>
+
+                <label className="categorias-create-field categorias-create-field-wide">
+                  <span>Descripcion</span>
+                  <textarea
+                    className="admin-input categorias-create-input categorias-create-textarea"
+                    placeholder="Descripcion de la categoria"
+                    value={descripcionNueva}
+                    onChange={(e) => setDescripcionNueva(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="categorias-create-actions">
+                <button
+                  className="swal-btn-confirm categorias-create-btn"
+                  onClick={crearCategoria}
+                >
+                  Crear categoria
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div
           className="admin-categorias-sub categorias-subheader"
           onClick={() => setAbierto(!abierto)}
+          aria-expanded={abierto}
+          role="button"
         >
           <h6 className="fw-bold mb-0">
-            CATEGORÍAS CREADAS ({categorias.length})
+            CATEGORIAS CREADAS ({categorias.length})
           </h6>
-          <span className="collapse-icon">{abierto ? "▾" : "▸"}</span>
+          <span className="collapse-icon" aria-hidden="true">
+            {abierto ? "\u25BE" : "\u25B8"}
+          </span>
         </div>
 
         {abierto && (
           <>
-            {loading && <p className="admin-loading">Cargando categorías...</p>}
+            {loading && <p className="admin-loading">Cargando categorias...</p>}
 
             {!loading && (
               <div className="categorias-grid">
@@ -322,7 +361,7 @@ export default function CategoriasServiciosPanel() {
                           : "categoria-card-descripcion-empty"
                       }`}
                     >
-                      {cat.descripcion || "Sin descripción."}
+                      {cat.descripcion || "Sin descripcion."}
                     </p>
 
                     <div className="categoria-actions categoria-actions-pro">

@@ -883,22 +883,72 @@ input[type="time"]:focus {
    CATEGORIAS SERVICIOS PANEL
 ========================= */
 
- .categorias-create-row {
+.categorias-create-shell {
   display: grid;
-  grid-template-columns: 1fr 120px;
   gap: 12px;
   margin-bottom: 14px;
 }
 
- .categorias-create-input {
+.categorias-create-toggle {
+  margin-bottom: 0;
+}
+
+.categorias-create-copy {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.categorias-create-card {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfdff, #f8fafc);
+}
+
+.categorias-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+}
+
+.categorias-create-field {
+  display: grid;
+  gap: 6px;
+}
+
+.categorias-create-field span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.categorias-create-field-wide {
   min-width: 0;
 }
 
- .categorias-create-btn {
-  width: 100%;
+.categorias-create-input {
+  min-width: 0;
 }
 
- .categorias-subheader {
+.categorias-create-textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.categorias-create-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.categorias-create-btn {
+  min-width: 180px;
+}
+
+.categorias-subheader {
   margin-bottom: 14px;
 }
 
@@ -1078,6 +1128,10 @@ input[type="time"]:focus {
 @media (max-width: 640px) {
    .categorias-create-row {
     grid-template-columns: 1fr;
+  }
+
+   .categorias-create-actions {
+    justify-content: stretch;
   }
 
    .categoria-actions-pro {
