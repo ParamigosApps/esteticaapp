@@ -1133,13 +1133,15 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           {requierePagoOnline ? (
             <div className="agenda-cash-copy">
               <div>
-                {requiereAnticipoTurno
-                  ? "Seña por transferencia: "
-                  : "Reserva online por transferencia: "}
-                <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
+                {!(requiereAnticipoTurno && ahorroEfectivo === "0") && (
+                  <div>
+                    Reserva online por transferencia con:{" "}
+                    <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
+                  </div>
+                )}
               </div>
               <div>
-                El dia del turno podes abonar lo restante en efectivo por{" "}
+                El día del turno podes abonar lo restante en efectivo por{" "}
                 <strong>
                   ${saldoServicioEfectivo.toLocaleString("es-AR")}
                 </strong>
@@ -1163,20 +1165,14 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           ) : (
             <div className="agenda-cash-copy">
               <div>
-                Precio abonando en efectivo:{" "}
-                <strong>
-                  ${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
-                </strong>
-                .{" "}
+                Precio total abonando en efectivo: <strong>${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}</strong>
                 {ahorroTotalEfectivo > 0 ? (
-                  <div>
-                    Ahorrá{" "}
-                    <strong>
-                      ${ahorroTotalEfectivo.toLocaleString("es-AR")}
-                    </strong>
-                    .
-                  </div>
+                  <>
+                    {" "}
+                    (<strong>${ahorroTotalEfectivo.toLocaleString("es-AR")}</strong> de ahorro)
+                  </>
                 ) : null}
+                .
               </div>
             </div>
           )}
