@@ -934,7 +934,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
       precio: precioServicio,
-      precioAnticipo: (esReservaManual ? montoReservaManual : montoAnticipo) || null,
+      precioAnticipo:
+        (esReservaManual ? montoReservaManual : montoAnticipo) || null,
       itemsPrecioVariable: itemsVariablesSeleccionados,
       modoReserva: servicio.modoReserva,
     });
@@ -1133,7 +1134,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             <div className="agenda-cash-copy">
               <div>
                 {requiereAnticipoTurno
-                  ? "Sena por transferencia: "
+                  ? "Seña por transferencia: "
                   : "Reserva online por transferencia: "}
                 <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
               </div>
@@ -1169,7 +1170,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                 .{" "}
                 {ahorroTotalEfectivo > 0 ? (
                   <div>
-                    Ahorras{" "}
+                    Ahorrá{" "}
                     <strong>
                       ${ahorroTotalEfectivo.toLocaleString("es-AR")}
                     </strong>
@@ -1390,7 +1391,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
               </span>
               {comisionTurno > 0 && (
                 <div className="resumen-turno-meta-muted">
-                  El costo de servicio se suma al total y se abona al pagar el turno.
+                  El costo de servicio se suma al total y se abona al pagar el
+                  turno.
                 </div>
               )}
             </div>
@@ -1403,7 +1405,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
               </span>
               {comisionTurno > 0 && (
                 <div className="resumen-turno-meta-muted">
-                  El costo de servicio se suma al total y se abona al pagar el turno.
+                  El costo de servicio se suma al total y se abona al pagar el
+                  turno.
                 </div>
               )}
             </div>

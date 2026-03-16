@@ -8,6 +8,11 @@ export default function PublicLayout() {
       <main className="public-content">
         <Outlet />
       </main>
+      <footer className="public-legal-footer">
+        <span>Politica de privacidad</span>
+        <span className="public-legal-separator">·</span>
+        <span>Terminos de servicio</span>
+      </footer>
     </div>
   );
 }

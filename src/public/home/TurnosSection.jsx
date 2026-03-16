@@ -45,6 +45,25 @@ function servicioTienePrecioVariableActivo(servicio) {
   );
 }
 
+function getServicioImageUrl(servicio) {
+  const candidates = [
+    servicio?.imagenUrl,
+    servicio?.imagen,
+    servicio?.imageUrl,
+    servicio?.image,
+    servicio?.fotoUrl,
+    servicio?.foto,
+    servicio?.thumbnailUrl,
+    servicio?.portadaUrl,
+  ];
+
+  const imageUrl = candidates.find(
+    (value) => typeof value === "string" && value.trim(),
+  );
+
+  return imageUrl ? imageUrl.trim() : "";
+}
+
 function agruparServiciosPorNombre(lista = []) {
   const acc = {};
 
@@ -82,81 +101,95 @@ function ServicioVariante({
   const precioEfectivo = getPrecioEfectivo(servicio);
   const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
   const comisionTurno = Number(pricingTurno.comisionTurno || 0);
+  const servicioImageUrl = getServicioImageUrl(servicio);
 
   const contenido = (
-    <>
-      <div className="servicio-stack-top">
-        <span className="servicio-profesional">
-          con <b>{servicio.nombreProfesional || "Profesional"}</b>
-        </span>
-        {precioOnline > 0 ? (
-          <span className="servicio-precio">
-            {(servicioTienePrecioVariableActivo(servicio) &&
-            etiquetaPrecio === "Precio"
-              ? "Precio desde"
-              : etiquetaPrecio) + " "}
-            ${precioOnline.toLocaleString("es-AR")}
-          </span>
-        ) : null}
-      </div>
-
-      {servicio.descripcion ? (
-        <span className="servicio-descripcion">{servicio.descripcion}</span>
+    <div className="servicio-stack-layout">
+      {servicioImageUrl ? (
+        <div className="servicio-stack-media">
+          <img
+            src={servicioImageUrl}
+            alt={servicio.nombreServicio || "Servicio"}
+            className="servicio-stack-img"
+            loading="lazy"
+          />
+        </div>
       ) : null}
 
-      {precioEfectivo > 0 ? (
-        <div className="servicio-efectivo">
-          Pagando en efectivo abonas
-          {ahorroEfectivo > 0 ? (
-            <span>
-              {" "}
-              ${precioEfectivo.toLocaleString("es-AR")} y ahorras{" "}
-              <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+      <div className="servicio-stack-content">
+        <div className="servicio-stack-top">
+          <span className="servicio-profesional">
+            con <b>{servicio.nombreProfesional || "Profesional"}</b>
+          </span>
+          {precioOnline > 0 ? (
+            <span className="servicio-precio">
+              {(servicioTienePrecioVariableActivo(servicio) &&
+              etiquetaPrecio === "Precio"
+                ? "Precio desde"
+                : etiquetaPrecio) + " "}
+              ${precioOnline.toLocaleString("es-AR")}
             </span>
           ) : null}
         </div>
-      ) : null}
 
-      <div className="servicio-meta-line">
-        <span className="servicio-duracion">
-          Duracion: <b>{servicio.duracionMin} min</b>
-        </span>
+        {servicio.descripcion ? (
+          <span className="servicio-descripcion">{servicio.descripcion}</span>
+        ) : null}
 
-        <span className="servicio-tipo">Tipo:</span>
+        {precioEfectivo > 0 ? (
+          <div className="servicio-efectivo">
+            Pagando en efectivo abonas
+            {ahorroEfectivo > 0 ? (
+              <span>
+                {" "}
+                ${precioEfectivo.toLocaleString("es-AR")} y ahorrás{" "}
+                <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
-        <span
-          className={`${
-            servicio.modoReserva === "reserva"
-              ? "sin-reserva"
-              : "reserva-inmediata"
-          }`}
-        >
-          {servicio.modoReserva === "reserva"
-            ? "Reserva y pago"
-            : "Confirmacion inmediata"}
-        </span>
+        <div className="servicio-meta-line">
+          <span className="servicio-duracion">
+            Duracion: <b>{servicio.duracionMin} min</b>
+          </span>
+
+          <span className="servicio-tipo">Tipo:</span>
+
+          <span
+            className={`${
+              servicio.modoReserva === "reserva"
+                ? "sin-reserva"
+                : "reserva-inmediata"
+            }`}
+          >
+            {servicio.modoReserva === "reserva"
+              ? "Reserva y pago"
+              : "Confirmacion inmediata"}
+          </span>
+        </div>
+
+        {servicio.pedirAnticipo ? (
+          <div className="servicio-anticipo mt-2">
+            Reservas con el {servicio.porcentajeAnticipo}% del total (
+            <strong>
+              ${pricingTurno.montoAnticipoTotal.toLocaleString("es-AR")}
+            </strong>
+            )
+          </div>
+        ) : comisionTurno > 0 ? (
+          <div className="servicio-anticipo mt-2">
+            Sin anticipo, pero con cargo de reserva de{" "}
+            <strong>${comisionTurno.toLocaleString("es-AR")}</strong>. Total:{" "}
+            <strong>${pricingTurno.montoTotal.toLocaleString("es-AR")}</strong>
+          </div>
+        ) : (
+          <div className="servicio-anticipo servicio-anticipo-gratis mt-2">
+            Reserva gratis
+          </div>
+        )}
       </div>
-
-      {servicio.pedirAnticipo ? (
-        <div className="servicio-anticipo mt-2">
-          Reservas con el {servicio.porcentajeAnticipo}% del total (
-          <strong>
-            ${pricingTurno.montoAnticipoTotal.toLocaleString("es-AR")}
-          </strong>
-          )
-        </div>
-      ) : comisionTurno > 0 ? (
-        <div className="servicio-anticipo mt-2">
-          Sin anticipo, pero con cargo de reserva de{" "}
-          <strong>${comisionTurno.toLocaleString("es-AR")}</strong>. Total:{" "}
-          <strong>${pricingTurno.montoTotal.toLocaleString("es-AR")}</strong>
-        </div>
-      ) : (
-        <div className="servicio-anticipo servicio-anticipo-gratis mt-2">
-          Reserva gratis
-        </div>
-      )}
-    </>
+    </div>
   );
 
   if (compact) {

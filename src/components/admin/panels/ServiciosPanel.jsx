@@ -3,7 +3,7 @@
 // --------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { db } from "../../../Firebase";
+import { db, storage } from "../../../Firebase.js";
 import {
   collection,
   addDoc,
@@ -14,6 +14,7 @@ import {
   getDocs,
   deleteField,
 } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { getFunctions, httpsCallable } from "firebase/functions";
 import CategoriasServiciosPanel from "./CategoriasServiciosPanel";
@@ -55,6 +56,40 @@ function getPrecioEfectivo(servicio) {
   }
 
   return 0;
+}
+
+function getServicioImageUrl(servicio = {}) {
+  return String(servicio?.imagenUrl || "").trim();
+}
+
+function crearNombreArchivoServicio(file) {
+  const baseName = String(file?.name || "servicio")
+    .replace(/\s+/g, "_")
+    .replace(/[^\w.-]/g, "");
+
+  return `${Date.now()}_${baseName || "servicio"}`;
+}
+
+async function subirImagenServicio(file) {
+  if (!file) return "";
+
+  const nombreArchivo = crearNombreArchivoServicio(file);
+  const storageRef = ref(storage, `servicios/${nombreArchivo}`);
+
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+}
+
+function leerArchivoComoDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () =>
+      reject(new Error("No se pudo leer la imagen seleccionada."));
+
+    reader.readAsDataURL(file);
+  });
 }
 
 function crearItemPrecioVariableBase() {
@@ -1083,7 +1118,9 @@ function AgendaServicioEditor({
             className="admin-input"
             value={agendaDisponibleDesde}
             onChange={(e) =>
-              setAgendaDisponibleDesde(normalizarFechaAgendaDesde(e.target.value))
+              setAgendaDisponibleDesde(
+                normalizarFechaAgendaDesde(e.target.value),
+              )
             }
           />
         </div>
@@ -1235,6 +1272,8 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     servicio.profesionalId || "",
   );
   const [descripcion, setDescripcion] = useState(servicio.descripcion || "");
+  const [imagenUrl, setImagenUrl] = useState(getServicioImageUrl(servicio));
+  const [imagenFile, setImagenFile] = useState(null);
   const [duracion, setDuracion] = useState(servicio.duracionMin);
   const [precio, setPrecio] = useState(servicio.precio);
   const [precioEfectivo, setPrecioEfectivo] = useState(
@@ -1295,6 +1334,8 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     setNombreProfesional(servicio.nombreProfesional || "");
     setProfesionalId(servicio.profesionalId || "");
     setDescripcion(servicio.descripcion || "");
+    setImagenUrl(getServicioImageUrl(servicio));
+    setImagenFile(null);
     setDuracion(servicio.duracionMin ?? 60);
     setPrecio(servicio.precio ?? 0);
     setPrecioEfectivo(servicio.precioEfectivo ?? 0);
@@ -1322,6 +1363,23 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     setAgendaMensual(normalizarAgendaMensual(servicio.agendaMensual || []));
     setSeleccionados(servicio.gabinetes?.map((g) => g.id) ?? []);
     setEditando(true);
+  }
+
+  async function handleImagenChange(file) {
+    if (!file) {
+      setImagenFile(null);
+      setImagenUrl(getServicioImageUrl(servicio));
+      return;
+    }
+
+    setImagenFile(file);
+    const previewUrl = await leerArchivoComoDataUrl(file);
+    setImagenUrl(previewUrl);
+  }
+
+  function limpiarImagen() {
+    setImagenFile(null);
+    setImagenUrl("");
   }
 
   function toggleGabinete(id) {
@@ -1430,56 +1488,84 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       );
     }
 
-    await updateDoc(doc(db, "servicios", servicio.id), {
-      categoriaId,
-      categoriaNombre,
-      categoriaNombreNormalizado: normalizar(categoriaNombre),
+    try {
+      showLoading({
+        title: "Guardando servicio",
+        text: "Actualizando datos e imagen...",
+      });
 
-      nombreServicio: nombreServicio.trim(),
-      nombreServicioNormalizado: normalizar(nombreServicio),
-      profesionalId: profesionalId || null,
-      nombreProfesional: nombreProfesional.trim(),
-      descripcion: descripcion,
-      duracionMin: Number(duracion),
-      precio: Number(precio),
-      precioEfectivo: Number(precioEfectivo || 0),
-      precioVariable,
-      precioVariableModo: precioVariable ? precioVariableModo : "multiple",
-      itemsPrecioVariable: precioVariable
-        ? serializarItemsPrecioVariable(itemsPrecioVariable)
-        : [],
-      responsableGestion,
-      modoReserva,
-      pedirAnticipo,
-      porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
-      agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
-      agendaDisponibleDesde: normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
-      agendaTipo,
-      agendaMensualModo,
-      horariosServicio: serializarHorariosServicio(horariosServicio),
-      agendaMensual:
-        agendaTipo === "mensual" ? serializarAgendaMensual(agendaMensual) : [],
-      agendaMensualRepiteMesSiguiente,
-      agendaCadaXDias: null,
+      const imagenServicioUrl =
+        imagenFile != null
+          ? await subirImagenServicio(imagenFile)
+          : String(imagenUrl || "").trim();
 
-      gabinetes: seleccionados
-        .map((id) => {
-          const g = gabinetes.find((x) => x.id === id);
-          if (!g) return null;
-          return { id: g.id, nombreGabinete: g.nombreGabinete ?? "" };
-        })
-        .filter(Boolean),
+      await updateDoc(doc(db, "servicios", servicio.id), {
+        categoriaId,
+        categoriaNombre,
+        categoriaNombreNormalizado: normalizar(categoriaNombre),
 
-      actualizadoEn: serverTimestamp(),
-      ...(servicio.activo
-        ? {
-            eliminadoEn: deleteField(),
-            desactivadoPor: deleteField(),
-          }
-        : {}),
-    });
+        nombreServicio: nombreServicio.trim(),
+        nombreServicioNormalizado: normalizar(nombreServicio),
+        profesionalId: profesionalId || null,
+        nombreProfesional: nombreProfesional.trim(),
+        descripcion: descripcion,
+        imagenUrl: imagenServicioUrl || null,
+        duracionMin: Number(duracion),
+        precio: Number(precio),
+        precioEfectivo: Number(precioEfectivo || 0),
+        precioVariable,
+        precioVariableModo: precioVariable ? precioVariableModo : "multiple",
+        itemsPrecioVariable: precioVariable
+          ? serializarItemsPrecioVariable(itemsPrecioVariable)
+          : [],
+        responsableGestion,
+        modoReserva,
+        pedirAnticipo,
+        porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
+        agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
+        agendaDisponibleDesde:
+          normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
+        agendaTipo,
+        agendaMensualModo,
+        horariosServicio: serializarHorariosServicio(horariosServicio),
+        agendaMensual:
+          agendaTipo === "mensual"
+            ? serializarAgendaMensual(agendaMensual)
+            : [],
+        agendaMensualRepiteMesSiguiente,
+        agendaCadaXDias: null,
 
-    setEditando(false);
+        gabinetes: seleccionados
+          .map((id) => {
+            const g = gabinetes.find((x) => x.id === id);
+            if (!g) return null;
+            return { id: g.id, nombreGabinete: g.nombreGabinete ?? "" };
+          })
+          .filter(Boolean),
+
+        actualizadoEn: serverTimestamp(),
+        ...(servicio.activo
+          ? {
+              eliminadoEn: deleteField(),
+              desactivadoPor: deleteField(),
+            }
+          : {}),
+      });
+
+      setEditando(false);
+      await swalSuccess({
+        title: "Servicio actualizado",
+        text: "Los cambios se guardaron correctamente.",
+      });
+    } catch (error) {
+      console.error("Error guardando servicio", error);
+      await swalError({
+        title: "No se pudo guardar",
+        text: "Ocurrio un error al actualizar el servicio.",
+      });
+    } finally {
+      hideLoading();
+    }
   }
 
   async function desactivarServicio() {
@@ -1544,16 +1630,30 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
     <div className={`service-card ${servicio.activo ? "" : "inactive"}`}>
       {/* HEADER */}
       <div className="service-header">
-        <div className="service-title-wrap">
-          <div className="service-kicker">{getCategoriaLabel(servicio)}</div>
-          <div className="service-title">
-            <b>{servicio.nombreServicio}</b>
-            {!servicio.activo && (
-              <span className="badge inactive">Inactivo</span>
-            )}
-            {servicioMensualSinFechasPendientes(servicio) && (
-              <span className="badge service-alert-badge">Agenda agotada</span>
-            )}
+        <div className="service-header-main">
+          {getServicioImageUrl(servicio) ? (
+            <div className="service-card-thumb">
+              <img
+                src={getServicioImageUrl(servicio)}
+                alt={servicio.nombreServicio || "Servicio"}
+                className="service-card-thumb-img"
+              />
+            </div>
+          ) : null}
+
+          <div className="service-title-wrap">
+            <div className="service-kicker">{getCategoriaLabel(servicio)}</div>
+            <div className="service-title">
+              <b>{servicio.nombreServicio}</b>
+              {!servicio.activo && (
+                <span className="badge inactive">Inactivo</span>
+              )}
+              {servicioMensualSinFechasPendientes(servicio) && (
+                <span className="badge service-alert-badge">
+                  Agenda agotada
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1629,12 +1729,16 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
           Duración: <strong>{servicio.duracionMin}</strong> min
         </span>
         <span>
-          {servicioTienePrecioVariableActivo(servicio) ? "Precio desde:" : "Valor:"}{" "}
+          {servicioTienePrecioVariableActivo(servicio)
+            ? "Precio desde:"
+            : "Valor:"}{" "}
           <strong>${servicio.precio}</strong>
         </span>
         {getPrecioEfectivo(servicio) > 0 && (
           <span>
-            {servicioTienePrecioVariableActivo(servicio) ? "Efectivo desde:" : "Efectivo:"}{" "}
+            {servicioTienePrecioVariableActivo(servicio)
+              ? "Efectivo desde:"
+              : "Efectivo:"}{" "}
             <strong>${getPrecioEfectivo(servicio)}</strong>
           </span>
         )}
@@ -1699,6 +1803,57 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             <section className="service-editor-block service-editor-block-main">
               <div className="service-editor-block-title">
                 Datos principales
+              </div>
+
+              <div className="service-image-panel">
+                <div className="service-image-panel-copy">
+                  <label>Imagen del servicio</label>
+                  <span className="service-image-help">
+                    Opcional. Se muestra en la agenda de servicios.
+                  </span>
+                  <label className="service-image-uploader">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="service-image-input"
+                      onChange={(event) =>
+                        void handleImagenChange(
+                          event.target.files?.[0] || null,
+                        )
+                      }
+                    />
+                    <span className="service-image-uploader-title">
+                      {imagenFile ? "Cambiar imagen" : "Subir o reemplazar imagen"}
+                    </span>
+                    <small>
+                      {imagenFile?.name ||
+                        (getServicioImageUrl(servicio)
+                          ? "Usando la imagen actual del servicio."
+                          : "JPG, PNG o WEBP. Se adapta sola.")}
+                    </small>
+                  </label>
+                </div>
+
+                {imagenUrl ? (
+                  <div className="service-image-preview-card">
+                    <img
+                      src={imagenUrl}
+                      alt={nombreServicio || "Preview del servicio"}
+                      className="service-image-preview"
+                    />
+                    <button
+                      type="button"
+                      className="swal-btn-cancel service-image-clear"
+                      onClick={limpiarImagen}
+                    >
+                      Quitar imagen
+                    </button>
+                  </div>
+                ) : (
+                  <div className="service-image-empty">
+                    Sin imagen cargada
+                  </div>
+                )}
               </div>
 
               <div className="service-editor-fields service-editor-fields-2">
@@ -1978,6 +2133,8 @@ export default function ServiciosPanel() {
   const [nombreProfesional, setNombreProfesional] = useState("");
   const [profesionalId, setProfesionalId] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [imagenUrl, setImagenUrl] = useState("");
+  const [imagenFile, setImagenFile] = useState(null);
   const [duracion, setDuracion] = useState(60);
   const [precio, setPrecio] = useState(0);
   const [precioEfectivo, setPrecioEfectivo] = useState(0);
@@ -2001,6 +2158,7 @@ export default function ServiciosPanel() {
   const [agendaMensual, setAgendaMensual] = useState(crearAgendaMensualBase());
 
   const [seleccionados, setSeleccionados] = useState([]);
+  const [nuevoServicioAbierto, setNuevoServicioAbierto] = useState(true);
   const [abierto, setAbierto] = useState(true);
 
   // Categorías (catálogo)
@@ -2044,8 +2202,6 @@ export default function ServiciosPanel() {
                     String(b?.desde || ""),
                   );
                 });
-
-              console.log("gabinete OK:", g.nombreGabinete, horarios);
 
               return {
                 ...g,
@@ -2129,6 +2285,23 @@ export default function ServiciosPanel() {
     }
   }
 
+  async function handleNuevaImagenChange(file) {
+    if (!file) {
+      setImagenFile(null);
+      setImagenUrl("");
+      return;
+    }
+
+    setImagenFile(file);
+    const previewUrl = await leerArchivoComoDataUrl(file);
+    setImagenUrl(previewUrl);
+  }
+
+  function limpiarNuevaImagen() {
+    setImagenFile(null);
+    setImagenUrl("");
+  }
+
   async function crearServicio() {
     if (!nombreServicio.trim()) return showError("El servicio necesita nombre");
     if (!categoriaId)
@@ -2210,6 +2383,10 @@ export default function ServiciosPanel() {
         text: "Guardando configuracion y agenda...",
       });
 
+      const imagenServicioUrl = imagenFile
+        ? await subirImagenServicio(imagenFile)
+        : "";
+
       await addDoc(collection(db, "servicios"), {
         categoriaId,
         categoriaNombre,
@@ -2220,6 +2397,7 @@ export default function ServiciosPanel() {
         profesionalId: profesionalId || null,
         nombreProfesional: nombreProfesional.trim(),
         descripcion,
+        imagenUrl: imagenServicioUrl || null,
         duracionMin: Number(duracion),
         precio: Number(precio),
         precioEfectivo: Number(precioEfectivo || 0),
@@ -2233,7 +2411,8 @@ export default function ServiciosPanel() {
         pedirAnticipo,
         porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
         agendaMaxDias: Math.max(1, Number(agendaMaxDias || 7)),
-        agendaDisponibleDesde: normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
+        agendaDisponibleDesde:
+          normalizarFechaAgendaDesde(agendaDisponibleDesde) || null,
         agendaTipo,
         agendaMensualModo,
         horariosServicio: serializarHorariosServicio(horariosServicio),
@@ -2261,6 +2440,8 @@ export default function ServiciosPanel() {
       setNombreProfesional("");
       setProfesionalId("");
       setDescripcion("");
+      setImagenUrl("");
+      setImagenFile(null);
       setDuracion(60);
       setPrecio(0);
       setPrecioEfectivo(0);
@@ -2315,22 +2496,80 @@ export default function ServiciosPanel() {
 
         <section className="servicios-admin-section servicios-admin-section-form">
           <div className="admin-panel-container servicios-panel-card">
-            <div className="admin-categorias-header servicios-section-header">
+            <button
+              type="button"
+              className="admin-categorias-header servicios-section-header servicios-section-toggle"
+              onClick={() => setNuevoServicioAbierto((prev) => !prev)}
+              aria-expanded={nuevoServicioAbierto}
+            >
               <div>
                 <h5 className="fw-bold mb-1">Nuevo servicio</h5>
                 <p className="servicios-section-desc mb-0">
                   Configurá categoría, datos, seña, agenda y gabinetes.
                 </p>
               </div>
-            </div>
+              <span className="collapse-icon">
+                {nuevoServicioAbierto ? "â–¾" : "â–¸"}
+              </span>
+            </button>
 
-            <div className="admin-servicios-create servicios-form-shell">
+            {nuevoServicioAbierto && (
+              <div className="admin-servicios-create servicios-form-shell">
               <div className="servicios-form-block servicios-form-block-agenda">
                 <div className="servicios-form-block-title">
                   Datos principales
                 </div>
 
-                <div className="admin-row form-servicio-grid servicios-form-grid">
+                <div className="service-image-panel">
+                  <div className="service-image-panel-copy">
+                    <label className="admin-label">Imagen del servicio</label>
+                    <span className="service-image-help">
+                      Opcional. Se muestra en la agenda de servicios.
+                    </span>
+                    <label className="service-image-uploader">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="service-image-input"
+                        onChange={(event) =>
+                          void handleNuevaImagenChange(
+                            event.target.files?.[0] || null,
+                          )
+                        }
+                      />
+                      <span className="service-image-uploader-title">
+                        {imagenFile ? "Cambiar imagen" : "Subir imagen"}
+                      </span>
+                      <small>
+                        {imagenFile?.name || "JPG, PNG o WEBP. Se adapta sola."}
+                      </small>
+                    </label>
+                  </div>
+
+                  {imagenUrl ? (
+                    <div className="service-image-preview-card">
+                      <img
+                        src={imagenUrl}
+                        alt={nombreServicio || "Preview del servicio"}
+                        className="service-image-preview"
+                      />
+                      <button
+                        type="button"
+                        className="swal-btn-cancel service-image-clear"
+                        onClick={limpiarNuevaImagen}
+                      >
+                        Quitar imagen
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="service-image-empty">
+                      Sin imagen cargada
+                    </div>
+                  )}
+                </div>
+
+                <div className="servicios-form-grid">
+
                   <div className="form-field">
                     <label className="admin-label">Servicio madre</label>
                     <select
@@ -2575,7 +2814,8 @@ export default function ServiciosPanel() {
                   </button>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
 
             <div
               className="admin-categorias-sub mt-5"

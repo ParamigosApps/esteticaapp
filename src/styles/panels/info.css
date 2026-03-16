@@ -227,39 +227,212 @@
 
 /* BOTON WHATSAPP */
 
-.wsp-contact-btn{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:14px;
+.contacto-cta-group {
+  display: grid;
+  gap: 12px;
+  margin: 12px auto 24px;
+  padding: 15px;
+  border: 1px solid rgba(229, 218, 243, 0.95);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.12), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(250, 246, 255, 0.97));
+  box-shadow: 0 16px 30px rgba(66, 47, 91, 0.07);
+}
 
-  min-width: 110px;
+.contacto-cta-head {
+  display: grid;
+  gap: 6px;
+}
+
+.contacto-cta-kicker {
+  display: inline-flex;
+  align-items: center;
   width: fit-content;
-  
-  margin: 8px auto 24px auto;
-  padding:8px 12px ;
-
-  font-size: 14px;
-  border:1.5px solid #25D366;
-  border-radius:12px;
-
-  background:rgba(37,211,102,0.12);
-
-  color:#25D366;
-  font-weight:600;
-  text-decoration:none;
-
-  transition:all .2s ease;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(244, 236, 252, 0.95);
+  color: #8a629f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.wsp-contact-btn img{
-  width:20px;
-  height:20px;
+.contacto-cta-copy {
+  margin: 0;
+  max-width: 42ch;
+  color: #665b74;
+  font-size: 0.86rem;
+  line-height: 1.42;
+  font-weight: 600;
 }
 
-.wsp-contact-btn:hover{
-  background:rgba(37,211,102,0.25);
-  transform:translateY(-1px);
+.contacto-cta-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.contacto-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 13px;
+  border-radius: 16px;
+  text-decoration: none;
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.contacto-cta-btn:hover {
+  transform: translateY(-2px);
+}
+
+.contacto-cta-icon-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.066);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 14px rgba(95, 64, 131, 0.08);
+}
+
+.contacto-cta-icon-shell img {
+  width: 26px;
+  height: 26px;
+}
+
+.contacto-cta-icon-text {
+  color: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.contacto-cta-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contacto-cta-text strong {
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1.18;
+}
+
+.contacto-cta-text small {
+  color: rgba(55, 44, 66, 0.76);
+  font-size: 0.72rem;
+  line-height: 1.28;
+  font-weight: 700;
+}
+
+.contacto-cta-btn-whatsapp {
+  border: 1.5px solid rgba(37, 211, 102, 0.34);
+  background: linear-gradient(180deg, rgba(240, 252, 245, 0.98), rgba(231, 248, 238, 0.98));
+  color: #15803d;
+  box-shadow: 0 12px 22px rgba(37, 211, 102, 0.08);
+}
+
+.contacto-cta-btn-whatsapp:hover {
+  background: linear-gradient(180deg, rgba(235, 251, 241, 1), rgba(222, 244, 231, 1));
+  border-color: rgba(37, 211, 102, 0.48);
+}
+
+.contacto-cta-btn-instagram {
+  border: 1.5px solid rgba(197, 73, 129, 0.36);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(131, 58, 180, 0.14),
+      rgba(225, 48, 108, 0.14),
+      rgba(252, 175, 69, 0.16)
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 246, 250, 0.99));
+  color: #b22473;
+  box-shadow: 0 14px 26px rgba(193, 53, 132, 0.11);
+}
+
+.contacto-cta-btn-instagram:hover {
+  border-color: rgba(197, 73, 129, 0.54);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(131, 58, 180, 0.18),
+      rgba(225, 48, 108, 0.2),
+      rgba(252, 175, 69, 0.22)
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(252, 244, 249, 1));
+  box-shadow: 0 18px 30px rgba(193, 53, 132, 0.14);
+}
+
+.contacto-cta-btn-facebook {
+  border: 1.5px solid rgba(24, 119, 242, 0.26);
+  background: linear-gradient(180deg, rgba(241, 247, 255, 0.99), rgba(233, 242, 255, 0.99));
+  color: #1664d9;
+  box-shadow: 0 14px 24px rgba(24, 119, 242, 0.08);
+}
+
+.contacto-cta-btn-facebook .contacto-cta-icon-text {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.contacto-cta-btn-facebook:hover {
+  border-color: rgba(24, 119, 242, 0.42);
+  background: linear-gradient(180deg, rgba(236, 244, 255, 1), rgba(226, 238, 255, 1));
+}
+
+.contacto-cta-btn-tiktok {
+  border: 1.5px solid rgba(35, 35, 35, 0.18);
+  background: linear-gradient(180deg, rgba(250, 250, 250, 0.99), rgba(242, 242, 242, 0.99));
+  color: #181818;
+  box-shadow: 0 14px 24px rgba(20, 20, 20, 0.07);
+}
+
+.contacto-cta-btn-tiktok:hover {
+  border-color: rgba(35, 35, 35, 0.32);
+  background: linear-gradient(180deg, rgba(245, 245, 245, 1), rgba(236, 236, 236, 1));
+}
+
+.contacto-cta-btn-x {
+  border: 1.5px solid rgba(23, 23, 23, 0.18);
+  background: linear-gradient(180deg, rgba(252, 252, 252, 0.99), rgba(244, 244, 244, 0.99));
+  color: #111111;
+  box-shadow: 0 14px 24px rgba(17, 17, 17, 0.06);
+}
+
+.contacto-cta-btn-x:hover {
+  border-color: rgba(23, 23, 23, 0.32);
+  background: linear-gradient(180deg, rgba(247, 247, 247, 1), rgba(239, 239, 239, 1));
+}
+
+.contacto-cta-btn-web {
+  border: 1.5px solid rgba(124, 101, 164, 0.2);
+  background: linear-gradient(180deg, rgba(248, 245, 255, 0.99), rgba(241, 236, 250, 0.99));
+  color: #6b4fa1;
+  box-shadow: 0 14px 24px rgba(107, 79, 161, 0.07);
+}
+
+.contacto-cta-btn-web:hover {
+  border-color: rgba(124, 101, 164, 0.34);
+  background: linear-gradient(180deg, rgba(244, 240, 255, 1), rgba(236, 230, 248, 1));
 }
 
 .ubicacion-contact{
@@ -513,9 +686,27 @@ object-fit:cover;
     font-size: 12px;
   }
 
-  .wsp-contact-btn{
-    width: 100%;
+  .contacto-cta-group {
+    gap: 12px;
     margin: 8px 0 18px;
+    padding: 14px;
+  }
+
+  .contacto-cta-head {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .contacto-cta-copy {
+    font-size: 0.84rem;
+  }
+
+  .contacto-cta-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .contacto-cta-btn {
+    width: 100%;
     padding: 10px 12px;
     font-size: 13px;
   }

@@ -130,7 +130,7 @@ function TurnoRowContent({
             ) : null}
             {mostrarChequeoManual ? (
               <div className="turno-admin-note warning">
-                Chequear recibido: {formatMoney(getMontoAValidarPago(turno))}
+                Seña sugerida: {formatMoney(getMontoAValidarPago(turno))}
               </div>
             ) : null}
             {esPagoMP && estadoPago === "pendiente" ? (
@@ -196,7 +196,7 @@ function TurnoRowContent({
 
           {mostrarChequeoManual ? (
             <div className="turno-admin-note warning">
-              Chequear recibido: {formatMoney(getMontoAValidarPago(turno))}
+              Seña sugerida: {formatMoney(getMontoAValidarPago(turno))}
             </div>
           ) : null}
           {esPagoMP && estadoPago === "pendiente" ? (
