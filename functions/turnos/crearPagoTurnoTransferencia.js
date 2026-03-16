@@ -7,6 +7,13 @@ const { FieldValue } = require('firebase-admin/firestore')
 const { getAdmin } = require('../_lib/firebaseAdmin')
 const { desglosarPagoTurno, normalizarMontosTurno } = require('../config/comisiones')
 
+function resolveTipoPagoTurno(montoPago, montoTotal) {
+  if (Number(montoTotal) > 0 && Number(montoPago) >= Number(montoTotal)) {
+    return 'total'
+  }
+  return 'sena'
+}
+
 exports.crearPagoTurnoTransferencia = onCall(
   { region: 'us-central1' },
   async request => {
@@ -56,6 +63,7 @@ exports.crearPagoTurnoTransferencia = onCall(
     const montosTurno = normalizarMontosTurno(turno)
     const montoTotal = montosTurno.montoTotal
     const montoSena = montosTurno.montoAnticipo
+    const tipoPago = resolveTipoPagoTurno(montoSena, montoTotal)
 
     if (!turno.pedirAnticipo || !Number.isFinite(montoSena) || montoSena <= 0) {
       throw new HttpsError(
@@ -99,8 +107,8 @@ exports.crearPagoTurnoTransferencia = onCall(
       montoServicioPagado: desglosePago.montoLiquidable,
       montoComision: desglosePago.montoComision,
       montoLiquidable: desglosePago.montoLiquidable,
-      tipoPago: 'sena',
-      tipo: 'sena',
+      tipoPago,
+      tipo: tipoPago,
       esperadoSegunTurno: turno.metodoPagoEsperado || 'transferencia',
       registradoPor: uid,
 

@@ -17,6 +17,13 @@ function sanitizarUrlBase(url) {
   return value;
 }
 
+function resolveTipoPagoTurno(montoPago, montoTotal) {
+  if (Number(montoTotal) > 0 && Number(montoPago) >= Number(montoTotal)) {
+    return "total";
+  }
+  return "sena";
+}
+
 exports.iniciarPagoTurnoMP = onCall(
   {
     region: "us-central1",
@@ -126,6 +133,11 @@ exports.iniciarPagoTurnoMP = onCall(
     const montosTurno = normalizarMontosTurno(turno);
     const montoAnticipo = montosTurno.montoAnticipo;
     const montoTotal = montosTurno.montoTotal;
+    const tipoPago = resolveTipoPagoTurno(montoAnticipo, montoTotal);
+    const tituloPago =
+      tipoPago === "total"
+        ? `Pago total turno - ${turno.nombreServicio || "Servicio"}`
+        : `Seña turno - ${turno.nombreServicio || "Servicio"}`;
     const desglosePago = desglosarPagoTurno({
       turno,
       montoPago: montoAnticipo,
@@ -149,7 +161,8 @@ await pagoRef.set({
   montoServicioPagado: desglosePago.montoLiquidable,
   montoComision: desglosePago.montoComision,
   montoLiquidable: desglosePago.montoLiquidable,
-  tipoPago: "sena",
+  tipoPago,
+  tipo: tipoPago,
 
   mpPreferenceId: null,
   mpInitPoint: null,
@@ -195,7 +208,7 @@ await turnoRef.update({
       body: {
         items: [
           {
-            title: `Seña turno - ${turno.nombreServicio || "Servicio"}`,
+            title: tituloPago,
             quantity: 1,
             unit_price: montoAnticipo,
             currency_id: "ARS",
@@ -207,7 +220,6 @@ await turnoRef.update({
           failure: `${frontUrl}/pago-resultado`,
           pending: `${frontUrl}/pago-resultado`,
         },
-        auto_return: "approved",
       },
     });
 

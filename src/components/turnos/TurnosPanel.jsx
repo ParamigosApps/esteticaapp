@@ -897,16 +897,39 @@ Turno ID: ${data.turnoId.slice(0, 8)}
     const data = await reservarTurno("mercadopago");
     if (!data?.turnoId) return;
 
-    const iniciarPagoFn = httpsCallable(getFunctions(), "iniciarPagoTurnoMP");
+    try {
+      const iniciarPagoFn = httpsCallable(getFunctions(), "iniciarPagoTurnoMP");
 
-    const pago = await iniciarPagoFn({
-      turnoId: data.turnoId,
-      frontOrigin: window.location.origin,
-    });
+      const pago = await iniciarPagoFn({
+        turnoId: data.turnoId,
+        frontOrigin: window.location.origin,
+      });
 
-    if (pago?.data?.init_point) {
-      localStorage.setItem("pagoInitPointEnProceso", pago.data.init_point);
-      window.location.href = pago.data.init_point;
+      if (pago?.data?.init_point) {
+        localStorage.setItem("pagoInitPointEnProceso", pago.data.init_point);
+        window.location.href = pago.data.init_point;
+        return;
+      }
+
+      throw new Error("No se pudo obtener el enlace de pago.");
+    } catch (err) {
+      console.error("Error iniciando pago con Mercado Pago:", err);
+      const alertConfig = getReservaErrorAlert(err);
+
+      await Swal.fire({
+        icon: alertConfig.icon,
+        title: alertConfig.title,
+        text:
+          alertConfig.text === "Ocurrio un problema inesperado al reservar. Por favor, comunicate con un administrador."
+            ? "No se pudo iniciar el pago con Mercado Pago. Intenta nuevamente en unos minutos."
+            : alertConfig.text,
+        confirmButtonText: "Entendido",
+        customClass: {
+          popup: "swal-popup-custom",
+          confirmButton: "swal-btn-confirm",
+        },
+        buttonsStyling: false,
+      });
     }
   }
 
