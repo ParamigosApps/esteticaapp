@@ -460,15 +460,19 @@ export function swalResumenTurno({
   horaFin,
   duracion,
   precio,
+  precioBase = null,
+  montoExtras = 0,
   precioAnticipo,
   itemsPrecioVariable = [],
   modoReserva,
 }) {
   const esManual = modoReserva === "reserva";
   const precioFormateado = formatMoney(precio);
+  const precioBaseFormateado = formatMoney(precioBase);
+  const montoExtrasFormateado = formatMoney(montoExtras);
   const precioAnticipoFormateado = formatMoney(precioAnticipo);
 
-  let tituloSwal = esManual ? "Solicitud de turno" : "Confirmación de turno";
+  let tituloSwal = esManual ? "Solicitud de turno" : "Confirmacion de turno";
   return Swal.fire({
     title: `<span class="swal-title-main">${tituloSwal}</span>`,
     width: "480px",
@@ -527,10 +531,32 @@ export function swalResumenTurno({
           }
 
           ${
+            precioBase != null && precioBase > 0 && precioBase !== precio
+              ? `
+              <div class="swal-row precio-row">
+                <div class="swal-label">Costo base del servicio</div>
+                <div class="swal-value precio">$${precioBaseFormateado}</div>
+              </div>
+              `
+              : ""
+          }
+
+          ${
+            montoExtras > 0
+              ? `
+              <div class="swal-row precio-row">
+                <div class="swal-label">Extras agregados</div>
+                <div class="swal-value precio">+$${montoExtrasFormateado}</div>
+              </div>
+              `
+              : ""
+          }
+
+          ${
             precio > 0
               ? `
               <div class="swal-row precio-row">
-                <div class="swal-label"> Precio total</div>
+                <div class="swal-label">Total del servicio</div>
                 <div class="swal-value precio">$${precioFormateado}</div>
               </div>
 
@@ -539,7 +565,7 @@ export function swalResumenTurno({
             precioAnticipo != null
               ? `
               <div class="swal-row precio-row mt-2">
-                <div class="swal-label">Seña a abonar</div>
+                <div class="swal-label">Pago a abonar ahora</div>
                 <div class="swal-value precio">$${precioAnticipoFormateado}</div>
               </div>
               `
@@ -833,5 +859,33 @@ export function swalReprogramarTurno({
         horaFin: horaFinValue,
       };
     },
+  });
+}
+
+export function swalTurnoConfirmado({
+  title = "Turno confirmado",
+  html = `
+    <p style="text-align:center;font-size:15px;">
+      Tu turno fue confirmado correctamente.
+    </p>
+    <p style="text-align:center;color:#555;">
+      Podes verlo en Mis turnos o seguir agendando.
+    </p>
+  `,
+} = {}) {
+  return Swal.fire({
+    icon: "success",
+    title,
+    html,
+    showCancelButton: true,
+    confirmButtonText: "Ir a mis turnos",
+    cancelButtonText: "Seguir agendando",
+    reverseButtons: true,
+    customClass: {
+      popup: "swal-popup-custom",
+      confirmButton: "swal-btn-confirm",
+      cancelButton: "swal-btn-cancel",
+    },
+    buttonsStyling: false,
   });
 }

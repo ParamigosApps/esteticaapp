@@ -14,6 +14,7 @@ import { generarSlotsDia } from "../../public/utils/generarSlotsDia";
 import {
   swalRequiereLogin,
   swalResumenTurno,
+  swalTurnoConfirmado,
 } from "../../public/utils/swalUtils";
 import { formatearSoloFecha } from "../../public/utils/utils";
 import { showLoading, hideLoading } from "../../services/loadingService";
@@ -786,7 +787,7 @@ export default function TurnosPanel({ servicio }) {
           },
         );
 
-        Swal.fire({
+        await Swal.fire({
           icon: "success",
           title: "Solicitud enviada",
           width: 520,
@@ -851,6 +852,27 @@ export default function TurnosPanel({ servicio }) {
       });
 
       setAgenda(resultAgenda.data || null);
+
+      if (
+        servicio.modoReserva !== "reserva" &&
+        metodoPagoSolicitado !== "mercadopago"
+      ) {
+        const result = await swalTurnoConfirmado({
+          html: `
+            <p style="text-align:center;font-size:15px;">
+              Tu turno fue confirmado correctamente.
+            </p>
+            <p style="text-align:center;color:#555;">
+              Podes verlo en Mis turnos o seguir agendando desde esta pantalla.
+            </p>
+          `,
+        });
+
+        if (result.isConfirmed) {
+          window.location.assign("/mis-turnos");
+          return res?.data;
+        }
+      }
 
       return res?.data;
     } catch (err) {
@@ -920,7 +942,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         icon: alertConfig.icon,
         title: alertConfig.title,
         text:
-          alertConfig.text === "Ocurrio un problema inesperado al reservar. Por favor, comunicate con un administrador."
+          alertConfig.text ===
+          "Ocurrio un problema inesperado al reservar. Por favor, comunicate con un administrador."
             ? "No se pudo iniciar el pago con Mercado Pago. Intenta nuevamente en unos minutos."
             : alertConfig.text,
         confirmButtonText: "Entendido",
@@ -958,6 +981,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       horaFin: horaFinFormateada,
       duracion: servicio.duracionMin,
       precio: precioServicio,
+      precioBase: precioBaseServicio,
+      montoExtras: ajusteServicio,
       precioAnticipo:
         (esReservaManual ? montoReservaManual : montoAnticipo) || null,
       itemsPrecioVariable: itemsVariablesSeleccionados,
@@ -1165,7 +1190,9 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                 )}
               </div>
               {saldoServicioEfectivo <= 0 && saldoServicioTransferencia <= 0 ? (
-                <div>Con ese pago el servicio queda abonado en su totalidad.</div>
+                <div>
+                  Con ese pago el servicio queda abonado en su totalidad.
+                </div>
               ) : (
                 <>
                   {saldoServicioEfectivo > 0 && (
@@ -1178,7 +1205,9 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                         <>
                           {" "}
                           y ahorrar{" "}
-                          <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+                          <strong>
+                            ${ahorroEfectivo.toLocaleString("es-AR")}
+                          </strong>
                         </>
                       ) : null}
                       .
@@ -1199,11 +1228,18 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           ) : (
             <div className="agenda-cash-copy">
               <div>
-                Precio total abonando en efectivo: <strong>${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}</strong>
+                Precio total abonando en efectivo:{" "}
+                <strong>
+                  ${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
+                </strong>
                 {ahorroTotalEfectivo > 0 ? (
                   <>
                     {" "}
-                    (<strong>${ahorroTotalEfectivo.toLocaleString("es-AR")}</strong> de ahorro)
+                    (
+                    <strong>
+                      ${ahorroTotalEfectivo.toLocaleString("es-AR")}
+                    </strong>{" "}
+                    de ahorro)
                   </>
                 ) : null}
                 .

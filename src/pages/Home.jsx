@@ -6,6 +6,7 @@ import { db } from "../Firebase";
 import BuscadorServicios from "../public/components/buscador/BuscadorServicios";
 import TurnosSection from "../public/home/TurnosSection.jsx";
 import InfoContactoPanel from "../public/components/contacto/InfoContactoPanel.jsx";
+import { swalTurnoConfirmado } from "../public/utils/swalUtils.js";
 
 import imgPrincipal from "../assets/img/local.jpg";
 import imgSecundaria from "../assets/img/secundaria.png";
@@ -195,21 +196,19 @@ export default function Home() {
 
     switch (aviso) {
       case "turno_aprobado":
-        Swal.fire({
-          icon: "success",
-          title: "Turno confirmado",
+        void swalTurnoConfirmado({
           html: `
             <p style="text-align:center;font-size:15px;">
-              Tu sena fue acreditada correctamente.
+              Tu turno fue confirmado correctamente.
             </p>
             <p style="text-align:center;color:#555;">
-              Te esperamos en el horario reservado.
+              Podes verlo en Mis turnos o seguir agendando.
             </p>
           `,
-          confirmButtonText: "Entendido",
-          customClass: {
-            confirmButton: "swal-btn-confirm",
-          },
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.assign("/mis-turnos");
+          }
         });
         break;
 

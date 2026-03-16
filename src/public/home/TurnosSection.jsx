@@ -440,6 +440,7 @@ export default function TurnosSection({
             {categoriaActual?.nombre ||
               serviciosCategoria?.[0]?.categoriaNombre ||
               "Categoria"}
+            {busqueda?.trim() ? ` - buscando "${busqueda.trim()}"` : ""}
           </h6>
 
           {categoriaActual?.descripcion ? (

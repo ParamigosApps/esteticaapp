@@ -144,7 +144,7 @@ export default function PagoResultado() {
         if (estado === "aprobado" || estado === "pagado") {
           localStorage.setItem(
             "avisoPostPago",
-            tipo === "entrada" ? "entrada_aprobada" : "compra_aprobada",
+            "turno_aprobado",
           );
           limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
@@ -156,9 +156,7 @@ export default function PagoResultado() {
         if (estado === "aprobado_con_error") {
           localStorage.setItem(
             "avisoPostPago",
-            tipo === "entrada"
-              ? "entrada_aprobada_error"
-              : "compra_aprobada_error",
+            "turno_aprobado",
           );
           limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
@@ -170,7 +168,7 @@ export default function PagoResultado() {
         if (estado === "rechazado") {
           localStorage.setItem(
             "avisoPostPago",
-            tipo === "entrada" ? "entrada_rechazada" : "compra_rechazada",
+            "turno_rechazado",
           );
           limpiarPagoEnProceso();
           clearInterval(intervalRef.current);
@@ -182,7 +180,7 @@ export default function PagoResultado() {
         if (intentosRef.current >= MAX_INTENTOS) {
           localStorage.setItem(
             "avisoPostPago",
-            tipo === "entrada" ? "entrada_pendiente" : "compra_pendiente",
+            "turno_pendiente",
           );
           clearInterval(intervalRef.current);
           hideLoading();
