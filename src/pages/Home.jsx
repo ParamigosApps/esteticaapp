@@ -188,6 +188,18 @@ export default function Home() {
   const reviewsUpdatedAt = formatUpdatedAt(homeVisuales.googleReviewsUpdatedAt);
   const showReviews = homeVisuales.reviewsEnabled !== false;
 
+  function scrollToAgendaResultados() {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth > 992) return;
+
+    window.setTimeout(() => {
+      agendaRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 120);
+  }
+
   useEffect(() => {
     const aviso = localStorage.getItem("avisoPostPago");
     if (!aviso) return;
@@ -364,6 +376,7 @@ export default function Home() {
               setBusqueda={setBusqueda}
               categoriaSeleccionada={categoriaSeleccionada}
               setCategoriaSeleccionada={setCategoriaSeleccionada}
+              onIrResultados={scrollToAgendaResultados}
             />
           </div>
 

@@ -462,6 +462,7 @@ export function swalResumenTurno({
   precio,
   precioBase = null,
   montoExtras = 0,
+  comision = 0,
   precioAnticipo,
   itemsPrecioVariable = [],
   modoReserva,
@@ -496,6 +497,15 @@ export function swalResumenTurno({
         <div class="swal-turno-header">
           <div class="swal-servicio">${servicio}</div>
           <div class="swal-profesional">con <b>${profesional}</b></div>
+          ${
+            precioBase != null && precioBase > 0
+              ? `
+              <div class="swal-servicio-meta">
+                Costo del servicio: <strong>$${precioBaseFormateado}</strong>
+              </div>
+              `
+              : ""
+          }
         </div>
 
         <div class="swal-turno-body">
@@ -531,17 +541,6 @@ export function swalResumenTurno({
           }
 
           ${
-            precioBase != null && precioBase > 0 && precioBase !== precio
-              ? `
-              <div class="swal-row precio-row">
-                <div class="swal-label">Costo base del servicio</div>
-                <div class="swal-value precio">$${precioBaseFormateado}</div>
-              </div>
-              `
-              : ""
-          }
-
-          ${
             montoExtras > 0
               ? `
               <div class="swal-row precio-row">
@@ -565,9 +564,20 @@ export function swalResumenTurno({
             precioAnticipo != null
               ? `
               <div class="swal-row precio-row mt-2">
-                <div class="swal-label">Pago a abonar ahora</div>
+                <div class="swal-label">${
+                  precioAnticipo >= precio ? "Pago a abonar ahora" : "Seña a abonar ahora"
+                }</div>
                 <div class="swal-value precio">$${precioAnticipoFormateado}</div>
               </div>
+              ${
+                Number(comision || 0) > 0
+                  ? `
+                  <div class="swal-price-caption">
+                    Incluye un cargo de reserva online de $${formatMoney(comision)}.
+                  </div>
+                  `
+                  : ""
+              }
               `
               : ""
           }

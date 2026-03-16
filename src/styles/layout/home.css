@@ -541,6 +541,12 @@
   gap: 12px;
 }
 
+.home-buscador-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .categorias-servicios {
   display: grid;
   gap: 12px;
@@ -568,6 +574,26 @@
   color: #9587a9;
   text-align: center;
   opacity: 0.92;
+}
+
+.home-buscador-ir-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #d86aa7, #a85fe8);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(168, 95, 232, 0.18);
+}
+
+.home-buscador-ir-btn:focus-visible {
+  outline: 3px solid rgba(168, 95, 232, 0.22);
+  outline-offset: 2px;
 }
 
 .categoria-card {
@@ -1082,6 +1108,10 @@
 
   .buscador-servicios {
     font-size: 14px;
+  }
+
+  .home-buscador-ir-btn {
+    display: inline-flex;
   }
 
   .categoria-card-top {

@@ -1,10 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "../Firebase.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -54,40 +50,46 @@ async function validarEmpleadoPanel(user) {
 }
 
 export default function LoginEmpleado() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const navigate = useNavigate();
-  const redirectingRef = useRef(false);
 
   const [loggingIn, setLoggingIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (authLoading) return;
 
-    auth.currentUser.getIdTokenResult().then((token) => {
-      console.log("CLAIMS REALES:", token.claims);
-    });
-  }, []);
+    if (!user) {
+      setCheckingSession(false);
+      return;
+    }
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user || redirectingRef.current) return;
+    let active = true;
+    setCheckingSession(true);
 
-      redirectingRef.current = true;
-      setCheckingSession(true);
+    validarEmpleadoPanel(auth.currentUser)
+      .then((nivelAcceso) => {
+        if (!active) return;
+        navigate(nivelAcceso >= 3 ? "/admin" : "/profesional", { replace: true });
+      })
+      .catch(async () => {
+        if (!active) return;
 
-      try {
-        const nivel = await validarEmpleadoPanel(user);
-        navigate(nivel >= 3 ? "/admin" : "/profesional", { replace: true });
-      } catch {
-        redirectingRef.current = false;
+        try {
+          await auth.signOut();
+        } catch (signOutError) {
+          console.warn("No se pudo cerrar sesion tras validar acceso:", signOutError);
+        }
+
         setCheckingSession(false);
-      }
-    });
+        setError("No tenes permisos para acceder al panel.");
+      });
 
-    return () => unsub();
-  }, [navigate]);
+    return () => {
+      active = false;
+    };
+  }, [authLoading, navigate, user?.uid]);
 
   async function loginAdminGoogle() {
     if (loggingIn) return;
@@ -101,7 +103,7 @@ export default function LoginEmpleado() {
       const nivel = await validarEmpleadoPanel(user);
 
       if (nivel >= 1) {
-        navigate(nivel >= 3 ? "/admin" : "/profesional", { replace: true });
+        setCheckingSession(true);
         return;
       }
 

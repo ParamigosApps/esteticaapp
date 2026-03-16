@@ -9,13 +9,14 @@
 
 /* HEADER */
 .swal-turno-header {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .swal-servicio {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 6px;
   color: var(--text-main);
 }
 
@@ -24,12 +25,34 @@
   color: var(--text-muted);
 }
 
+.swal-servicio-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+.swal-servicio-meta strong {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.swal-price-caption {
+  margin-top: 8px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 /* BODY */
 .swal-turno-body {
-  background: var(--color-surface-alt);
-  border-radius: var(--radius-2);
-  padding: 16px;
-  box-shadow: var(--shadow-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 245, 255, 0.98));
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 16px 38px rgba(49, 33, 69, 0.08);
+  border: 1px solid rgba(199, 179, 221, 0.34);
 }
 
 .swal-row {
@@ -37,26 +60,31 @@
   justify-content: space-between;
   align-items: center;
   font-size: 15px;
-  padding: 10px 12px;
-  border-radius: var(--radius-1);
+  padding: 12px 14px;
+  border-radius: 12px;
   margin-bottom: 8px;
   background: var(--color-surface);
-  border: 1px solid var(--border-soft);
+  border: 1px solid rgba(208, 194, 226, 0.45);
   transition: all 0.2s ease;
 }
 
 .swal-row:hover {
-  background: var(--color-surface-soft);
+  background: #fffdfd;
+}
+
+.swal-row .swal-label {
+  max-width: 55%;
 }
 
 .swal-label {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .swal-value {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
+  text-align: right;
 }
 
 .precio-row {
@@ -64,17 +92,21 @@
 }
 
 .precio {
-  font-size: 16px;
-  color: var(--color-primary);
+  font-size: 17px;
+  color: #b56cff;
+}
+
+.swal-turno-body .precio-row:last-of-type {
+  margin-bottom: 0;
 }
 
 /* FOOTER */
 .swal-turno-footer {
   margin-top: 18px;
   font-size: 13px;
-  line-height: 1.5;
-  padding: 14px;
-  border-radius: var(--radius-2);
+  line-height: 1.55;
+  padding: 14px 16px;
+  border-radius: 16px;
 }
 
 .swal-turno-footer.manual {
@@ -84,9 +116,9 @@
 }
 
 .swal-turno-footer.automatico {
-  background: #f3f0ff;
-  color: var(--color-primary);
-  border: 1px solid #e4d7f5;
+  background: linear-gradient(180deg, #f7f2ff, #f3ecff);
+  color: #9d62ec;
+  border: 1px solid #e8d8ff;
 }
 
 /* BOTONES */

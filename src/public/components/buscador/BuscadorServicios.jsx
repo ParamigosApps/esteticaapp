@@ -5,15 +5,26 @@ export default function BuscadorServicios({
   setBusqueda,
   categoriaSeleccionada,
   setCategoriaSeleccionada,
+  onIrResultados,
 }) {
+  function handleSubmit(event) {
+    event.preventDefault();
+    onIrResultados?.();
+  }
+
   return (
     <div className="home-buscador-lateral">
-      <input
-        className="buscador-servicios"
-        placeholder="¿Que servicio buscas?"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-      />
+      <form className="home-buscador-form" onSubmit={handleSubmit}>
+        <input
+          className="buscador-servicios"
+          placeholder="Que servicio buscas?"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+        <button type="submit" className="home-buscador-ir-btn">
+          Ir
+        </button>
+      </form>
 
       <CategoriasServicios
         categoriaSeleccionada={categoriaSeleccionada}

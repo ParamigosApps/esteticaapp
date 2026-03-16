@@ -1,7 +1,7 @@
 // --------------------------------------------------
 // src/components/turnos/TurnosPanel.jsx
 // --------------------------------------------------
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -392,6 +392,7 @@ export default function TurnosPanel({ servicio }) {
     getFechaMinReservable(servicio),
   );
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
+  const resumenTurnoRef = useRef(null);
   const [itemsSeleccionados, setItemsSeleccionados] = useState([]);
   const [loadingReserva, setLoadingReserva] = useState(false);
 
@@ -712,6 +713,21 @@ export default function TurnosPanel({ servicio }) {
     window.sessionStorage.removeItem("pendingLoginAction");
   }, [agenda, fechaSeleccionada, servicio, user]);
 
+  useEffect(() => {
+    if (!slotSeleccionado) return;
+    if (typeof window === "undefined") return;
+    if (window.innerWidth > 992) return;
+
+    const timer = window.setTimeout(() => {
+      resumenTurnoRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 160);
+
+    return () => window.clearTimeout(timer);
+  }, [slotSeleccionado]);
+
   function cambiarMes(offset) {
     const nueva = startOfDay(fechaSeleccionada);
     nueva.setDate(1);
@@ -983,6 +999,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       precio: precioServicio,
       precioBase: precioBaseServicio,
       montoExtras: ajusteServicio,
+      comision: comisionTurno,
       precioAnticipo:
         (esReservaManual ? montoReservaManual : montoAnticipo) || null,
       itemsPrecioVariable: itemsVariablesSeleccionados,
@@ -1181,20 +1198,16 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         <div className="agenda-cash-note">
           {requierePagoOnline ? (
             <div className="agenda-cash-copy">
-              <div>
-                {!(requiereAnticipoTurno && ahorroEfectivo === "0") && (
-                  <div>
-                    Reserva online por transferencia con:{" "}
-                    <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
-                  </div>
-                )}
-              </div>
               {saldoServicioEfectivo <= 0 && saldoServicioTransferencia <= 0 ? (
                 <div>
                   Con ese pago el servicio queda abonado en su totalidad.
                 </div>
               ) : (
                 <>
+                  <div>
+                    Reserva online por transferencia con:{" "}
+                    <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
+                  </div>
                   {saldoServicioEfectivo > 0 && (
                     <div>
                       El día del turno podes abonar lo restante en efectivo por{" "}
@@ -1379,7 +1392,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       </div>
 
       {slotSeleccionado && (
-        <div className="resumen-turno mt-4 p-3 ">
+        <div ref={resumenTurnoRef} className="resumen-turno mt-4 p-3 ">
           <h6 className="fw-bold mb-2">Resumen del turno</h6>
 
           <div className="resumen-turno-row">
@@ -1420,15 +1433,9 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                   {Number(item.monto || 0).toLocaleString("es-AR")}
                 </div>
               ))}
-              {requierePagoOnline && montoAnticipoServicio > 0 && (
-                <div className="resumen-turno-row resumen-turno-row-muted">
-                  <strong>Seña del servicio:</strong> $
-                  {montoAnticipoServicio.toLocaleString("es-AR")}
-                </div>
-              )}
               <div className="resumen-turno-row resumen-turno-total">
                 <strong>
-                  {requierePagoOnline ? "Total a abonar online:" : "Total:"}
+                  {requierePagoOnline ? "Total para señar" : "Total:"}
                 </strong>{" "}
                 ${precioTotal.toLocaleString("es-AR")}
               </div>

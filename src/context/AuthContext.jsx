@@ -10,6 +10,7 @@ import {
   signInWithPhoneNumber,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  onIdTokenChanged,
 } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import {
@@ -59,7 +60,7 @@ export function AuthProvider({ children }) {
   const [loginEnProceso, setLoginEnProceso] = useState(false);
 
   const EMAIL_LINK_SETTINGS = {
-    url: "https://appbar-rose.vercel.app/",
+    url: "https://pielycejas.misturnosapp.com.ar/",
     handleCodeInApp: true,
   };
 
@@ -246,7 +247,7 @@ export function AuthProvider({ children }) {
   // RESTAURAR SESIÓN
   // ============================================================
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+    const unsub = onIdTokenChanged(auth, async (fbUser) => {
       try {
         if (!fbUser) {
           setFirebaseUser(null);
@@ -310,9 +311,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handler = async () => {
       if (!auth.currentUser) return;
-      auth.currentUser.getIdTokenResult().then((token) => {
-        console.log("CLAIMS:", token.claims);
-      });
 
       const ref = doc(db, "usuarios", auth.currentUser.uid);
       const snap = await getDoc(ref);
