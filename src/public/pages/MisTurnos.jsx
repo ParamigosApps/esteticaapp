@@ -6,6 +6,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { useAuth } from "../../context/AuthContext";
 import { generarSlotsDia } from "../../public/utils/generarSlotsDia";
+import { hideLoading, showLoading } from "../../services/loadingService.js";
 
 import {
   collection,
@@ -41,6 +42,10 @@ const ESTADO_PAGO_LABEL = {
   expirado: "Pago expirado",
   reembolsado: "Reembolsado",
 };
+
+function getMaxReprogramacionesUsuario(reservasConfig = {}) {
+  return Math.max(0, Number(reservasConfig?.maxReprogramacionesUsuario ?? 1));
+}
 
 function getEstadoTurno(turno) {
   if (turno?.estadoTurno) return turno.estadoTurno;
@@ -145,6 +150,26 @@ function formatFechaISO(iso) {
   });
 }
 
+function formatFechaCortaISO(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  return dt.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function sumarDiasISO(iso, dias) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  const base = new Date(y, (m || 1) - 1, d || 1);
+  base.setDate(base.getDate() + dias);
+  return `${base.getFullYear()}-${pad2(base.getMonth() + 1)}-${pad2(
+    base.getDate(),
+  )}`;
+}
+
 function humanizeDiff(msDiff) {
   const abs = Math.abs(msDiff);
   const min = Math.floor(abs / 60000);
@@ -203,8 +228,14 @@ function canCancelTurno(turno) {
   return diffH >= HORA_CANCELACION_MINIMA;
 }
 
-function canReprogramTurno(turno) {
+function canReprogramTurno(turno, reservasConfig = {}) {
   if (!turno) return false;
+  if (reservasConfig?.permitirReprogramacionUsuario === false) return false;
+  const maxReprogramaciones = Math.max(
+    0,
+    Number(reservasConfig?.maxReprogramacionesUsuario ?? 1),
+  );
+  if (maxReprogramaciones < 1) return false;
 
   const estadoTurno = getEstadoTurno(turno);
   if (
@@ -220,7 +251,7 @@ function canReprogramTurno(turno) {
   if (diffH < HORA_CANCELACION_MINIMA) return false;
 
   const count = Number(turno.reprogramacionesCount || 0);
-  return count < 1;
+  return count < maxReprogramaciones;
 }
 
 function getTurnoTone(estadoTurno) {
@@ -248,7 +279,9 @@ export default function MisTurnos() {
   const [loading, setLoading] = useState(true);
   const [social, setSocial] = useState(null);
   const [ubicacion, setUbicacion] = useState(null);
-  const [expanded, setExpanded] = useState({});
+  const [reservasConfig, setReservasConfig] = useState({
+    permitirReprogramacionUsuario: true,
+  });
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -295,24 +328,43 @@ export default function MisTurnos() {
       },
     );
 
+    const unsubReservas = onSnapshot(
+      doc(db, "configuracion", "reservas"),
+      (snap) => {
+        if (!snap.exists()) return;
+        setReservasConfig((current) => ({
+          ...current,
+          ...snap.data(),
+        }));
+      },
+    );
+
     return () => {
       unsubSocial();
       unsubUbic();
+      unsubReservas();
     };
   }, []);
 
-  const { proximos, historial } = useMemo(() => {
+  const { proximos, pendientes, historial } = useMemo(() => {
     const now = Date.now();
     const sorted = [...turnos].sort(
       (a, b) => Number(b.horaInicio || 0) - Number(a.horaInicio || 0),
     );
 
     const prox = [];
+    const pend = [];
     const hist = [];
 
     for (const t of sorted) {
       const start = Number(t.horaInicio || 0);
       const estadoTurno = getEstadoTurno(t);
+      const estadoPago = getEstadoPago(t);
+      const requiereGestion =
+        estadoTurno === "pendiente" ||
+        estadoTurno === "pendiente_aprobacion" ||
+        estadoPago === "pendiente" ||
+        estadoPago === "pendiente_aprobacion";
 
       if (!start) {
         hist.push(t);
@@ -325,15 +377,20 @@ export default function MisTurnos() {
           estadoTurno,
         )
       ) {
-        prox.push(t);
+        if (requiereGestion) {
+          pend.push(t);
+        } else {
+          prox.push(t);
+        }
       } else {
         hist.push(t);
       }
     }
 
     prox.sort((a, b) => Number(a.horaInicio || 0) - Number(b.horaInicio || 0));
+    pend.sort((a, b) => Number(a.horaInicio || 0) - Number(b.horaInicio || 0));
 
-    return { proximos: prox, historial: hist };
+    return { proximos: prox, pendientes: pend, historial: hist };
   }, [turnos]);
 
   async function cancelarTurno(turno) {
@@ -401,42 +458,27 @@ export default function MisTurnos() {
   async function reprogramarTurno(turno) {
     if (!turno?.id || !turno?.servicioId) return;
 
-    if (!canReprogramTurno(turno)) {
+    if (!canReprogramTurno(turno, reservasConfig)) {
+      const maxReprogramaciones = getMaxReprogramacionesUsuario(reservasConfig);
       Swal.fire({
         icon: "warning",
         title: "No se puede reprogramar",
-        text: `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion y maximo 1 vez.`,
+        text:
+          reservasConfig?.permitirReprogramacionUsuario === false
+            ? "La reprogramacion por parte del usuario esta desactivada."
+            : `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"} por turno.`,
         confirmButtonText: "Entendido",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
       return;
     }
 
-    const fechaMin = new Date(Date.now() + HORA_CANCELACION_MINIMA * 3600000)
-      .toISOString()
-      .slice(0, 10);
-
-    const { value: fechaElegida } = await Swal.fire({
-      title: "Elegí una nueva fecha",
-      input: "date",
-      inputValue: turno.fecha || "",
-      inputAttributes: { min: fechaMin },
-      showCancelButton: true,
-      confirmButtonText: "Ver horarios",
-      cancelButtonText: "Volver",
-      customClass: {
-        confirmButton: "swal-btn-confirm",
-        cancelButton: "swal-btn-cancel",
-      },
-      inputValidator: (value) => {
-        if (!value) return "Elegí una fecha";
-        return null;
-      },
-    });
-
-    if (!fechaElegida) return;
-
     try {
+      showLoading({
+        title: "Buscando disponibilidad",
+        text: "Estamos cargando dias y horarios para reprogramar tu turno...",
+      });
+
       const servicioSnap = await getDoc(doc(db, "servicios", turno.servicioId));
 
       if (!servicioSnap.exists()) {
@@ -455,71 +497,70 @@ export default function MisTurnos() {
       }
 
       const getAgenda = httpsCallable(functions, "getAgendaGabinete");
-      const agendaResp = await getAgenda({
-        gabineteIds,
-        fecha: fechaElegida,
-      });
+      const fechaMin = new Date(Date.now() + HORA_CANCELACION_MINIMA * 3600000)
+        .toISOString()
+        .slice(0, 10);
+      const disponibilidades = [];
 
-      const agenda = agendaResp?.data || {
-        horarios: [],
-        bloqueos: [],
-        turnos: [],
-      };
+      for (let offset = 0; offset < 14 && disponibilidades.length < 7; offset++) {
+        const fecha = sumarDiasISO(fechaMin, offset);
+        const agendaResp = await getAgenda({
+          gabineteIds,
+          fecha,
+        });
 
-      const fechaObj = new Date(`${fechaElegida}T00:00:00`);
-      const slots = generarSlotsDia(agenda, servicio, fechaObj).filter(
-        (s) => !s.ocupado,
-      );
+        const agenda = agendaResp?.data || {
+          horarios: [],
+          bloqueos: [],
+          turnos: [],
+        };
 
-      if (!slots.length) {
+        const fechaObj = new Date(`${fecha}T00:00:00`);
+        const slots = generarSlotsDia(agenda, servicio, fechaObj).filter(
+          (s) => !s.ocupado,
+        );
+
+        if (!slots.length) continue;
+
+        disponibilidades.push({
+          fecha,
+          label: formatFechaCortaISO(fecha),
+          fullLabel: formatFechaISO(fecha),
+          slots: slots.map((slot) => ({
+            inicio: Number(slot.inicio),
+            fin: Number(slot.fin),
+            hora: formatHora(slot.inicio),
+          })),
+        });
+      }
+
+      if (!disponibilidades.length) {
+        hideLoading();
         Swal.fire({
           icon: "info",
           title: "Sin disponibilidad",
-          text: "No hay horarios disponibles para esa fecha.",
+          text: "No encontramos dias con horarios disponibles para reprogramar en este momento.",
           confirmButtonText: "Entendido",
           customClass: { confirmButton: "swal-btn-confirm" },
         });
         return;
       }
 
-      const htmlSlots = slots
-        .map((slot) => {
-          const hora = formatHora(slot.inicio);
-          return `
-            <button
-              type="button"
-              class="slot-reprogramar-btn"
-              data-inicio="${slot.inicio}"
-              data-fin="${slot.fin}"
-              style="
-                border:1px solid #d0d7de;
-                background:#fff;
-                border-radius:10px;
-                padding:10px 12px;
-                cursor:pointer;
-                font-weight:600;
-              "
-            >
-              ${hora}
-            </button>
-          `;
-        })
-        .join("");
+      hideLoading();
 
       let slotSeleccionado = null;
+      let fechaElegida = disponibilidades[0].fecha;
 
       const seleccion = await Swal.fire({
-        title: "Elegí un horario disponible",
+        title: "Reprogramar turno",
+        width: 760,
         html: `
-          <div style="text-align:left;font-size:14px;margin-bottom:12px;">
-            <b>Fecha:</b> ${formatFechaISO(fechaElegida)}
+          <div style="text-align:left;font-size:14px;margin-bottom:12px;color:#6b6178;">
+            Elegi un dia disponible y despues el horario para cambiar tu turno.
           </div>
-          <div
-            id="slots-reprogramacion"
-            style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;"
-          >
-            ${htmlSlots}
-          </div>
+          <div id="fechas-reprogramacion" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
+          <div id="fecha-reprogramacion-actual" style="margin-bottom:10px;font-size:14px;color:#4b4258;font-weight:700;"></div>
+          <div id="slots-reprogramacion" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;"></div>
         `,
         showCancelButton: true,
         confirmButtonText: "Confirmar reprogramacion",
@@ -529,62 +570,161 @@ export default function MisTurnos() {
           cancelButton: "swal-btn-cancel",
         },
         didOpen: () => {
-          const botones = document.querySelectorAll(".slot-reprogramar-btn");
+          const fechasContainer = document.getElementById("fechas-reprogramacion");
+          const slotsContainer = document.getElementById("slots-reprogramacion");
+          const fechaActual = document.getElementById("fecha-reprogramacion-actual");
 
-          botones.forEach((btn) => {
+          function renderSlots(fecha) {
+            const disponibilidad = disponibilidades.find((item) => item.fecha === fecha);
+            fechaElegida = fecha;
+            slotSeleccionado = null;
+
+            fechaActual.textContent = disponibilidad
+              ? `Horarios para ${disponibilidad.fullLabel}`
+              : "";
+
+            slotsContainer.innerHTML = (disponibilidad?.slots || [])
+              .map(
+                (slot) => `
+                  <button
+                    type="button"
+                    class="slot-reprogramar-btn"
+                    data-inicio="${slot.inicio}"
+                    data-fin="${slot.fin}"
+                    style="
+                      border:1px solid #d9cdea;
+                      background:#fff;
+                      border-radius:14px;
+                      padding:11px 12px;
+                      cursor:pointer;
+                      font-weight:700;
+                      color:#2f2438;
+                    "
+                  >
+                    ${slot.hora}
+                  </button>
+                `,
+              )
+              .join("");
+
+            const botonesSlot = slotsContainer.querySelectorAll(".slot-reprogramar-btn");
+            botonesSlot.forEach((btn) => {
+              btn.addEventListener("click", () => {
+                botonesSlot.forEach((b) => {
+                  b.style.background = "#fff";
+                  b.style.color = "#2f2438";
+                  b.style.border = "1px solid #d9cdea";
+                });
+
+                btn.style.background = "linear-gradient(135deg, #d86aa7, #a85fe8)";
+                btn.style.color = "#fff";
+                btn.style.border = "1px solid transparent";
+
+                slotSeleccionado = {
+                  inicio: Number(btn.dataset.inicio),
+                  fin: Number(btn.dataset.fin),
+                };
+              });
+            });
+          }
+
+          fechasContainer.innerHTML = disponibilidades
+            .map(
+              (item, index) => `
+                <button
+                  type="button"
+                  class="fecha-reprogramar-btn"
+                  data-fecha="${item.fecha}"
+                  style="
+                    border:1px solid ${index === 0 ? "#a85fe8" : "#ddd2ec"};
+                    background:${index === 0 ? "#f6edff" : "#fff"};
+                    color:#2f2438;
+                    border-radius:999px;
+                    padding:10px 14px;
+                    cursor:pointer;
+                    font-weight:700;
+                  "
+                >
+                  ${item.label}
+                </button>
+              `,
+            )
+            .join("");
+
+          const botonesFecha = fechasContainer.querySelectorAll(".fecha-reprogramar-btn");
+          botonesFecha.forEach((btn) => {
             btn.addEventListener("click", () => {
-              botones.forEach((b) => {
+              botonesFecha.forEach((b) => {
                 b.style.background = "#fff";
-                b.style.color = "#111";
-                b.style.border = "1px solid #d0d7de";
+                b.style.border = "1px solid #ddd2ec";
               });
 
-              btn.style.background = "#111";
-              btn.style.color = "#fff";
-              btn.style.border = "1px solid #111";
-
-              slotSeleccionado = {
-                inicio: Number(btn.dataset.inicio),
-                fin: Number(btn.dataset.fin),
-              };
+              btn.style.background = "#f6edff";
+              btn.style.border = "1px solid #a85fe8";
+              renderSlots(btn.dataset.fecha);
             });
           });
+
+          renderSlots(disponibilidades[0].fecha);
         },
         preConfirm: () => {
           if (!slotSeleccionado) {
-            Swal.showValidationMessage("Elegí un horario");
+            Swal.showValidationMessage("Elegi un horario");
             return false;
           }
-          return slotSeleccionado;
+          return {
+            fecha: fechaElegida,
+            ...slotSeleccionado,
+          };
         },
       });
 
       if (!seleccion.isConfirmed || !seleccion.value) return;
 
+      showLoading({
+        title: "Reprogramando turno",
+        text: "Guardando la nueva fecha y horario...",
+      });
+
       const callable = httpsCallable(functions, "reprogramarTurnoInteligente");
       const resp = await callable({
         turnoId: turno.id,
-        fecha: fechaElegida,
+        fecha: seleccion.value.fecha,
         horaInicio: seleccion.value.inicio,
         horaFin: seleccion.value.fin,
       });
 
       const data = resp?.data || {};
 
+      hideLoading();
+
       await Swal.fire({
         icon: "success",
         title: "Turno reprogramado",
         html: `
-          <div style="text-align:left;font-size:14px;">
-            <div><b>Nueva fecha:</b> ${formatFechaISO(data.fecha || fechaElegida)}</div>
-            <div><b>Nueva hora:</b> ${formatHora(data.horaInicio || seleccion.value.inicio)}</div>
-            <div><b>Gabinete:</b> ${data.nombreGabinete || "-"}</div>
+          <div style="text-align:center;margin-bottom:14px;color:#5f5670;">
+            Tu turno ya fue actualizado correctamente.
+          </div>
+          <div style="display:grid;gap:10px;text-align:left;">
+            <div style="padding:12px 14px;border:1px solid #eadcf7;border-radius:16px;background:linear-gradient(180deg,#fff,#fbf7ff);">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a7aa5;margin-bottom:4px;">Nueva fecha</div>
+              <div style="font-size:16px;font-weight:800;color:#2d2337;">${formatFechaISO(data.fecha || seleccion.value.fecha)}</div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid #eadcf7;border-radius:16px;background:linear-gradient(180deg,#fff,#fbf7ff);">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a7aa5;margin-bottom:4px;">Nuevo horario</div>
+              <div style="font-size:16px;font-weight:800;color:#2d2337;">${formatHora(data.horaInicio || seleccion.value.inicio)}</div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid #eadcf7;border-radius:16px;background:linear-gradient(180deg,#fff,#fbf7ff);">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a7aa5;margin-bottom:4px;">Gabinete</div>
+              <div style="font-size:16px;font-weight:800;color:#2d2337;">${data.nombreGabinete || "-"}</div>
+            </div>
           </div>
         `,
         confirmButtonText: "Ok",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
     } catch (error) {
+      hideLoading();
       console.error("Error reprogramando turno:", error);
 
       Swal.fire({
@@ -592,13 +732,12 @@ export default function MisTurnos() {
         title: "No se pudo reprogramar",
         text:
           error?.message?.replace("FirebaseError: ", "") ||
-          "Ocurrió un error al intentar reprogramar el turno.",
+          "Ocurrio un error al intentar reprogramar el turno.",
         confirmButtonText: "Entendido",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
     }
   }
-
   function abrirWhatsappTurno(turno) {
     const nro = String(social?.whatsappContacto || "").trim();
     if (!nro) return;
@@ -650,18 +789,27 @@ export default function MisTurnos() {
   function TurnoCard({ t, isProximo }) {
     const start = Number(t.horaInicio || 0);
     const diff = start ? start - Date.now() : null;
+    const esHistorial = !isProximo;
 
     const estadoTurno = getEstadoTurno(t);
     const estadoPago = getEstadoPago(t);
+    const requiereGestion =
+      estadoTurno === "pendiente" ||
+      estadoTurno === "pendiente_aprobacion" ||
+      estadoPago === "pendiente" ||
+      estadoPago === "pendiente_aprobacion";
     const { total, anticipo, pagado, saldoPendiente } = getMontos(t);
-    const isExpanded = !!expanded[t.id];
     const mostrarResumenPago =
       total > 0 &&
       saldoPendiente > 0 &&
       !["cancelado", "rechazado", "expirado"].includes(estadoPago);
 
     return (
-      <article className={`turno-card ${isProximo ? "is-upcoming" : ""}`}>
+      <article
+        className={`turno-card ${isProximo ? "is-upcoming" : ""} ${
+          requiereGestion ? "is-pending" : "is-confirmed"
+        } ${esHistorial ? "is-history" : ""}`}
+      >
         <div className="turno-card-top">
           <div className="turno-card-main">
             <div className="turno-card-badges">
@@ -678,19 +826,33 @@ export default function MisTurnos() {
               )}
             </div>
 
+            {!esHistorial && (
+              <div
+                className={`turno-card-state ${
+                  requiereGestion ? "pending" : "confirmed"
+                }`}
+              >
+                {requiereGestion
+                  ? "Pendiente de confirmacion o pago"
+                  : "Turno confirmado"}
+              </div>
+            )}
+
             <h3 className="turno-card-title">
               {t.nombreServicio || "Servicio"}
             </h3>
 
-            <div className="turno-card-meta">
-              <span>
-                {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
-              </span>
-              {start ? <span>{formatHora(t.horaInicio)}</span> : null}
-              {!!ubicacion?.mapsDireccion && (
-                <span>{ubicacion.mapsDireccion}</span>
-              )}
-            </div>
+            {!esHistorial && (
+              <div className="turno-card-meta">
+                <span>
+                  {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
+                </span>
+                {start ? <span>{formatHora(t.horaInicio)}</span> : null}
+                {!!ubicacion?.mapsDireccion && (
+                  <span>{ubicacion.mapsDireccion}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {total > 0 && (
@@ -703,6 +865,16 @@ export default function MisTurnos() {
           )}
         </div>
 
+        {esHistorial ? (
+          <div className="turno-history-line">
+            <span>{t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}</span>
+            {start ? <span>{formatHora(t.horaInicio)}</span> : null}
+            <span>{ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}</span>
+            <span>{ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}</span>
+            <span>Total ${total.toLocaleString("es-AR")}</span>
+            <span>Pagado ${pagado.toLocaleString("es-AR")}</span>
+          </div>
+        ) : (
         <div className="turno-card-stats">
           <div className="turno-stat turno-stat-highlight">
             <span>Pagado</span>
@@ -721,55 +893,29 @@ export default function MisTurnos() {
             </div>
           )}
         </div>
+        )}
 
-        {mostrarResumenPago && (
+        {!esHistorial && mostrarResumenPago && (
           <div className="turno-card-payment-note">
             Te queda pendiente abonar ${saldoPendiente.toLocaleString("es-AR")}.
           </div>
         )}
 
-        <div className="turno-card-actions">
-          {ubicacion?.mapsLink && (
-            <a
-              href={ubicacion.mapsLink}
-              target="_blank"
-              rel="noreferrer"
-              className="btn turno-action-btn"
-            >
-              Como llegar
-            </a>
-          )}
-
-          <button
-            type="button"
-            className="btn turno-action-btn"
-            onClick={() => addToCalendar(t)}
-            disabled={!t.horaInicio}
-          >
-            Agregar al calendario
-          </button>
-
-          {social?.whatsappContacto && (
-            <button
-              type="button"
-              className="btn turno-action-btn success"
-              onClick={() => abrirWhatsappTurno(t)}
-            >
-              WhatsApp
-            </button>
-          )}
-
-          {isProximo && (
+        {!esHistorial && (
+          <div className="turno-card-actions">
+            {isProximo && (
             <>
               <button
                 type="button"
                 className="btn turno-action-btn info"
                 onClick={() => reprogramarTurno(t)}
-                disabled={!canReprogramTurno(t)}
+                disabled={!canReprogramTurno(t, reservasConfig)}
                 title={
-                  canReprogramTurno(t)
+                  canReprogramTurno(t, reservasConfig)
                     ? ""
-                    : `Reprogramable con ${HORA_CANCELACION_MINIMA}h de anticipacion y maximo 1 vez`
+                    : reservasConfig?.permitirReprogramacionUsuario === false
+                      ? "La reprogramacion por parte del usuario esta desactivada"
+                      : `Se permiten ${getMaxReprogramacionesUsuario(reservasConfig)} ${getMaxReprogramacionesUsuario(reservasConfig) === 1 ? "reprogramacion" : "reprogramaciones"} por turno con ${HORA_CANCELACION_MINIMA}h de anticipacion`
                 }
               >
                 Reprogramar
@@ -789,55 +935,8 @@ export default function MisTurnos() {
                 Cancelar turno
               </button>
             </>
-          )}
+            )}
 
-          <button
-            type="button"
-            className="btn turno-action-btn ghost"
-            onClick={() => setExpanded((p) => ({ ...p, [t.id]: !p[t.id] }))}
-          >
-            {isExpanded ? "Ocultar detalle" : "Ver detalle"}
-          </button>
-        </div>
-
-        {isExpanded && (
-          <div className="turno-card-detail">
-            <div>
-              <b>ID turno:</b> {t.id}
-            </div>
-            <div>
-              <b>Estado turno:</b>{" "}
-              {ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}
-            </div>
-            <div>
-              <b>Estado pago:</b>{" "}
-              {ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}
-            </div>
-            {!!t.metodoPago && (
-              <div>
-                <b>Metodo de pago:</b> {t.metodoPago}
-              </div>
-            )}
-            {!!t.tipoAnticipo && (
-              <div>
-                <b>Tipo anticipo:</b> {t.tipoAnticipo}
-              </div>
-            )}
-            {!!(t.nombreGabinete || t.gabineteId) && (
-              <div>
-                <b>Gabinete:</b> {t.nombreGabinete || t.gabineteId}
-              </div>
-            )}
-            {!!t.servicioId && (
-              <div>
-                <b>Servicio ID:</b> {t.servicioId}
-              </div>
-            )}
-            {!!t.pagoId && (
-              <div>
-                <b>Pago ID:</b> {t.pagoId}
-              </div>
-            )}
           </div>
         )}
       </article>
@@ -880,6 +979,10 @@ export default function MisTurnos() {
             <strong>{proximos.length}</strong>
           </article>
           <article className="turnos-hero-stat">
+            <span>Pendientes</span>
+            <strong>{pendientes.length}</strong>
+          </article>
+          <article className="turnos-hero-stat">
             <span>Historial</span>
             <strong>{historial.length}</strong>
           </article>
@@ -887,10 +990,10 @@ export default function MisTurnos() {
       </section>
 
       <section className="turnos-section">
-        <div className="turnos-section-head">
+        <div className="turnos-section-head turnos-section-head-confirmed">
           <div>
             <h2>Próximos</h2>
-            <p>Turnos activos con opciones para reprogramar o cancelar.</p>
+            <p>Turnos confirmados y activos con opciones para reprogramar o cancelar.</p>
           </div>
           <span className="turnos-counter">
             {proximos.length} turno{proximos.length === 1 ? "" : "s"}
@@ -902,6 +1005,30 @@ export default function MisTurnos() {
         ) : (
           <div className="turnos-card-list">
             {proximos.map((t) => (
+              <TurnoCard key={t.id} t={t} isProximo />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="turnos-section">
+        <div className="turnos-section-head turnos-section-head-pending">
+          <div>
+            <h2>Pendientes de confirmacion o pago</h2>
+            <p>Turnos activos que todavia esperan aprobacion, confirmacion o un pago.</p>
+          </div>
+          <span className="turnos-counter">
+            {pendientes.length} turno{pendientes.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        {pendientes.length === 0 ? (
+          <div className="turnos-empty-state">
+            No tenes turnos pendientes de confirmacion o pago.
+          </div>
+        ) : (
+          <div className="turnos-card-list">
+            {pendientes.map((t) => (
               <TurnoCard key={t.id} t={t} isProximo />
             ))}
           </div>
@@ -934,3 +1061,4 @@ export default function MisTurnos() {
     </div>
   );
 }
+

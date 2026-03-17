@@ -1131,7 +1131,7 @@ export default function TurnosAdminPanel() {
             <span>Turnos visibles</span>
             <strong>{resumen.total}</strong>
           </article>
-          <article className="turnos-summary-card">
+          <article className="turnos-summary-card is-attention">
             <span>Por confirmar</span>
             <strong>{resumen.porConfirmar}</strong>
           </article>

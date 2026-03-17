@@ -338,6 +338,18 @@ input[type="time"]:focus {
   max-width: 100%;
 }
 
+.admin-input.is-muted {
+  opacity: 0.48;
+  background: linear-gradient(180deg, #f8f6fb, #f2edf7);
+  border-color: #ddd4ea;
+  color: #857a96;
+}
+
+.admin-input.is-muted:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .servicios-form-actions-wrap,
 .button-field {
   display: flex;

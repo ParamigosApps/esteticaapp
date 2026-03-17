@@ -147,6 +147,8 @@ async function obtenerReservasConfig() {
     ? snap.data()
     : {
         bloquearTurnosMananaSin12h: false,
+        permitirReprogramacionUsuario: true,
+        maxReprogramacionesUsuario: 1,
         whatsappHabilitado: false,
         enviarWhatsappPendienteTest: false,
         horaRecordatorioWhatsapp: "10:00",
@@ -342,6 +344,8 @@ export default function AdminConfiguracion() {
   });
   const [reservasConfig, setReservasConfig] = useState({
     bloquearTurnosMananaSin12h: false,
+    permitirReprogramacionUsuario: true,
+    maxReprogramacionesUsuario: 1,
     whatsappHabilitado: false,
     enviarWhatsappPendienteTest: false,
     horaRecordatorioWhatsapp: "10:00",
@@ -1058,6 +1062,47 @@ export default function AdminConfiguracion() {
                     bloquearTurnosMananaSin12h: event.target.checked,
                   }))
                 }
+              />
+            </label>
+
+            <label className="config-switch-item">
+              <div>
+                <span className="config-switch-label">
+                  Permitir reprogramaciones por el usuario
+                </span>
+              </div>
+
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={Boolean(reservasConfig.permitirReprogramacionUsuario)}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    permitirReprogramacionUsuario: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="config-field">
+              <span>Se permiten X reprogramaciones por turno</span>
+              <input
+                className="form-control"
+                type="number"
+                min="0"
+                step="1"
+                value={Number(reservasConfig.maxReprogramacionesUsuario ?? 1)}
+                onChange={(event) =>
+                  setReservasConfig((current) => ({
+                    ...current,
+                    maxReprogramacionesUsuario: Math.max(
+                      0,
+                      Number(event.target.value || 0),
+                    ),
+                  }))
+                }
+                disabled={!Boolean(reservasConfig.permitirReprogramacionUsuario)}
               />
             </label>
 

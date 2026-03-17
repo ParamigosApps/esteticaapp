@@ -25,12 +25,13 @@ function normalizar(str) {
   return str.trim().toLowerCase();
 }
 
-function GabineteItem({ gabinete }) {
+function GabineteItem({ gabinete, gabinetes }) {
   const [horarios, setHorarios] = useState([]);
   const [editando, setEditando] = useState(false);
   const [diaInicio, setDiaInicio] = useState(1);
   const [diaFin, setDiaFin] = useState(6);
   const [modoCarga, setModoCarga] = useState("semana");
+  const [nombreEditado, setNombreEditado] = useState(gabinete.nombreGabinete || "");
 
   useEffect(() => {
     const horariosQuery = query(
@@ -52,6 +53,10 @@ function GabineteItem({ gabinete }) {
 
     setDiaFin(diaInicio);
   }, [modoCarga, diaInicio]);
+
+  useEffect(() => {
+    setNombreEditado(gabinete.nombreGabinete || "");
+  }, [gabinete.nombreGabinete]);
 
   async function agregarRango({ desde, hasta }) {
     if (!esRangoValido(desde, hasta)) {
@@ -97,6 +102,35 @@ function GabineteItem({ gabinete }) {
   async function toggleActivo() {
     await updateDoc(doc(db, "gabinetes", gabinete.id), {
       activo: !gabinete.activo,
+    });
+  }
+
+  async function guardarNombreGabinete() {
+    const nombreLimpio = nombreEditado.trim();
+
+    if (!nombreLimpio) {
+      await swalError({
+        text: "Ingresa un nombre para el gabinete.",
+      });
+      return;
+    }
+
+    const yaExisteActivo = gabinetes.some(
+      (item) =>
+        item.id !== gabinete.id &&
+        item.activo &&
+        normalizar(item.nombreGabinete || "") === normalizar(nombreLimpio),
+    );
+
+    if (yaExisteActivo) {
+      await swalError({
+        text: "Ya existe un gabinete activo con ese nombre.",
+      });
+      return;
+    }
+
+    await updateDoc(doc(db, "gabinetes", gabinete.id), {
+      nombreGabinete: nombreLimpio,
     });
   }
 
@@ -159,6 +193,27 @@ function GabineteItem({ gabinete }) {
 
       {editando ? (
         <div className="gabinete-editor-shell">
+          <div className="gabinete-rename-row">
+            <div className="field-group gabinete-field">
+              <label htmlFor={`nombre-${gabinete.id}`}>Nombre del gabinete</label>
+              <input
+                id={`nombre-${gabinete.id}`}
+                className="admin-input gabinete-input"
+                value={nombreEditado}
+                onChange={(e) => setNombreEditado(e.target.value)}
+                placeholder="Nombre del gabinete"
+              />
+            </div>
+
+            <button
+              type="button"
+              className="swal-btn-guardar"
+              onClick={guardarNombreGabinete}
+            >
+              Guardar nombre
+            </button>
+          </div>
+
           <div className="gabinete-editor-top">
             <div className="field-group gabinete-field">
               <label htmlFor={`modo-${gabinete.id}`}>Modo de carga</label>
@@ -330,7 +385,11 @@ export default function GabinetesPanel() {
 
       <section className="gabinetes-grid">
         {gabinetes.map((gabinete) => (
-          <GabineteItem key={gabinete.id} gabinete={gabinete} />
+          <GabineteItem
+            key={gabinete.id}
+            gabinete={gabinete}
+            gabinetes={gabinetes}
+          />
         ))}
       </section>
     </div>

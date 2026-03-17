@@ -35,6 +35,7 @@ exports.marcarTurnoRealizadoAdmin = onCall(
 
       tx.update(turnoRef, {
         estadoTurno: "finalizado",
+        estado: "finalizado",
         finalizadoAt: FieldValue.serverTimestamp(),
         finalizadoEn: FieldValue.serverTimestamp(),
         finalizadoPor: "admin",

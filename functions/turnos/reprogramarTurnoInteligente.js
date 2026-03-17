@@ -5,6 +5,15 @@ const { FieldValue } = require("firebase-admin/firestore");
 const HORA_REPROGRAMACION_MINIMA = 48;
 const MAX_REPROGRAMACIONES_CLIENTE = 1;
 
+function getMaxReprogramacionesCliente(reservasConfig = {}) {
+  return Math.max(
+    0,
+    Number(
+      reservasConfig?.maxReprogramacionesUsuario ?? MAX_REPROGRAMACIONES_CLIENTE
+    )
+  );
+}
+
 function extraerGabineteIdsDesdeServicio(servicio) {
   const raw = Array.isArray(servicio?.gabinetes) ? servicio.gabinetes : [];
 
@@ -19,8 +28,11 @@ function extraerGabineteIdsDesdeServicio(servicio) {
     .filter(Boolean);
 }
 
-function puedeReprogramarTurno(turno) {
+function puedeReprogramarTurno(turno, reservasConfig = {}) {
   if (!turno) return false;
+  if (reservasConfig?.permitirReprogramacionUsuario === false) return false;
+  const maxReprogramaciones = getMaxReprogramacionesCliente(reservasConfig);
+  if (maxReprogramaciones < 1) return false;
 
   if (
     ["cancelado", "rechazado", "vencido"].includes(turno.estado)
@@ -35,7 +47,7 @@ function puedeReprogramarTurno(turno) {
   if (diffH < HORA_REPROGRAMACION_MINIMA) return false;
 
   const count = Number(turno.reprogramacionesCount || 0);
-  if (count >= MAX_REPROGRAMACIONES_CLIENTE) return false;
+  if (count >= maxReprogramaciones) return false;
 
   return true;
 }
@@ -77,29 +89,29 @@ exports.reprogramarTurnoInteligente = onCall(
     const db = getAdmin().firestore();
     const clienteId = request.auth.uid;
     const turnoRef = db.collection("turnos").doc(turnoId);
+    const reservasConfigSnap = await db.collection("configuracion").doc("reservas").get();
+    const reservasConfig = reservasConfigSnap.exists ? reservasConfigSnap.data() || {} : {};
 
-    const turnoSnap = await turnoRef.get();
-    if (!turnoSnap.exists) {
-      throw new HttpsError("not-found", "Turno no encontrado");
-    }
-
-    const turnoActual = turnoSnap.data();
-
-    if (turnoActual.clienteId !== clienteId) {
-      throw new HttpsError("permission-denied", "No podés reprogramar este turno");
-    }
-
-    if (!puedeReprogramarTurno(turnoActual)) {
+    if (!puedeReprogramarTurno(turnoActual, reservasConfig)) {
+      const maxReprogramaciones = getMaxReprogramacionesCliente(reservasConfig);
       throw new HttpsError(
         "failed-precondition",
-        `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${MAX_REPROGRAMACIONES_CLIENTE} vez`
+        reservasConfig?.permitirReprogramacionUsuario === false
+          ? "La reprogramacion por parte del usuario esta desactivada"
+          : `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"}`
       );
     }
-
-    if (!turnoActual.servicioId) {
-      throw new HttpsError("failed-precondition", "El turno no tiene servicio asociado");
     }
+      const maxReprogramaciones = getMaxReprogramacionesCliente(reservasConfig);
 
+    if (!puedeReprogramarTurno(turnoActual, reservasConfig)) {
+      throw new HttpsError(
+          : `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"}`
+        reservasConfig?.permitirReprogramacionUsuario === false
+          ? "La reprogramacion por parte del usuario esta desactivada"
+          : `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${MAX_REPROGRAMACIONES_CLIENTE} vez`
+      );
+    }
     const servicioSnap = await db.collection("servicios").doc(turnoActual.servicioId).get();
     if (!servicioSnap.exists) {
       throw new HttpsError("not-found", "Servicio no encontrado");
@@ -112,29 +124,30 @@ exports.reprogramarTurnoInteligente = onCall(
       throw new HttpsError("failed-precondition", "El servicio no tiene gabinetes configurados");
     }
 
-    return await db.runTransaction(async (tx) => {
-      const turnoSnapTx = await tx.get(turnoRef);
-      if (!turnoSnapTx.exists) {
-        throw new HttpsError("not-found", "Turno no encontrado");
-      }
-
-      const turnoTx = turnoSnapTx.data();
-
-      if (turnoTx.clienteId !== clienteId) {
-        throw new HttpsError("permission-denied", "No podés reprogramar este turno");
-      }
-
-      if (!puedeReprogramarTurno(turnoTx)) {
+      if (!puedeReprogramarTurno(turnoTx, reservasConfig)) {
+        const maxReprogramaciones = getMaxReprogramacionesCliente(reservasConfig);
         throw new HttpsError(
           "failed-precondition",
-          `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${MAX_REPROGRAMACIONES_CLIENTE} vez`
+          reservasConfig?.permitirReprogramacionUsuario === false
+            ? "La reprogramacion por parte del usuario esta desactivada"
+            : `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"}`
         );
       }
-
       const gabineteDocs = await Promise.all(
         idsValidos.map((id) => tx.get(db.collection("gabinetes").doc(id)))
       );
-
+      const gabinetes = gabineteDocs
+        throw new HttpsError(
+        const maxReprogramaciones = getMaxReprogramacionesCliente(reservasConfig);
+          "failed-precondition",
+          reservasConfig?.permitirReprogramacionUsuario === false
+            ? "La reprogramacion por parte del usuario esta desactivada"
+            : `Solo podés reprogramar con al menos ${HORA_REPROGRAMACION_MINIMA} horas de anticipación y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"}`
+        );
+      }
+      const gabineteDocs = await Promise.all(
+        idsValidos.map((id) => tx.get(db.collection("gabinetes").doc(id)))
+      );
       const gabinetes = gabineteDocs
         .filter((snap) => snap.exists)
         .map((snap) => ({ id: snap.id, ...snap.data() }))
@@ -250,3 +263,4 @@ exports.reprogramarTurnoInteligente = onCall(
     });
   },
 );
+

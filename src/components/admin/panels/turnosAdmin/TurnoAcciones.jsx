@@ -118,7 +118,7 @@ export default function TurnoAcciones({
             </button>
           )}
 
-          {puedeMarcarRealizado(estadoTurno) && (
+          {puedeMarcarRealizado(turno, estadoTurno) && (
             <button
               type="button"
               className="btn btn-sm btn-outline-success"
@@ -128,7 +128,7 @@ export default function TurnoAcciones({
             </button>
           )}
 
-          {puedeMarcarAusente(estadoTurno) && (
+          {puedeMarcarAusente(turno, estadoTurno) && (
             <button
               type="button"
               className="btn btn-sm btn-outline-warning"

@@ -65,6 +65,39 @@
   border: 1px solid rgba(215, 199, 236, 0.5);
 }
 
+.turnos-summary-card.is-attention {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(233, 120, 34, 0.88);
+  background:
+    radial-gradient(circle at top right, rgba(255, 184, 77, 0.3), transparent 42%),
+    linear-gradient(180deg, rgba(255, 250, 242, 0.99), rgba(255, 237, 208, 0.99));
+  box-shadow: 0 16px 34px rgba(193, 94, 18, 0.16);
+}
+
+.turnos-summary-card.is-attention::before {
+  content: "Atencion";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(176, 63, 8, 0.1);
+  color: #9a3d00;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.turnos-summary-card.is-attention span,
+.turnos-summary-card.is-attention strong {
+  color: #8f3f00;
+}
+
 .turnos-summary-card span {
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -412,6 +445,20 @@
   padding: 14px 12px;
 }
 
+.tabla-turnos-admin tbody tr.turno-row-awaiting-confirmation {
+  background:
+    linear-gradient(90deg, rgba(255, 196, 87, 0.24), rgba(255, 248, 235, 0.55), rgba(255, 255, 255, 0));
+}
+
+.tabla-turnos-admin tbody tr.turno-row-awaiting-confirmation td:first-child {
+  border-left: 4px solid #e67e22;
+}
+
+.tabla-turnos-admin tbody tr.turno-row-awaiting-confirmation td {
+  border-top: 1px solid rgba(243, 176, 67, 0.2);
+  border-bottom: 1px solid rgba(243, 176, 67, 0.2);
+}
+
 .turno-cell-primary {
   font-weight: 700;
   color: #251b30;
@@ -544,6 +591,24 @@
   border: 1px solid #ece6f5;
   background: linear-gradient(180deg, #ffffff, #fbf8ff);
   box-shadow: 0 10px 28px rgba(17, 24, 39, 0.05);
+}
+
+.turno-admin-card.is-awaiting-confirmation {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(230, 126, 34, 0.9);
+  background:
+    radial-gradient(circle at top right, rgba(255, 186, 82, 0.22), transparent 34%),
+    linear-gradient(180deg, #fffdf8, #fff0d8);
+  box-shadow: 0 16px 34px rgba(193, 94, 18, 0.15);
+}
+
+.turno-admin-card.is-awaiting-confirmation::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: linear-gradient(180deg, #ffb347, #e67e22);
 }
 
 .turno-admin-card-head {

@@ -152,7 +152,9 @@ function getPrecioVariableModoLabel(servicio = {}) {
 }
 
 function getModoReservaServicio(servicio = {}) {
-  const modo = String(servicio?.modoReserva || "").trim().toLowerCase();
+  const modo = String(servicio?.modoReserva || "")
+    .trim()
+    .toLowerCase();
   return modo === "reserva" ? "reserva" : "automatico";
 }
 
@@ -2004,6 +2006,14 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                   </select>
                 </div>
 
+              </div>
+            </section>
+
+            {/* BLOQUE 3: SEÑA */}
+            <section className="service-editor-block">
+              <div className="service-editor-block-title">Reserva y pago</div>
+
+              <div className="service-editor-fields service-editor-fields-2">
                 <div className="field-group">
                   <label>Modo de reserva</label>
                   <select
@@ -2015,14 +2025,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                     <option value="reserva">Requiere aprobación</option>
                   </select>
                 </div>
-              </div>
-            </section>
 
-            {/* BLOQUE 3: SEÑA */}
-            <section className="service-editor-block">
-              <div className="service-editor-block-title">Reserva y pago</div>
-
-              <div className="service-editor-fields service-editor-fields-2">
                 <div className="field-group">
                   <label>¿Pedir seña?</label>
                   <label className="checkbox-inline text-muted service-check-row">
@@ -2031,7 +2034,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                       checked={pedirAnticipo}
                       onChange={(e) => setPedirAnticipo(e.target.checked)}
                     />
-                    {pedirAnticipo ? "Solicitando seña" : "No pedir seña"}
+                    {pedirAnticipo
+                      ? "Solicitando seña"
+                      : "No se esta solicitando seña"}
                   </label>
                 </div>
 
@@ -2039,7 +2044,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                   <label>Porcentaje seña</label>
                   <input
                     type="number"
-                    className="admin-input seña"
+                    className={`admin-input seña ${!pedirAnticipo ? "is-muted" : ""}`}
                     value={porcentajeAnticipo}
                     onChange={(e) => setPorcentajeAnticipo(e.target.value)}
                     min={5}
@@ -2717,7 +2722,16 @@ export default function ServiciosPanel() {
                       </select>
                     </div>
 
-                    <div className="form-field">
+                  </div>
+                </div>
+
+                <div className="servicios-form-block">
+                  <div className="servicios-form-block-title">
+                    Reserva y pago
+                  </div>
+                  {/* FILA 2 — SEÑA */}
+                  <div className="service-row service-sena-row">
+                    <div className="field-group">
                       <label>Modo de reserva</label>
                       <select
                         className="admin-input reserva"
@@ -2730,15 +2744,7 @@ export default function ServiciosPanel() {
                         <option value="reserva">Requiere aprobación</option>
                       </select>
                     </div>
-                  </div>
-                </div>
 
-                <div className="servicios-form-block">
-                  <div className="servicios-form-block-title">
-                    Reserva y pago
-                  </div>
-                  {/* FILA 2 — SEÑA */}
-                  <div className="service-row service-sena-row">
                     <div className="field-group">
                       <label>¿Pedir seña?</label>
                       <label className="checkbox-inline text-muted">
@@ -2748,7 +2754,9 @@ export default function ServiciosPanel() {
                           checked={pedirAnticipo}
                           onChange={(e) => setPedirAnticipo(e.target.checked)}
                         />
-                        {pedirAnticipo ? "Solicitando seña" : "No pedir seña"}
+                        {pedirAnticipo
+                          ? "Solicitando seña"
+                          : "No se esta solicitando seña"}
                       </label>
                     </div>
 
@@ -2756,7 +2764,7 @@ export default function ServiciosPanel() {
                       <label>Porcentaje seña</label>
                       <input
                         type="number"
-                        className="admin-input anticipo"
+                        className={`admin-input anticipo ${!pedirAnticipo ? "is-muted" : ""}`}
                         value={porcentajeAnticipo}
                         onChange={(e) => setPorcentajeAnticipo(e.target.value)}
                         min={5}

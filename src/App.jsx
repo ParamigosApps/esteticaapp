@@ -32,39 +32,39 @@ import MiPerfil from "./public/pages/MiPerfil.jsx";
 import { ToastContainer } from "react-toastify";
 import { db } from "./Firebase.js";
 
-const DEFAULT_TITLE = "EsteticApp";
+const DEFAULT_TITLE = "PIEL Y CEJAS";
 
 function resolvePageTitle(pathname) {
-  if (pathname === "/") return "Inicio | EsteticApp";
-  if (pathname === "/acceso") return "Acceso | EsteticApp";
-  if (pathname === "/mis-turnos") return "Mis turnos | EsteticApp";
-  if (pathname === "/mi-perfil") return "Mi perfil | EsteticApp";
-  if (pathname === "/pago-resultado") return "Confirmando pago | EsteticApp";
+  if (pathname === "/") return "Inicio - PIEL Y CEJAS";
+  if (pathname === "/acceso") return "Acceso - PIEL Y CEJAS";
+  if (pathname === "/mis-turnos") return "Mis turnos - PIEL Y CEJAS";
+  if (pathname === "/mi-perfil") return "Mi perfil - PIEL Y CEJAS";
+  if (pathname === "/pago-resultado") return "Confirmando pago - PIEL Y CEJAS";
 
   if (pathname === "/admin" || pathname.startsWith("/admin/dashboard")) {
-    return "Dashboard | Admin | EsteticApp";
+    return "Dashboard | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/turnos")) {
-    return "Turnos y reservas | Admin | EsteticApp";
+    return "Turnos y reservas | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/clientes")) {
-    return "Clientes | Admin | EsteticApp";
+    return "Clientes | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/liquidaciones")) {
-    return "Liquidaciones | Admin | EsteticApp";
+    return "Liquidaciones | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/configuracion")) {
-    return "Configuracion | Admin | EsteticApp";
+    return "Configuracion | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/servicios")) {
-    return "Servicios | Admin | EsteticApp";
+    return "Servicios | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/gabinetes")) {
-    return "Gabinetes | Admin | EsteticApp";
+    return "Gabinetes | Admin | PIEL Y CEJAS";
   }
 
   if (pathname === "/profesional" || pathname.startsWith("/profesional/")) {
-    return "Mi agenda | Profesional | EsteticApp";
+    return "Mi agenda | Profesional | PIEL Y CEJAS";
   }
 
   return DEFAULT_TITLE;

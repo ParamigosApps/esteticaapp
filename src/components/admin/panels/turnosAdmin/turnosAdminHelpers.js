@@ -116,12 +116,18 @@ export function puedeCancelarTurno(estadoTurno) {
   return !["cancelado", "realizado", "ausente"].includes(estadoTurno);
 }
 
-export function puedeMarcarRealizado(estadoTurno) {
-  return ["confirmado"].includes(estadoTurno);
+function yaPasoElTurno(turno) {
+  const referencia = Number(turno?.horaFin || turno?.horaInicio || 0);
+  if (!referencia) return false;
+  return referencia <= Date.now();
 }
 
-export function puedeMarcarAusente(estadoTurno) {
-  return ["confirmado"].includes(estadoTurno);
+export function puedeMarcarRealizado(turno, estadoTurno) {
+  return ["confirmado"].includes(estadoTurno) && yaPasoElTurno(turno);
+}
+
+export function puedeMarcarAusente(turno, estadoTurno) {
+  return ["confirmado"].includes(estadoTurno) && yaPasoElTurno(turno);
 }
 
 export function puedeReprogramarTurno(estadoTurno) {

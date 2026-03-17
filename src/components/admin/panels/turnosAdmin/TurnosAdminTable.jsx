@@ -67,13 +67,21 @@ function TurnoRowContent({
     esPagoManual && ["pendiente", "pendiente_aprobacion"].includes(estadoPago);
 
   const vencido =
-    turno.venceEn && turno.venceEn < nowMs && estadoTurno !== "confirmado";
+    turno.venceEn &&
+    turno.venceEn < nowMs &&
+    ["pendiente", "pendiente_aprobacion"].includes(estadoTurno);
   const creadoPorAdmin =
     turno.creadoPorAdmin || turno.origenTurno === "admin_manual";
 
   if (compact) {
     return (
-      <article className="turno-admin-card">
+      <article
+        className={`turno-admin-card ${
+          estadoTurno === "pendiente_aprobacion"
+            ? "is-awaiting-confirmation"
+            : ""
+        }`}
+      >
         <div className="turno-admin-card-head">
           <div>
             <p className="turno-admin-card-date">
@@ -258,7 +266,14 @@ export default function TurnosAdminTable({ turnos, clientes, gabinetes }) {
 
           <tbody>
             {turnos.map((turno) => (
-              <tr key={turno.id}>
+              <tr
+                key={turno.id}
+                className={
+                  getEstadoTurno(turno) === "pendiente_aprobacion"
+                    ? "turno-row-awaiting-confirmation"
+                    : ""
+                }
+              >
                 <TurnoRowContent
                   turno={turno}
                   clientes={clientes}
