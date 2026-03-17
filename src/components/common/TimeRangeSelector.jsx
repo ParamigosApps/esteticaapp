@@ -85,7 +85,10 @@ export default function TimeRangeSelector({ onAdd, showDay = true }) {
         </select>
       </div>
 
-      <button className="swal-btn-agregar " onClick={handleAdd}>
+      <button
+        className="swal-btn-agregar mt-2 d-block mx-auto"
+        onClick={handleAdd}
+      >
         Agregar
       </button>
     </div>

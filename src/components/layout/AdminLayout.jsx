@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  FiAlertTriangle,
   FiCalendar,
   FiDollarSign,
   FiGrid,
@@ -11,7 +12,10 @@ import {
   FiSettings,
   FiUsers,
 } from "react-icons/fi";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { db } from "../../Firebase.js";
+import { getEstadoTurno } from "../admin/panels/turnosAdmin/turnosAdminHelpers.js";
 
 const NAV_GROUPS = [
   {
@@ -86,16 +90,34 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [turnosSinConfirmar, setTurnosSinConfirmar] = useState(0);
 
   const currentGroup = NAV_GROUPS.find((group) =>
     group.items.some((item) => location.pathname.startsWith(item.to)),
   );
-  const currentItem =
-    currentGroup?.items.find((item) => location.pathname.startsWith(item.to)) ||
-    NAV_GROUPS[0].items[0];
   const roleLabel = ROLE_LABELS[Number(user?.nivel || 0)] || "Equipo";
   const userName =
     user?.nombre || user?.displayName || user?.email || "Administracion";
+
+  useEffect(() => {
+    return onSnapshot(collection(db, "turnos"), (snap) => {
+      const cantidad = snap.docs.reduce((acc, item) => {
+        const turno = item.data();
+        const estadoTurno = getEstadoTurno(turno);
+
+        if (
+          estadoTurno === "pendiente" ||
+          estadoTurno === "pendiente_aprobacion"
+        ) {
+          return acc + 1;
+        }
+
+        return acc;
+      }, 0);
+
+      setTurnosSinConfirmar(cantidad);
+    });
+  }, []);
 
   function linkClass(path) {
     return location.pathname.includes(path)
@@ -144,13 +166,28 @@ export default function AdminLayout() {
             <strong>{userName}</strong>
             <small>{roleLabel}</small>
           </div>
-
-          <div className="admin-sidebar-focus">
-            <span className="admin-sidebar-focus-label">Vista actual</span>
-            <strong>{currentItem.title}</strong>
-            <small>{currentItem.subtitle}</small>
-          </div>
         </section>
+
+        {turnosSinConfirmar > 0 ? (
+          <Link
+            to="/admin/turnos"
+            className="admin-sidebar-alert"
+            onClick={cerrarSidebar}
+          >
+            <span className="admin-sidebar-alert-icon" aria-hidden="true">
+              <FiAlertTriangle />
+            </span>
+            <span className="admin-sidebar-alert-copy">
+              <strong>
+                {turnosSinConfirmar}{" "}
+                {turnosSinConfirmar === 1
+                  ? "turno sin confirmar"
+                  : "turnos sin confirmar"}
+              </strong>
+              <small>Revisalos desde la agenda admin.</small>
+            </span>
+          </Link>
+        ) : null}
 
         <nav className="admin-nav">
           {NAV_GROUPS.map((group) => (
@@ -184,10 +221,6 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <p className="admin-sidebar-footer-copy">
-            {currentGroup?.label || "Operacion principal"}
-          </p>
-
           <button type="button" className="admin-logout" onClick={handleLogout}>
             <span className="admin-link-icon" aria-hidden="true">
               <FiLogOut />

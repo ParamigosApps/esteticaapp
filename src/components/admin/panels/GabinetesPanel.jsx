@@ -25,13 +25,14 @@ function normalizar(str) {
   return str.trim().toLowerCase();
 }
 
-function GabineteItem({ gabinete, gabinetes }) {
+function GabineteItem({ gabinete, gabinetes, editando, onToggleEditar }) {
   const [horarios, setHorarios] = useState([]);
-  const [editando, setEditando] = useState(false);
   const [diaInicio, setDiaInicio] = useState(1);
   const [diaFin, setDiaFin] = useState(6);
   const [modoCarga, setModoCarga] = useState("semana");
-  const [nombreEditado, setNombreEditado] = useState(gabinete.nombreGabinete || "");
+  const [nombreEditado, setNombreEditado] = useState(
+    gabinete.nombreGabinete || "",
+  );
 
   useEffect(() => {
     const horariosQuery = query(
@@ -146,21 +147,23 @@ function GabineteItem({ gabinete, gabinetes }) {
   }
 
   return (
-    <article className={`gabinete-card ${!gabinete.activo ? "gabinete-card-inactive" : ""}`}>
+    <article
+      className={`gabinete-card ${!gabinete.activo ? "gabinete-card-inactive" : ""}`}
+    >
       <div className="gabinete-card-head">
         <div className="gabinete-card-copy">
           <span className="gabinete-card-kicker">Gabinete</span>
           <div className="gabinete-card-title-row">
             <h3 className="gabinete-card-title">{gabinete.nombreGabinete}</h3>
-            <span className={`gabinete-status ${gabinete.activo ? "is-active" : "is-inactive"}`}>
+            <span
+              className={`gabinete-status ${gabinete.activo ? "is-active" : "is-inactive"}`}
+            >
               {gabinete.activo ? "Activo" : "Inactivo"}
             </span>
           </div>
           <div className="gabinete-card-meta">
             <span>{horarios.length} rango(s) cargado(s)</span>
-            <span>
-              {editando ? "Modo edicion" : "Vista general"}
-            </span>
+            <span>{editando ? "Modo edicion" : "Vista general"}</span>
           </div>
         </div>
 
@@ -168,7 +171,7 @@ function GabineteItem({ gabinete, gabinetes }) {
           <button
             type="button"
             className="swal-btn-editar"
-            onClick={() => setEditando((prev) => !prev)}
+            onClick={onToggleEditar}
           >
             {editando ? "Cerrar" : "Editar"}
           </button>
@@ -181,13 +184,15 @@ function GabineteItem({ gabinete, gabinetes }) {
             {gabinete.activo ? "Desactivar" : "Reactivar"}
           </button>
 
-          <button
-            type="button"
-            className="swal-btn-eliminar"
-            onClick={eliminarGabinete}
-          >
-            Eliminar
-          </button>
+          {!gabinete.activo ? (
+            <button
+              type="button"
+              className="swal-btn-eliminar"
+              onClick={eliminarGabinete}
+            >
+              Eliminar
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -195,7 +200,9 @@ function GabineteItem({ gabinete, gabinetes }) {
         <div className="gabinete-editor-shell">
           <div className="gabinete-rename-row">
             <div className="field-group gabinete-field">
-              <label htmlFor={`nombre-${gabinete.id}`}>Nombre del gabinete</label>
+              <label htmlFor={`nombre-${gabinete.id}`}>
+                Nombre del gabinete
+              </label>
               <input
                 id={`nombre-${gabinete.id}`}
                 className="admin-input gabinete-input"
@@ -210,7 +217,7 @@ function GabineteItem({ gabinete, gabinetes }) {
               className="swal-btn-guardar"
               onClick={guardarNombreGabinete}
             >
-              Guardar nombre
+              Guardar
             </button>
           </div>
 
@@ -287,7 +294,9 @@ function GabineteItem({ gabinete, gabinetes }) {
           <HorariosBadges
             horarios={horarios}
             diaKey="diaSemana"
-            onDelete={editando ? (horario) => borrarHorario(horario.id) : undefined}
+            onDelete={
+              editando ? (horario) => borrarHorario(horario.id) : undefined
+            }
           />
         )}
       </div>
@@ -298,6 +307,7 @@ function GabineteItem({ gabinete, gabinetes }) {
 export default function GabinetesPanel() {
   const [gabinetes, setGabinetes] = useState([]);
   const [nombre, setNombre] = useState("");
+  const [gabineteEditandoId, setGabineteEditandoId] = useState(null);
 
   useEffect(() => {
     const gabinetesQuery = query(
@@ -346,8 +356,8 @@ export default function GabinetesPanel() {
           <span className="gabinetes-eyebrow">Agenda y espacios</span>
           <div className="admin-title">Gabinetes</div>
           <p>
-            Organiza los espacios disponibles, define sus horarios y mantiene una
-            lectura mas clara del estado de cada gabinete.
+            Organiza los espacios disponibles, define sus horarios y mantiene
+            una lectura mas clara del estado de cada gabinete.
           </p>
         </div>
 
@@ -367,7 +377,10 @@ export default function GabinetesPanel() {
         <div className="gabinetes-create-copy">
           <span className="gabinetes-section-kicker">Alta rapida</span>
           <h3>Crear nuevo gabinete</h3>
-          <p>Agrega un nombre y luego carga su disponibilidad por dia o por semana.</p>
+          <p>
+            Agrega un nombre y luego carga su disponibilidad por dia o por
+            semana.
+          </p>
         </div>
 
         <div className="gabinetes-create-form">
@@ -377,7 +390,11 @@ export default function GabinetesPanel() {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />
-          <button type="button" className="swal-btn-guardar" onClick={crearGabinete}>
+          <button
+            type="button"
+            className="swal-btn-guardar"
+            onClick={crearGabinete}
+          >
             Crear gabinete
           </button>
         </div>
@@ -389,6 +406,12 @@ export default function GabinetesPanel() {
             key={gabinete.id}
             gabinete={gabinete}
             gabinetes={gabinetes}
+            editando={gabineteEditandoId === gabinete.id}
+            onToggleEditar={() =>
+              setGabineteEditandoId((prev) =>
+                prev === gabinete.id ? null : gabinete.id,
+              )
+            }
           />
         ))}
       </section>
