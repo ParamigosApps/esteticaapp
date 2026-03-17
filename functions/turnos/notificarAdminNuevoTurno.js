@@ -16,6 +16,10 @@ function esc(v) {
     .replace(/"/g, "&quot;");
 }
 
+function resolveEstadoTurno(turno = {}) {
+  return String(turno.estadoTurno || turno.estado || "").trim();
+}
+
 function formatFechaHora(fecha, horaInicio) {
   if (!fecha || !horaInicio) return { fechaTexto: "-", horaTexto: "-" };
 
@@ -51,7 +55,8 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
 
     if (!turno) return;
 
-    if (!["confirmado", "pendiente_aprobacion"].includes(turno.estado)) {
+    const estadoTurno = resolveEstadoTurno(turno);
+    if (!["confirmado", "pendiente_aprobacion"].includes(estadoTurno)) {
       return;
     }
 
@@ -63,15 +68,14 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
     }
 
     const resend = new Resend(RESEND_API_KEY.value());
-
     const { fechaTexto, horaTexto } = formatFechaHora(
       turno.fecha,
       turno.horaInicio,
     );
 
     const asunto =
-      turno.estado === "pendiente_aprobacion"
-        ? "Nueva reserva pendiente de aprobación"
+      estadoTurno === "pendiente_aprobacion"
+        ? "Nueva reserva pendiente de aprobacion"
         : "Nuevo turno confirmado";
 
     const html = `
@@ -80,12 +84,12 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
 
         <p><b>Servicio:</b> ${esc(turno.nombreServicio)}</p>
         <p><b>Cliente:</b> ${esc(turno.nombreCliente)}</p>
-        <p><b>Teléfono:</b> ${esc(turno.telefonoCliente)}</p>
+        <p><b>Telefono:</b> ${esc(turno.telefonoCliente)}</p>
         <p><b>Fecha:</b> ${esc(fechaTexto)}</p>
         <p><b>Hora:</b> ${esc(horaTexto)}</p>
         <p><b>Gabinete:</b> ${esc(turno.nombreGabinete)}</p>
-        <p><b>Estado:</b> ${esc(turno.estado)}</p>
-        <p><b>Total:</b> $${Number(turno.precioTotal || 0).toLocaleString("es-AR")}</p>
+        <p><b>Estado:</b> ${esc(estadoTurno)}</p>
+        <p><b>Total:</b> $${Number(turno.precioTotal || turno.montoTotal || 0).toLocaleString("es-AR")}</p>
         <p><b>Anticipo:</b> $${Number(turno.montoAnticipo || 0).toLocaleString("es-AR")}</p>
         <p><b>ID turno:</b> ${esc(turnoId)}</p>
       </div>
@@ -100,6 +104,7 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
       });
 
       await turnoRef.update({
+        adminMailEnviado: true,
         adminMailEnviadoAt: FieldValue.serverTimestamp(),
         adminMailId: resp?.data?.id || null,
       });

@@ -6,6 +6,8 @@ import PublicLayout from "./public/layout/PublicLayout.jsx";
 
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
+import TermsOfService from "./pages/TermsOfService.jsx";
 
 import LoginEmpleado from "./pages/LoginEmpleado.jsx";
 
@@ -40,6 +42,12 @@ function resolvePageTitle(pathname) {
   if (pathname === "/mis-turnos") return "Mis turnos - PIEL Y CEJAS";
   if (pathname === "/mi-perfil") return "Mi perfil - PIEL Y CEJAS";
   if (pathname === "/pago-resultado") return "Confirmando pago - PIEL Y CEJAS";
+  if (pathname === "/politica-de-privacidad") {
+    return "Politica de privacidad - PIEL Y CEJAS";
+  }
+  if (pathname === "/terminos-de-servicio") {
+    return "Terminos de servicio - PIEL Y CEJAS";
+  }
 
   if (pathname === "/admin" || pathname.startsWith("/admin/dashboard")) {
     return "Dashboard | Admin | PIEL Y CEJAS";
@@ -148,6 +156,14 @@ export default function App() {
             <Route path="/mis-turnos" element={<MisTurnos />} />
             <Route path="/mi-perfil" element={<MiPerfil />} />
             <Route path="/pago-resultado" element={<PagoResultado />} />
+            <Route
+              path="/politica-de-privacidad"
+              element={<PrivacyPolicy />}
+            />
+            <Route
+              path="/terminos-de-servicio"
+              element={<TermsOfService />}
+            />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

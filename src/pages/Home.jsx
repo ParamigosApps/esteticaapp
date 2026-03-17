@@ -83,6 +83,7 @@ function formatUpdatedAt(value) {
 }
 
 function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
+  const [reviewsOpen, setReviewsOpen] = useState(true);
   const estrellas = Array.from({ length: 5 }, (_, index) => (
     <span key={`estrella-${index}`} className="reviews-star" aria-hidden="true">
       {"\u2605"}
@@ -128,12 +129,22 @@ function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Ver reseñas
+            Ver en Google
           </a>
+          {tieneReviews ? (
+            <button
+              type="button"
+              className="home-reviews-btn home-reviews-btn-secondary"
+              onClick={() => setReviewsOpen((prev) => !prev)}
+              aria-expanded={reviewsOpen}
+            >
+              {reviewsOpen ? "Ocultar" : "Ver reseñas"}
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {tieneReviews ? (
+      {tieneReviews && reviewsOpen ? (
         <div className="home-reviews-inline-grid">
           {reviewsData.reviews.map((review, index) => (
             <article
@@ -161,11 +172,11 @@ function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
     </div>
   );
 }
-
 export default function Home() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [whatsapp, setWhatsapp] = useState(null);
+  const [loadingHomeData, setLoadingHomeData] = useState(true);
   const [homeVisuales, setHomeVisuales] = useState({
     imgPrincipalHome: "",
     imgSecundariaHome: "",
@@ -262,20 +273,24 @@ export default function Home() {
 
   useEffect(() => {
     async function cargarHomeData() {
-      const [socialSnap, homeSnap] = await Promise.all([
-        getDoc(doc(db, "configuracion", "social")),
-        getDoc(doc(db, "configuracion", "homeVisuales")),
-      ]);
+      try {
+        const [socialSnap, homeSnap] = await Promise.all([
+          getDoc(doc(db, "configuracion", "social")),
+          getDoc(doc(db, "configuracion", "homeVisuales")),
+        ]);
 
-      if (socialSnap.exists()) {
-        setWhatsapp(socialSnap.data());
-      }
+        if (socialSnap.exists()) {
+          setWhatsapp(socialSnap.data());
+        }
 
-      if (homeSnap.exists()) {
-        setHomeVisuales((prev) => ({
-          ...prev,
-          ...homeSnap.data(),
-        }));
+        if (homeSnap.exists()) {
+          setHomeVisuales((prev) => ({
+            ...prev,
+            ...homeSnap.data(),
+          }));
+        }
+      } finally {
+        setLoadingHomeData(false);
       }
     }
 
@@ -353,8 +368,22 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="home-panel">
-            <InfoContactoPanel />
+          <div className={`home-panel ${loadingHomeData ? "is-loading" : ""}`}>
+            {loadingHomeData ? (
+              <div
+                className="home-panel-loader"
+                role="status"
+                aria-live="polite"
+              >
+                <span
+                  className="spinner-border home-panel-spinner"
+                  aria-hidden="true"
+                />
+                <p>Cargando informacion...</p>
+              </div>
+            ) : (
+              <InfoContactoPanel />
+            )}
           </div>
         </div>
       </section>

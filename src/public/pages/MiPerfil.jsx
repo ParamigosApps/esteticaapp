@@ -171,22 +171,25 @@ export default function MiPerfil() {
     }
   }
 
-  if (loading) return null;
+  if (loading || loadingPerfil) {
+    return (
+      <div className="account-shell container py-4">
+        <div className="profile-loading-shell" role="status" aria-live="polite">
+          <span
+            className="spinner-border profile-loading-spinner"
+            aria-hidden="true"
+          />
+          <p className="profile-loading-text">Cargando tu perfil...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user?.uid) {
     return (
       <div className="container py-4">
         <h4>Mi perfil</h4>
         <p className="text-muted">Iniciá sesión para ver tu perfil.</p>
-      </div>
-    );
-  }
-
-  if (loadingPerfil) {
-    return (
-      <div className="container py-4">
-        <h4>Mi perfil</h4>
-        <p>Cargando...</p>
       </div>
     );
   }
@@ -343,3 +346,5 @@ export default function MiPerfil() {
     </div>
   );
 }
+
+

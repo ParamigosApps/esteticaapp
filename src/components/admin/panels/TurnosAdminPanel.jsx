@@ -145,9 +145,8 @@ function getDiaConfig(servicio, fechaIso) {
       : [];
 
     return (
-      agendaMensual.find(
-        (item) => Number(item?.diaMes) === Number(diaMes),
-      ) || null
+      agendaMensual.find((item) => Number(item?.diaMes) === Number(diaMes)) ||
+      null
     );
   }
 
@@ -408,7 +407,9 @@ export default function TurnosAdminPanel() {
         });
 
         if (!cancelled) {
-          setAgendaManual(result.data || { horarios: [], turnos: [], bloqueos: [] });
+          setAgendaManual(
+            result.data || { horarios: [], turnos: [], bloqueos: [] },
+          );
         }
       } catch (error) {
         console.error("Error cargando agenda manual", error);
@@ -475,10 +476,9 @@ export default function TurnosAdminPanel() {
         ) {
           const fechaBase = new Date(fecha);
           fechaBase.setHours(0, 0, 0, 0);
-          const agendaMes =
-            agendaPorMes[
-              `${fechaBase.getFullYear()}-${fechaBase.getMonth()}`
-            ] || { horarios: [], turnos: [], bloqueos: [] };
+          const agendaMes = agendaPorMes[
+            `${fechaBase.getFullYear()}-${fechaBase.getMonth()}`
+          ] || { horarios: [], turnos: [], bloqueos: [] };
 
           const slots = generarSlotsDia(
             agendaMes,
@@ -537,7 +537,8 @@ export default function TurnosAdminPanel() {
       servicioSeleccionado,
       new Date(`${nuevoTurno.fecha}T00:00:00`),
     ).filter(
-      (slot) => !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
+      (slot) =>
+        !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
     );
   }, [
     agendaManual,
@@ -1330,7 +1331,7 @@ export default function TurnosAdminPanel() {
               <small className="turnos-create-field-hint">
                 Sugerido: {formatMoney(montoSugerido)}{" "}
                 {servicioSeleccionado?.pedirAnticipo
-                  ? "(sena + comision)"
+                  ? "(seña + comision)"
                   : "(total)"}
               </small>
             ) : null}
@@ -1390,7 +1391,9 @@ export default function TurnosAdminPanel() {
                         key={sugerencia.fecha}
                         type="button"
                         className="turnos-slots-suggestion-btn"
-                        onClick={() => updateNuevoTurno("fecha", sugerencia.fecha)}
+                        onClick={() =>
+                          updateNuevoTurno("fecha", sugerencia.fecha)
+                        }
                       >
                         {sugerencia.label} · {sugerencia.primeraHora}
                       </button>
@@ -1398,7 +1401,9 @@ export default function TurnosAdminPanel() {
                   </div>
                 </div>
               ) : (
-                <span>No encontramos fechas cercanas con turnos para este gabinete.</span>
+                <span>
+                  No encontramos fechas cercanas con turnos para este gabinete.
+                </span>
               )}
             </div>
           ) : (

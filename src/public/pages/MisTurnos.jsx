@@ -273,7 +273,7 @@ function getPagoTone(estadoPago) {
 }
 
 export default function MisTurnos() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [turnos, setTurnos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -284,6 +284,7 @@ export default function MisTurnos() {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user?.uid) return;
 
     const q = query(
@@ -311,7 +312,7 @@ export default function MisTurnos() {
     );
 
     return () => unsub();
-  }, [user?.uid]);
+  }, [authLoading, user?.uid]);
 
   useEffect(() => {
     const unsubSocial = onSnapshot(
@@ -943,20 +944,25 @@ export default function MisTurnos() {
     );
   }
 
-  if (!user?.uid) {
+  if (authLoading || loading) {
     return (
-      <div className="container py-4">
-        <h4>Mis turnos</h4>
-        <p className="text-muted">Iniciá sesión para ver tus turnos.</p>
+      <div className="account-shell container py-4">
+        <div className="turnos-loading-shell" role="status" aria-live="polite">
+          <span
+            className="spinner-border turnos-loading-spinner"
+            aria-hidden="true"
+          />
+          <p className="turnos-loading-text">Cargando tus turnos...</p>
+        </div>
       </div>
     );
   }
 
-  if (loading) {
+  if (!user?.uid) {
     return (
       <div className="container py-4">
         <h4>Mis turnos</h4>
-        <p>Cargando...</p>
+        <p className="text-muted">IniciÃ¡ sesiÃ³n para ver tus turnos.</p>
       </div>
     );
   }
@@ -1061,4 +1067,5 @@ export default function MisTurnos() {
     </div>
   );
 }
+
 

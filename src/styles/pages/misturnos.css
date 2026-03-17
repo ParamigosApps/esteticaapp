@@ -18,6 +18,37 @@
   box-shadow: 0 18px 42px rgba(40, 27, 57, 0.08);
 }
 
+.turnos-loading-shell {
+  min-height: 500px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  border: 1px solid #ece6f5;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.14), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 247, 255, 0.98));
+  box-shadow: 0 18px 42px rgba(40, 27, 57, 0.08);
+}
+
+.turnos-loading-spinner.spinner-border {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-width: 0.22rem;
+  color: #b56fd8;
+}
+
+.turnos-loading-text {
+  margin: 0;
+  color: #6b6178;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
 .profile-eyebrow {
   margin: 0 0 8px;
   font-size: 12px;

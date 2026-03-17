@@ -349,82 +349,89 @@ export default function TurnosSection({
     <>
       <div ref={turnosTopRef} />
       {loadingServicios && (
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ minHeight: "70px" }}
-        >
-          <p className="text-muted mb-0">Cargando servicios...</p>
+        <div className="agenda-loading-shell agenda-loading-shell-services">
+          <span
+            className="spinner-border agenda-loading-spinner"
+            aria-hidden="true"
+          />
+          <p className="agenda-loading-text">Cargando servicios...</p>
         </div>
       )}
 
       {!loadingServicios && !categoriaSeleccionada && !servicioSeleccionado && (
-        <div className="servicios-lista">
-          {grupos.map(([categoriaId, data]) => (
-            <div
-              className="servicio-card"
-              key={categoriaId}
-              onClick={() => setCategoriaSeleccionada(categoriaId)}
-            >
-              <div className="servicio-card-header">
-                <h6 className="servicio-titulo">{data.nombre}</h6>
-                <div className="servicio-card-header-meta">
-                  <div className="servicio-card-count">
-                    {data.servicios.length} opciones
+        busqueda?.trim() && grupos.length === 0 ? (
+          <div className="servicios-empty-state">
+            No se encontraron resultados para: "{busqueda.trim()}"
+          </div>
+        ) : (
+          <div className="servicios-lista">
+            {grupos.map(([categoriaId, data]) => (
+              <div
+                className="servicio-card"
+                key={categoriaId}
+                onClick={() => setCategoriaSeleccionada(categoriaId)}
+              >
+                <div className="servicio-card-header">
+                  <h6 className="servicio-titulo">{data.nombre}</h6>
+                  <div className="servicio-card-header-meta">
+                    <div className="servicio-card-count">
+                      {data.servicios.length} opciones
+                    </div>
+                    {(() => {
+                      const precios = data.servicios
+                        .map((servicio) => getPrecioOnlineServicio(servicio))
+                        .filter((precio) => precio > 0);
+
+                      if (!precios.length) return null;
+
+                      const hayPrecioVariable = data.servicios.some((servicio) =>
+                        servicioTienePrecioVariableActivo(servicio),
+                      );
+
+                      const hayMasDeUnPrecio =
+                        new Set(precios.map((precio) => Number(precio))).size > 1;
+
+                      return (
+                        <div className="servicio-precio">
+                          {hayMasDeUnPrecio || hayPrecioVariable
+                            ? "Precio desde $"
+                            : "Precio $"}
+                          {Math.min(...precios).toLocaleString("es-AR")}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  {(() => {
-                    const precios = data.servicios
-                      .map((servicio) => getPrecioOnlineServicio(servicio))
-                      .filter((precio) => precio > 0);
-
-                    if (!precios.length) return null;
-
-                    const hayPrecioVariable = data.servicios.some((servicio) =>
-                      servicioTienePrecioVariableActivo(servicio),
-                    );
-
-                    const hayMasDeUnPrecio =
-                      new Set(precios.map((precio) => Number(precio))).size > 1;
-
-                    return (
-                      <div className="servicio-precio">
-                        {hayMasDeUnPrecio || hayPrecioVariable
-                          ? "Precio desde $"
-                          : "Precio $"}
-                        {Math.min(...precios).toLocaleString("es-AR")}
-                      </div>
-                    );
-                  })()}
                 </div>
-              </div>
 
-              <div className="servicio-sub mb-1">
-                <div className="servicio-sub-listado">
-                  {data.servicios.slice(0, 5).map((s) => (
-                    <span
-                      key={`${categoriaId}-${s.id}`}
-                      className="servicio-sub-pill"
-                    >
-                      <strong>{s.nombreServicio}</strong>
-                      {s.nombreProfesional ? (
-                        <span className="servicio-sub-profesional">
-                          <span className="servicio-sub-separator">-</span>
-                          <span className="servicio-sub-profesional-name">
-                            {s.nombreProfesional}
+                <div className="servicio-sub mb-1">
+                  <div className="servicio-sub-listado">
+                    {data.servicios.slice(0, 5).map((s) => (
+                      <span
+                        key={`${categoriaId}-${s.id}`}
+                        className="servicio-sub-pill"
+                      >
+                        <strong>{s.nombreServicio}</strong>
+                        {s.nombreProfesional ? (
+                          <span className="servicio-sub-profesional">
+                            <span className="servicio-sub-separator">-</span>
+                            <span className="servicio-sub-profesional-name">
+                              {s.nombreProfesional}
+                            </span>
                           </span>
-                        </span>
-                      ) : null}
-                    </span>
-                  ))}
-                  {data.servicios.length > 5 ? (
-                    <span className="servicio-sub-more">
-                      +{data.servicios.length - 5} mas
-                    </span>
-                  ) : null}
+                        ) : null}
+                      </span>
+                    ))}
+                    {data.servicios.length > 5 ? (
+                      <span className="servicio-sub-more">
+                        +{data.servicios.length - 5} mas
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
 
       {!loadingServicios && categoriaSeleccionada && !servicioSeleccionado && (

@@ -248,7 +248,7 @@ export default function LoginPanel() {
             </p>
           )}
 
-          <p className="recaptcha-legal mt-0">
+          <p className="recaptcha-legal text-muted mt-0">
             Este sitio está protegido por reCAPTCHA y se aplican la{" "}
             <a
               href="https://policies.google.com/privacy"

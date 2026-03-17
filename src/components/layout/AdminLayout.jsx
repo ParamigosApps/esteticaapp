@@ -221,7 +221,7 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button type="button" className="admin-logout" onClick={handleLogout}>
+admin-sidebar-alert<          <button type="button" className="admin-logout" onClick={handleLogout}>
             <span className="admin-link-icon" aria-hidden="true">
               <FiLogOut />
             </span>

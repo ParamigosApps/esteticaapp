@@ -1029,11 +1029,12 @@ Turno ID: ${data.turnoId.slice(0, 8)}
 
   if (loading)
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ minHeight: "70px" }}
-      >
-        <p className="text-muted mb-0">Cargando agenda...</p>
+      <div className="agenda-loading-shell agenda-loading-shell-panel">
+        <span
+          className="spinner-border agenda-loading-spinner"
+          aria-hidden="true"
+        />
+        <p className="agenda-loading-text">Cargando agenda...</p>
       </div>
     );
   if (!agenda) return null;
