@@ -24,6 +24,7 @@ async function bootstrap() {
   console.log('UID:', user.uid)
 }
 
+
 bootstrap().catch(err => {
   console.error('❌ ERROR BOOTSTRAP:', err)
 })
