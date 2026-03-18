@@ -413,16 +413,23 @@ export function AuthProvider({ children }) {
     try {
       Swal.fire({
         title: "Conectando con Google",
-        text: "Esperando confirmación…",
+        html: `
+          <div class="loading-box">
+            <div class="loading-spinner-shell" aria-hidden="true">
+              <span class="spinner-border loading-spinner" role="status"></span>
+            </div>
+            <div class="loading-copy">
+              <div class="loading-text">Esperando confirmación…</div>
+            </div>
+          </div>
+        `,
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
+        showCloseButton: true,
         customClass: {
           popup: "swal-popup-custom",
           title: "swal-title-custom",
-        },
-        didOpen: () => {
-          Swal.showLoading();
         },
       });
 
@@ -465,6 +472,17 @@ export function AuthProvider({ children }) {
         nombre: u.displayName || u.email,
       });
 
+      // Para usuarios existentes sin teléfono, pedirlo
+      if (!esPrimerLogin) {
+        const snapActual = await getDoc(ref);
+        if (!snapActual.data()?.telefono) {
+          const telefono = await pedirTelefono();
+          if (telefono) {
+            await setDoc(ref, { telefono }, { merge: true });
+          }
+        }
+      }
+
       return { ok: true };
     } catch (err) {
       Swal.close();
@@ -498,16 +516,23 @@ export function AuthProvider({ children }) {
     try {
       Swal.fire({
         title: "Conectando con Facebook",
-        text: "Esperando confirmación…",
+        html: `
+          <div class="loading-box">
+            <div class="loading-spinner-shell" aria-hidden="true">
+              <span class="spinner-border loading-spinner" role="status"></span>
+            </div>
+            <div class="loading-copy">
+              <div class="loading-text">Esperando confirmación…</div>
+            </div>
+          </div>
+        `,
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
+        showCloseButton: true,
         customClass: {
           popup: "swal-popup-custom",
           title: "swal-title-custom",
-        },
-        didOpen: () => {
-          Swal.showLoading();
         },
       });
 
@@ -760,6 +785,7 @@ export function AuthProvider({ children }) {
           nombreActual: nombre,
           emailActual: snap.exists() ? snap.data().email : "",
           emailObligatorio: !snap.exists() || !snap.data().email,
+          showCancel: false, // No cancelar en login obligatorio
         });
 
         if (!datos) return;
@@ -875,6 +901,7 @@ export function AuthProvider({ children }) {
     emailActual = "",
     titulo = "👤 Datos de tu cuenta",
     emailObligatorio = false,
+    showCancel = true,
   }) {
     const emailPlaceholder = emailObligatorio
       ? "tu@email.com"

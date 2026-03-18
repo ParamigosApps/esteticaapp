@@ -142,8 +142,8 @@
 }
 
 .swal-btn-confirm {
-  background: var(--btn-secondary-bg);
-  color: var(--btn-secondary-text);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   padding: 12px 16px;
   border-radius: var(--radius-2);
   font-weight: 600;
@@ -165,7 +165,24 @@
   margin-left: 8px;
 }
 .swal-btn-confirm:hover , .swal-btn-alt:hover {
-  background: var(--btn-secondary-hover);
+  background: var(--btn-primary-hover);
+  transform: translateY(-2px);
+}
+
+.swal-btn-cancel {
+  background: #f5f5f5;
+  color: #666;
+  padding: 12px 16px;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  transition: all .2s ease;
+  box-shadow: var(--shadow-soft);
+  border:1px solid var(--border-soft);
+  margin-left: 8px;
+}
+
+.swal-btn-cancel:hover {
+  background: #e0e0e0;
   transform: translateY(-2px);
 }
 
