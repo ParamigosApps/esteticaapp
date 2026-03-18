@@ -447,6 +447,19 @@ export function AuthProvider({ children }) {
         { merge: true },
       );
 
+      if (esPrimerLogin) {
+        const telefono = await pedirTelefono();
+        if (telefono) {
+          await setDoc(
+            ref,
+            {
+              telefono,
+            },
+            { merge: true },
+          );
+        }
+      }
+
       setFirebaseUser({
         ...u,
         nombre: u.displayName || u.email,
@@ -518,6 +531,19 @@ export function AuthProvider({ children }) {
         },
         { merge: true },
       );
+
+      if (esPrimerLogin) {
+        const telefono = await pedirTelefono();
+        if (telefono) {
+          await setDoc(
+            ref,
+            {
+              telefono,
+            },
+            { merge: true },
+          );
+        }
+      }
 
       setFirebaseUser({
         ...u,
@@ -733,6 +759,7 @@ export function AuthProvider({ children }) {
         datos = await pedirNombreYEmail({
           nombreActual: nombre,
           emailActual: snap.exists() ? snap.data().email : "",
+          emailObligatorio: !snap.exists() || !snap.data().email,
         });
 
         if (!datos) return;
@@ -847,15 +874,21 @@ export function AuthProvider({ children }) {
     nombreActual = "",
     emailActual = "",
     titulo = "👤 Datos de tu cuenta",
+    emailObligatorio = false,
   }) {
+    const emailPlaceholder = emailObligatorio
+      ? "tu@email.com"
+      : "Email (opcional)";
+    const emailRequiredText = emailObligatorio
+      ? ""
+      : `<p style="font-size:12px;color:#777">El email es opcional, pero te permite recibir tus entradas por correo.</p>`;
+
     const { value, isConfirmed } = await Swal.fire({
       title: titulo,
       html: `
       <input id="swal-nombre" class="swal2-input" placeholder="Tu nombre" value="${nombreActual}">
-      <input id="swal-email" class="swal2-input" placeholder="Email (opcional)" value="${emailActual}">
-      <p style="font-size:12px;color:#777">
-        El email es opcional, pero te permite recibir tus entradas por correo.
-      </p>
+      <input id="swal-email" class="swal2-input" placeholder="${emailPlaceholder}" value="${emailActual}" type="email">
+      ${emailRequiredText}
     `,
       focusConfirm: false,
       confirmButtonText: "Guardar",
@@ -874,6 +907,11 @@ export function AuthProvider({ children }) {
           return false;
         }
 
+        if (emailObligatorio && !email) {
+          Swal.showValidationMessage("El email es obligatorio");
+          return false;
+        }
+
         if (email && !/^\S+@\S+\.\S+$/.test(email)) {
           Swal.showValidationMessage("Email inválido");
           return false;
@@ -883,6 +921,47 @@ export function AuthProvider({ children }) {
           nombre,
           email: email || null,
         };
+      },
+    });
+
+    if (!isConfirmed) return null;
+    return value;
+  }
+
+  async function pedirTelefono({
+    titulo = "📱 Añadí tu teléfono",
+    subtitulo = "Necesitamos tu número para enviarte recordatorios y confirmaciones de turnos.",
+  }) {
+    const { value, isConfirmed } = await Swal.fire({
+      title: titulo,
+      html: `
+        <p style="font-size:14px;color:#555;margin-bottom:15px;">${subtitulo}</p>
+        <input id="swal-telefono" class="swal2-input" placeholder="Ej: 11 1234 5678" type="tel">
+      `,
+      focusConfirm: false,
+      confirmButtonText: "Guardar",
+      showCancelButton: false,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      customClass: {
+        confirmButton: "swal-btn-confirm",
+      },
+      preConfirm: () => {
+        const telefono = document.getElementById("swal-telefono").value.trim();
+
+        if (!telefono) {
+          Swal.showValidationMessage("Ingresá tu número de teléfono");
+          return false;
+        }
+
+        // Validar formato básico
+        const digits = telefono.replace(/\D/g, "");
+        if (digits.length < 10 || digits.length > 15) {
+          Swal.showValidationMessage("Número de teléfono inválido");
+          return false;
+        }
+
+        return telefono;
       },
     });
 

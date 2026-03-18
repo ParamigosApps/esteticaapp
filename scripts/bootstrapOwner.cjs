@@ -11,7 +11,7 @@ async function bootstrap() {
     credential: admin.credential.cert(serviceAccount),
   })
 
-  const email = 'ivangabrielruiz1@gmail.com' // el tuyo real
+  const email = 'kab99_barbas@hotmail.com'
 
   const user = await admin.auth().getUserByEmail(email)
 
