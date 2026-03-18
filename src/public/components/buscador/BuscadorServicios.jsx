@@ -17,7 +17,7 @@ export default function BuscadorServicios({
       <form className="home-buscador-form" onSubmit={handleSubmit}>
         <input
           className="buscador-servicios"
-          placeholder="Que servicio buscas?"
+          placeholder="¿Que servicio buscas?"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />

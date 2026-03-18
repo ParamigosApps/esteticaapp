@@ -7,9 +7,11 @@ const { Resend } = require("resend");
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const ADMIN_EMAIL = defineSecret("ADMIN_EMAIL");
 const FROM_EMAIL = defineSecret("FROM_EMAIL");
+const ESTADOS_NOTIFICABLES = new Set(["confirmado", "pendiente_aprobacion"]);
+const PLACEHOLDER = "-";
 
 function esc(v) {
-  return String(v ?? "-")
+  return String(v ?? PLACEHOLDER)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -18,6 +20,16 @@ function esc(v) {
 
 function resolveEstadoTurno(turno = {}) {
   return String(turno.estadoTurno || turno.estado || "").trim();
+}
+
+function getAsunto(estadoTurno) {
+  return estadoTurno === "pendiente_aprobacion"
+    ? "Nueva reserva pendiente de aprobacion"
+    : "Nuevo turno confirmado";
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString("es-AR");
 }
 
 function formatFechaHora(fecha, horaInicio) {
@@ -40,6 +52,32 @@ function formatFechaHora(fecha, horaInicio) {
   };
 }
 
+function buildRow(label, value) {
+  return `<p><b>${esc(label)}:</b> ${esc(value)}</p>`;
+}
+
+function buildMailHtml({ asunto, turnoId, turno, estadoTurno, fechaTexto, horaTexto }) {
+  const rows = [
+    buildRow("Servicio", turno.nombreServicio),
+    buildRow("Cliente", turno.nombreCliente),
+    buildRow("Telefono", turno.telefonoCliente),
+    buildRow("Fecha", fechaTexto),
+    buildRow("Hora", horaTexto),
+    buildRow("Gabinete", turno.nombreGabinete),
+    buildRow("Estado", estadoTurno),
+    buildRow("Total", `$${formatMoney(turno.precioTotal || turno.montoTotal || 0)}`),
+    buildRow("Anticipo", `$${formatMoney(turno.montoAnticipo || 0)}`),
+    buildRow("ID turno", turnoId),
+  ].join("");
+
+  return `
+    <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;">
+      <h2 style="margin-bottom:16px;">${esc(asunto)}</h2>
+      ${rows}
+    </div>
+  `;
+}
+
 exports.notificarAdminNuevoTurno = onDocumentCreated(
   {
     document: "turnos/{turnoId}",
@@ -56,7 +94,7 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
     if (!turno) return;
 
     const estadoTurno = resolveEstadoTurno(turno);
-    if (!["confirmado", "pendiente_aprobacion"].includes(estadoTurno)) {
+    if (!ESTADOS_NOTIFICABLES.has(estadoTurno)) {
       return;
     }
 
@@ -67,38 +105,34 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
       return;
     }
 
-    const resend = new Resend(RESEND_API_KEY.value());
+    const apiKey = String(RESEND_API_KEY.value() || "").trim();
+    const from = String(FROM_EMAIL.value() || "").trim();
+    const to = String(ADMIN_EMAIL.value() || "").trim();
+
+    if (!apiKey || !from || !to) {
+      throw new Error("Faltan secrets de mail: RESEND_API_KEY, FROM_EMAIL o ADMIN_EMAIL");
+    }
+
+    const resend = new Resend(apiKey);
     const { fechaTexto, horaTexto } = formatFechaHora(
       turno.fecha,
       turno.horaInicio,
     );
 
-    const asunto =
-      estadoTurno === "pendiente_aprobacion"
-        ? "Nueva reserva pendiente de aprobacion"
-        : "Nuevo turno confirmado";
-
-    const html = `
-      <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;">
-        <h2 style="margin-bottom:16px;">${esc(asunto)}</h2>
-
-        <p><b>Servicio:</b> ${esc(turno.nombreServicio)}</p>
-        <p><b>Cliente:</b> ${esc(turno.nombreCliente)}</p>
-        <p><b>Telefono:</b> ${esc(turno.telefonoCliente)}</p>
-        <p><b>Fecha:</b> ${esc(fechaTexto)}</p>
-        <p><b>Hora:</b> ${esc(horaTexto)}</p>
-        <p><b>Gabinete:</b> ${esc(turno.nombreGabinete)}</p>
-        <p><b>Estado:</b> ${esc(estadoTurno)}</p>
-        <p><b>Total:</b> $${Number(turno.precioTotal || turno.montoTotal || 0).toLocaleString("es-AR")}</p>
-        <p><b>Anticipo:</b> $${Number(turno.montoAnticipo || 0).toLocaleString("es-AR")}</p>
-        <p><b>ID turno:</b> ${esc(turnoId)}</p>
-      </div>
-    `;
+    const asunto = getAsunto(estadoTurno);
+    const html = buildMailHtml({
+      asunto,
+      turnoId,
+      turno,
+      estadoTurno,
+      fechaTexto,
+      horaTexto,
+    });
 
     try {
       const resp = await resend.emails.send({
-        from: FROM_EMAIL.value(),
-        to: ADMIN_EMAIL.value(),
+        from,
+        to,
         subject: asunto,
         html,
       });

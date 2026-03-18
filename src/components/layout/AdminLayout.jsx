@@ -221,15 +221,17 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-footer">
-admin-sidebar-alert<          <button type="button" className="admin-logout" onClick={handleLogout}>
-            <span className="admin-link-icon" aria-hidden="true">
-              <FiLogOut />
-            </span>
-            <span className="admin-link-copy">
-              <strong>Cerrar sesion</strong>
-              <small>Salir del panel administrativo</small>
-            </span>
-          </button>
+          <div className="admin-sidebar-alert">
+            <button type="button" className="admin-logout" onClick={handleLogout}>
+              <span className="admin-link-icon" aria-hidden="true">
+                <FiLogOut />
+              </span>
+              <span className="admin-link-copy">
+                <strong>Cerrar sesion</strong>
+                <small>Salir del panel administrativo</small>
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 
