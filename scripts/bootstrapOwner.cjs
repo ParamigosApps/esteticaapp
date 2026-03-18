@@ -1,4 +1,4 @@
-// scripts/bootstrapOwner.cjs
+// /scripts/bootstrapOwner.cjs
 const admin = require('firebase-admin')
 const path = require('path')
 
