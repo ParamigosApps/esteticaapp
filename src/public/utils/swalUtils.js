@@ -314,7 +314,7 @@ export function swalLoginEmail({
     buttonsStyling: false,
     customClass: {
       confirmButton: "swal-btn-confirm",
-      cancelButton: "swal-btn-alt",
+      cancelButton: "swal-btn-cancel",
     },
 
     focusConfirm: false,

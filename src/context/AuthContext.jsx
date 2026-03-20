@@ -575,14 +575,15 @@ export function AuthProvider({ children }) {
         nombre: u.displayName || u.email,
       });
 
-      if (esPrimerLogin && u.email) {
-        enviarMail({
-          to: u.email,
-          subject: "Bienvenido a AppBar",
-          html: mailLogin({
-            nombre: u.displayName || "Hola",
-          }),
-        }).catch(() => {});
+      // Para usuarios existentes sin teléfono, pedirlo
+      if (!esPrimerLogin) {
+        const snapActual = await getDoc(ref);
+        if (!snapActual.data()?.telefono) {
+          const telefono = await pedirTelefono();
+          if (telefono) {
+            await setDoc(ref, { telefono }, { merge: true });
+          }
+        }
       }
 
       return { ok: true };
@@ -955,23 +956,39 @@ export function AuthProvider({ children }) {
     return value;
   }
 
-  async function pedirTelefono({
-    titulo = "📱 Añadí tu teléfono",
-    subtitulo = "Necesitamos tu número para enviarte recordatorios y confirmaciones de turnos.",
-  }) {
+  async function pedirTelefono(options = {}) {
+    const {
+      titulo = "Tu teléfono",
+      subtitulo = "Solo se utilizará para enviarte recordatorios y confirmaciones de turnos.",
+    } = options;
     const { value, isConfirmed } = await Swal.fire({
+      icon: "info",
       title: titulo,
       html: `
-        <p style="font-size:14px;color:#555;margin-bottom:15px;">${subtitulo}</p>
-        <input id="swal-telefono" class="swal2-input" placeholder="Ej: 11 1234 5678" type="tel">
+        <div class="swal-phone-prompt">
+          <p class="swal-phone-prompt-text">${subtitulo}</p>
+          <input
+            id="swal-telefono"
+            class="swal2-input swal-phone-input"
+            placeholder="Ej: 11 1234 5678"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+          >
+        </div>
       `,
       focusConfirm: false,
       confirmButtonText: "Guardar",
+      showCloseButton: true,
       showCancelButton: false,
       allowOutsideClick: false,
-      allowEscapeKey: false,
+      allowEscapeKey: true,
       customClass: {
+        popup: "swal-popup-custom swal-phone-popup",
+        title: "swal-title-custom",
+        htmlContainer: "swal-phone-content",
         confirmButton: "swal-btn-confirm",
+        closeButton: "swal-phone-close-btn",
       },
       preConfirm: () => {
         const telefono = document.getElementById("swal-telefono").value.trim();

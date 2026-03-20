@@ -1484,7 +1484,7 @@ export default function AdminConfiguracion() {
                 />
               </label>
 
-              <div className="config-home-preview">
+              <div className="config-home-preview config-home-preview-main">
                 {fileHomePrincipalPreview || homeVisuales.imgPrincipalHome ? (
                   <ImageWithLoader
                     src={
@@ -1534,35 +1534,53 @@ export default function AdminConfiguracion() {
               </div>
             </div>
 
-            <div className="config-subcard">
-              <div className="config-subcard-header">
-                <h3>Favicon</h3>
-                <span>Pestana del sitio</span>
+            <div className="config-subcard config-home-favicon-card">
+              <div className="config-home-favicon-top">
+                <div className="config-subcard-header">
+                  <h3>Favicon</h3>
+                  <span>Pestana del sitio</span>
+                </div>
               </div>
 
-              <label className="config-field">
-                <span>Subir favicon</span>
-                <input
-                  ref={fileInputHomeFaviconRef}
-                  type="file"
-                  accept="image/png,image/x-icon,image/svg+xml,image/jpeg,image/webp"
-                  className="form-control"
-                  onChange={(event) =>
-                    setFileHomeFavicon(event.target.files?.[0] || null)
-                  }
-                />
-              </label>
+              <p className="config-home-favicon-note">
+                Usá un icono simple y cuadrado. Acá se muestra como se vería en
+                una pestaña del navegador.
+              </p>
 
-              <div className="config-home-preview config-home-preview-favicon">
-                {fileHomeFaviconPreview || homeVisuales.faviconUrl ? (
-                  <ImageWithLoader
-                    src={fileHomeFaviconPreview || homeVisuales.faviconUrl}
-                    alt="Preview favicon"
-                    wrapperClassName="config-home-preview-shell"
+              <div className="config-home-favicon-layout">
+                <label className="config-field config-home-favicon-field">
+                  <span>Subir favicon</span>
+                  <input
+                    ref={fileInputHomeFaviconRef}
+                    type="file"
+                    accept="image/png,image/x-icon,image/svg+xml,image/jpeg,image/webp"
+                    className="form-control"
+                    onChange={(event) =>
+                      setFileHomeFavicon(event.target.files?.[0] || null)
+                    }
                   />
-                ) : (
-                  <div className="config-prof-preview-empty">Sin favicon</div>
-                )}
+                  <small className="config-field-help">
+                    Recomendado: PNG o SVG cuadrado, idealmente 512x512.
+                  </small>
+                </label>
+
+                <div className="config-home-preview config-home-preview-favicon">
+                  {fileHomeFaviconPreview || homeVisuales.faviconUrl ? (
+                    <ImageWithLoader
+                      src={fileHomeFaviconPreview || homeVisuales.faviconUrl}
+                      alt="Preview favicon"
+                      wrapperClassName="config-home-preview-shell"
+                    />
+                  ) : (
+                    <div className="config-home-favicon-empty">
+                      <div className="config-home-favicon-empty-icon">ICO</div>
+                      <strong>Sin favicon cargado</strong>
+                      <span>
+                        Cuando subas uno, se va a previsualizar aca.
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -148,6 +148,7 @@ export default function MiPerfil() {
       showCancelButton: true,
       confirmButtonText: "Si, salir",
       cancelButtonText: "Cancelar",
+      reverseButtons: true,
       customClass: {
         confirmButton: "swal-btn-confirm",
         cancelButton: "swal-btn-cancel",
@@ -265,7 +266,9 @@ export default function MiPerfil() {
                 className="form-control"
                 value={perfil.nombre}
                 disabled={!edit}
-                onChange={(e) => setPerfil({ ...perfil, nombre: e.target.value })}
+                onChange={(e) =>
+                  setPerfil({ ...perfil, nombre: e.target.value })
+                }
                 placeholder="Tu nombre"
               />
             </label>
@@ -346,5 +349,3 @@ export default function MiPerfil() {
     </div>
   );
 }
-
-

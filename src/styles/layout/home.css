@@ -1234,3 +1234,10 @@
     line-height: 1.32;
   }
 }
+
+/* Desktop: ocultar solo el botón "Ver reseñas" */
+@media (min-width: 769px) {
+  .home-reviews-btn-secondary {
+    display: none;
+  }
+}

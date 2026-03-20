@@ -454,6 +454,7 @@
 .config-subcard {
   display: grid;
   gap: 16px;
+  align-content: start;
   padding: 18px;
   border-radius: 20px;
   border: 1px solid #eee7f7;
@@ -595,19 +596,62 @@
 }
 
 .config-home-preview {
+  position: relative;
   min-height: 240px;
-  border-radius: 18px;
-  border: 1px dashed #d6c2f0;
-  background: linear-gradient(180deg, #fcf8ff, #f7f0fc);
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(214, 194, 240, 0.8);
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.12), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 36%),
+    linear-gradient(180deg, #fcf8ff, #f7f0fc);
   display: grid;
   place-items: center;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.config-home-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(242, 191, 216, 0.9), rgba(216, 198, 247, 0.95) 55%, rgba(197, 216, 255, 0.9));
+  z-index: 0;
 }
 
 .config-home-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.config-home-preview .config-home-preview-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 210px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(233, 224, 244, 0.9);
+  box-shadow: 0 12px 28px rgba(91, 63, 126, 0.08);
+}
+
+.config-home-preview-main {
+  min-height: 190px;
+}
+
+.config-home-preview-main .config-home-preview-shell {
+  min-height: 156px;
+}
+
+.config-home-preview-main img {
+  object-fit: contain;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.98), rgba(249, 243, 255, 0.92));
 }
 
 .config-home-preview-shell .config-image-loader {
@@ -619,19 +663,179 @@
   background: #faf7fb;
 }
 
+.config-home-preview .config-prof-preview-empty {
+  position: relative;
+  z-index: 1;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px dashed rgba(214, 194, 240, 0.95);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.config-home-favicon-card {
+  grid-column: 1 / -1;
+  gap: 10px;
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.12), transparent 36%),
+    linear-gradient(180deg, #fffdfd, #fbf7ff);
+  border-color: rgba(222, 208, 240, 0.95);
+  box-shadow: 0 18px 34px rgba(109, 80, 145, 0.08);
+}
+
+.config-home-favicon-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.config-home-favicon-card .config-subcard-header {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.config-home-favicon-card .config-subcard-header span {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 13px;
+}
+
+.config-home-favicon-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(214, 194, 240, 0.55);
+  background: rgba(255, 255, 255, 0.78);
+  color: #64596f;
+  line-height: 1.5;
+}
+
+.config-home-favicon-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.config-home-favicon-field {
+  min-width: 0;
+  align-content: start;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(222, 208, 240, 0.9);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.config-home-favicon-field .form-control {
+  min-height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #faf6ff);
+}
+
 .config-home-preview-favicon {
-  min-height: 150px;
+  min-width: 0;
+  position: relative;
+  min-height: 176px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(247, 143, 179, 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(199, 125, 255, 0.12), transparent 36%),
+    linear-gradient(180deg, #fffefe, #f8f2ff);
+  border-style: solid;
+  border-color: rgba(214, 194, 240, 0.85);
+}
+
+.config-home-preview-favicon::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 18px;
+  height: 44px;
+  border-radius: 18px 18px 14px 14px;
+  background:
+    radial-gradient(circle, rgba(243, 188, 215, 0.9) 0 3px, transparent 4px) 16px 50% / 14px 14px no-repeat,
+    radial-gradient(circle, rgba(221, 205, 242, 0.95) 0 3px, transparent 4px) 34px 50% / 14px 14px no-repeat,
+    radial-gradient(circle, rgba(205, 219, 248, 0.95) 0 3px, transparent 4px) 52px 50% / 14px 14px no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 242, 252, 0.98));
+  border: 1px solid rgba(223, 211, 238, 0.95);
+  box-shadow: 0 10px 22px rgba(91, 63, 126, 0.07);
+}
+
+.config-home-preview-favicon::after {
+  content: "misturnosapp.com";
+  position: absolute;
+  left: 74px;
+  right: 42px;
+  top: 31px;
+  color: #7d728c;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.config-home-preview-favicon .config-home-preview-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  padding-top: 34px;
 }
 
 .config-home-preview-favicon img {
-  width: 88px;
-  height: 88px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
-  border-radius: 22px;
-  border: 1px solid #eadcf8;
+  border-radius: 18px;
+  border: 1px solid rgba(234, 220, 248, 0.95);
   background: linear-gradient(180deg, #ffffff, #faf5ff);
+  box-shadow:
+    0 18px 34px rgba(91, 63, 126, 0.12),
+    0 0 0 10px rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.config-home-favicon-empty {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 38px;
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.config-home-favicon-empty strong {
+  color: #2d2239;
+}
+
+.config-home-favicon-empty span {
+  max-width: 24ch;
+  color: #786d87;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.config-home-favicon-empty-icon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 1px dashed rgba(214, 194, 240, 0.95);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 245, 255, 0.98));
+  color: #9e84bf;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   box-shadow: 0 14px 28px rgba(91, 63, 126, 0.08);
-  padding: 14px;
 }
 
 .config-team-shell {
@@ -771,6 +975,10 @@
   .config-form-grid {
     grid-template-columns: 1fr;
   }
+
+  .config-home-favicon-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {
@@ -836,6 +1044,81 @@
     flex-direction: column;
   }
 
+  .config-home-favicon-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .config-home-favicon-card {
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .config-home-favicon-note {
+    padding: 10px 12px;
+    font-size: 0.98rem;
+    line-height: 1.45;
+  }
+
+  .config-home-favicon-field {
+    padding: 12px;
+  }
+
+  .config-home-favicon-field .form-control {
+    min-height: 46px;
+  }
+
+  .config-home-preview-favicon {
+    min-height: 152px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .config-home-preview-favicon::before {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+    height: 36px;
+    border-radius: 14px 14px 10px 10px;
+  }
+
+  .config-home-preview-favicon::after {
+    left: 66px;
+    right: 16px;
+    top: 21px;
+    font-size: 11px;
+  }
+
+  .config-home-preview-favicon .config-home-preview-shell {
+    min-height: 112px;
+    padding-top: 30px;
+  }
+
+  .config-home-preview-favicon img {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    padding: 10px;
+  }
+
+  .config-home-favicon-empty {
+    margin-top: 26px;
+    padding: 10px 10px 4px;
+    gap: 6px;
+  }
+
+  .config-home-favicon-empty-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+    font-size: 0.85rem;
+  }
+
+  .config-home-favicon-empty span {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
   .config-section-meta {
     width: 100%;
     justify-content: space-between;
@@ -870,5 +1153,36 @@
   .config-switch-item {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .config-home-favicon-card .config-subcard-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .config-home-favicon-card .config-subcard-header span {
+    font-size: 12px;
+  }
+
+  .config-home-preview-favicon {
+    min-height: 140px;
+    padding: 10px;
+  }
+
+  .config-home-preview-favicon::before {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    height: 34px;
+  }
+
+  .config-home-preview-favicon::after {
+    left: 62px;
+    right: 12px;
+    top: 19px;
+  }
+
+  .config-home-preview-favicon .config-home-preview-shell {
+    min-height: 102px;
+    padding-top: 28px;
   }
 }

@@ -399,3 +399,80 @@
 .swal-loading-close-btn:focus {
   box-shadow: 0 0 0 3px rgba(199, 125, 255, 0.16);
 }
+
+.swal-phone-popup {
+  width: min(92vw, 460px);
+  padding: 28px 24px 22px;
+  border-radius: 28px;
+  border: 1px solid #ece6f5;
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.14), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(199, 125, 255, 0.1), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 247, 255, 0.98));
+  box-shadow: 0 24px 56px rgba(44, 31, 61, 0.12);
+}
+
+.swal-phone-content {
+  margin: 0;
+}
+
+.swal-phone-prompt {
+  display: grid;
+  gap: 14px;
+}
+
+.swal-phone-prompt-text {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(250, 247, 255, 0.92);
+  border: 1px solid rgba(214, 194, 240, 0.5);
+  color: #655b71;
+  font-size: 0.96rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.swal2-input.swal-phone-input {
+  width: 100%;
+  height: 52px;
+  margin: 0;
+  border-radius: 16px;
+  border: 1px solid #d8d1e2;
+  background: #fff;
+  color: #322740;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(90, 59, 130, 0.06);
+}
+
+.swal2-input.swal-phone-input:focus {
+  border-color: #b589ed;
+  box-shadow: 0 0 0 4px rgba(199, 125, 255, 0.12);
+}
+
+.swal2-input.swal-phone-input::placeholder {
+  color: #8d819d;
+}
+
+.swal-phone-close-btn {
+  width: 38px;
+  height: 38px;
+  top: 18px;
+  right: 18px;
+  padding: 0;
+  border-radius: 999px;
+  color: #7e7290;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(226, 217, 239, 0.9);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.swal-phone-close-btn:hover {
+  color: #4f4360;
+  background: rgba(255, 255, 255, 0.96);
+  transform: scale(1.04);
+}
+
+.swal-phone-close-btn:focus {
+  box-shadow: 0 0 0 3px rgba(199, 125, 255, 0.16);
+}
