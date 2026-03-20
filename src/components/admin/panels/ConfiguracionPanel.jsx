@@ -309,6 +309,7 @@ export default function AdminConfiguracion() {
     ubicacion: false,
     auth: true,
     reservas: false,
+    mercadoPago: false,
     empleados: false,
     profesionales: false,
     homeVisuales: false,
@@ -358,6 +359,14 @@ export default function AdminConfiguracion() {
   const [whatsappEstado, setWhatsappEstado] = useState({
     status: "idle",
     message: "Token sin validar",
+  });
+  const [mpOauth, setMpOauth] = useState({
+    loading: true,
+    connecting: false,
+    disconnecting: false,
+    connected: false,
+    account: null,
+    message: "Cargando estado de Mercado Pago...",
   });
 
   const toggle = (key) => {
@@ -519,6 +528,33 @@ export default function AdminConfiguracion() {
     };
   }, [loading, user]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthResult = params.get("mp_oauth");
+    if (!oauthResult) return;
+
+    if (oauthResult === "ok") {
+      swalSuccess({
+        title: "Mercado Pago conectado",
+        text: "La cuenta se vinculó correctamente.",
+      });
+    } else {
+      const reason = params.get("reason");
+      swalError({
+        title: "No se pudo conectar Mercado Pago",
+        text: reason
+          ? `Detalle: ${reason}`
+          : "Volvé a intentar la conexión.",
+      });
+    }
+
+    params.delete("mp_oauth");
+    params.delete("reason");
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, []);
+
   if (loading) {
     return (
       <div className="config-admin-page">
@@ -619,6 +655,124 @@ export default function AdminConfiguracion() {
       });
     }
   }
+
+  async function cargarMpOauthEstado() {
+    setMpOauth((current) => ({
+      ...current,
+      loading: true,
+      message: "Consultando estado de Mercado Pago...",
+    }));
+
+    try {
+      const callable = httpsCallable(firebaseFunctions, "mpOAuthStatus");
+      const response = await callable();
+      const data = response?.data || {};
+      const connected = Boolean(data.connected);
+      const account = data.account || null;
+
+      setMpOauth({
+        loading: false,
+        connecting: false,
+        disconnecting: false,
+        connected,
+        account,
+        message: connected
+          ? `Conectado${account?.mpNickname ? ` (${account.mpNickname})` : ""}`
+          : "No hay cuenta conectada",
+      });
+    } catch (error) {
+      const message =
+        error?.message?.replace("FirebaseError: ", "") ||
+        "No se pudo obtener el estado";
+      setMpOauth({
+        loading: false,
+        connecting: false,
+        disconnecting: false,
+        connected: false,
+        account: null,
+        message,
+      });
+    }
+  }
+
+  async function conectarMercadoPago() {
+    setMpOauth((current) => ({
+      ...current,
+      connecting: true,
+      message: "Generando enlace de conexión...",
+    }));
+
+    try {
+      const callable = httpsCallable(firebaseFunctions, "mpOAuthStart");
+      const response = await callable();
+      const url = String(response?.data?.url || "").trim();
+
+      if (!url) {
+        throw new Error("No se recibió URL de autorización OAuth");
+      }
+
+      window.location.assign(url);
+    } catch (error) {
+      const message =
+        error?.message?.replace("FirebaseError: ", "") ||
+        "No se pudo iniciar OAuth";
+      setMpOauth((current) => ({
+        ...current,
+        connecting: false,
+        message,
+      }));
+      swalError({
+        title: "Error iniciando conexión",
+        text: message,
+      });
+    }
+  }
+
+  async function desconectarMercadoPago() {
+    const confirm = await confirmDanger({
+      title: "Desconectar Mercado Pago",
+      text: "Se desactivará la cuenta conectada para split. Podrás reconectarla cuando quieras.",
+      confirmText: "Desconectar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirm?.isConfirmed) return;
+
+    setMpOauth((current) => ({
+      ...current,
+      disconnecting: true,
+      message: "Desconectando cuenta...",
+    }));
+
+    try {
+      const callable = httpsCallable(firebaseFunctions, "mpOAuthDisconnect");
+      await callable();
+      await cargarMpOauthEstado();
+      swalSuccess({
+        title: "Mercado Pago desconectado",
+        text: "La conexión OAuth fue eliminada correctamente.",
+      });
+    } catch (error) {
+      const message =
+        error?.message?.replace("FirebaseError: ", "") ||
+        "No se pudo desconectar";
+      setMpOauth((current) => ({
+        ...current,
+        disconnecting: false,
+        message,
+      }));
+      swalError({
+        title: "No se pudo desconectar",
+        text: message,
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user?.uid || Number(user.nivel) !== 4) return;
+    void cargarMpOauthEstado();
+  }, [loading, user?.uid, user?.nivel]);
 
   async function agregarProfesional() {
     if (!nombreProfesional.trim()) {
@@ -1245,6 +1399,7 @@ export default function AdminConfiguracion() {
             pruebas.
           </div>
 
+
           <div className="config-actions config-actions-inline">
             <button
               className="btn btn-outline-secondary"
@@ -1279,6 +1434,68 @@ export default function AdminConfiguracion() {
               Guardar reglas
             </button>
           </div>
+        </Seccion>
+
+        <Seccion
+          title="Mercado Pago"
+          subtitle="Conecta la cuenta del negocio para split de comision."
+          open={open.mercadoPago}
+          onToggle={() => toggle("mercadoPago")}
+          loading={false}
+        >
+          <div className="config-note">
+            Esta conexion habilita cobros con cuenta conectada y aplica
+            `marketplace_fee` para enviar tu comision automaticamente.
+          </div>
+
+          <div className="config-actions config-actions-inline mt-3">
+            <button
+              className="btn btn-outline-secondary"
+              type="button"
+              onClick={() => conectarMercadoPago()}
+              disabled={mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+            >
+              {mpOauth.connecting ? "Conectando..." : "Conectar Mercado Pago"}
+            </button>
+
+            <button
+              className="btn btn-outline-secondary"
+              type="button"
+              onClick={() => cargarMpOauthEstado()}
+              disabled={mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+            >
+              {mpOauth.loading ? "Consultando..." : "Actualizar estado"}
+            </button>
+
+            <button
+              className="btn btn-outline-danger"
+              type="button"
+              onClick={() => desconectarMercadoPago()}
+              disabled={!mpOauth.connected || mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+              title="Desconectar Mercado Pago"
+              aria-label="Desconectar Mercado Pago"
+            >
+              {mpOauth.disconnecting ? "..." : "X"}
+            </button>
+
+            <span
+              className={`config-section-status ${
+                mpOauth.connected ? "ok" : "pending"
+              }`}
+            >
+              <span className="config-section-status-dot" />
+              {mpOauth.message}
+            </span>
+          </div>
+
+          {mpOauth.account ? (
+            <div className="config-note mt-3">
+              Cuenta conectada: {mpOauth.account?.mpNickname || "sin nickname"}{" "}
+              {mpOauth.account?.mpUserId
+                ? `(ID ${mpOauth.account.mpUserId})`
+                : ""}
+            </div>
+          ) : null}
         </Seccion>
 
         <Seccion

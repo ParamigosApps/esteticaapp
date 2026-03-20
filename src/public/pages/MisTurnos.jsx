@@ -26,7 +26,7 @@ const functions = getFunctions(undefined, "us-central1");
 const ESTADO_TURNO_LABEL = {
   confirmado: "Confirmado",
   pendiente: "Pendiente",
-  pendiente_aprobacion: "Pendiente de aprobacion",
+  pendiente_aprobacion: "Pendiente de aprobación",
   cancelado: "Cancelado por usuario",
   rechazado: "Rechazado",
   perdido: "Perdido",
@@ -162,7 +162,9 @@ function formatFechaCortaISO(iso) {
 }
 
 function sumarDiasISO(iso, dias) {
-  const [y, m, d] = String(iso || "").split("-").map(Number);
+  const [y, m, d] = String(iso || "")
+    .split("-")
+    .map(Number);
   const base = new Date(y, (m || 1) - 1, d || 1);
   base.setDate(base.getDate() + dias);
   return `${base.getFullYear()}-${pad2(base.getMonth() + 1)}-${pad2(
@@ -503,7 +505,11 @@ export default function MisTurnos() {
         .slice(0, 10);
       const disponibilidades = [];
 
-      for (let offset = 0; offset < 14 && disponibilidades.length < 7; offset++) {
+      for (
+        let offset = 0;
+        offset < 14 && disponibilidades.length < 7;
+        offset++
+      ) {
         const fecha = sumarDiasISO(fechaMin, offset);
         const agendaResp = await getAgenda({
           gabineteIds,
@@ -571,12 +577,20 @@ export default function MisTurnos() {
           cancelButton: "swal-btn-cancel",
         },
         didOpen: () => {
-          const fechasContainer = document.getElementById("fechas-reprogramacion");
-          const slotsContainer = document.getElementById("slots-reprogramacion");
-          const fechaActual = document.getElementById("fecha-reprogramacion-actual");
+          const fechasContainer = document.getElementById(
+            "fechas-reprogramacion",
+          );
+          const slotsContainer = document.getElementById(
+            "slots-reprogramacion",
+          );
+          const fechaActual = document.getElementById(
+            "fecha-reprogramacion-actual",
+          );
 
           function renderSlots(fecha) {
-            const disponibilidad = disponibilidades.find((item) => item.fecha === fecha);
+            const disponibilidad = disponibilidades.find(
+              (item) => item.fecha === fecha,
+            );
             fechaElegida = fecha;
             slotSeleccionado = null;
 
@@ -608,7 +622,9 @@ export default function MisTurnos() {
               )
               .join("");
 
-            const botonesSlot = slotsContainer.querySelectorAll(".slot-reprogramar-btn");
+            const botonesSlot = slotsContainer.querySelectorAll(
+              ".slot-reprogramar-btn",
+            );
             botonesSlot.forEach((btn) => {
               btn.addEventListener("click", () => {
                 botonesSlot.forEach((b) => {
@@ -617,7 +633,8 @@ export default function MisTurnos() {
                   b.style.border = "1px solid #d9cdea";
                 });
 
-                btn.style.background = "linear-gradient(135deg, #d86aa7, #a85fe8)";
+                btn.style.background =
+                  "linear-gradient(135deg, #d86aa7, #a85fe8)";
                 btn.style.color = "#fff";
                 btn.style.border = "1px solid transparent";
 
@@ -652,7 +669,9 @@ export default function MisTurnos() {
             )
             .join("");
 
-          const botonesFecha = fechasContainer.querySelectorAll(".fecha-reprogramar-btn");
+          const botonesFecha = fechasContainer.querySelectorAll(
+            ".fecha-reprogramar-btn",
+          );
           botonesFecha.forEach((btn) => {
             btn.addEventListener("click", () => {
               botonesFecha.forEach((b) => {
@@ -868,7 +887,9 @@ export default function MisTurnos() {
 
         {esHistorial ? (
           <div className="turno-history-line">
-            <span>{t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}</span>
+            <span>
+              {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
+            </span>
             {start ? <span>{formatHora(t.horaInicio)}</span> : null}
             <span>{ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}</span>
             <span>{ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}</span>
@@ -876,24 +897,24 @@ export default function MisTurnos() {
             <span>Pagado ${pagado.toLocaleString("es-AR")}</span>
           </div>
         ) : (
-        <div className="turno-card-stats">
-          <div className="turno-stat turno-stat-highlight">
-            <span>Pagado</span>
-            <strong>${pagado.toLocaleString("es-AR")}</strong>
-            <small>
-              {pagado > 0
-                ? "Registrado en tu turno"
-                : "Todavia no tenes pagos registrados"}
-            </small>
-          </div>
-          {anticipo > 0 && (
-            <div className="turno-stat">
-              <span>Seña</span>
-              <strong>${anticipo.toLocaleString("es-AR")}</strong>
-              <small>Reserva solicitada para este servicio</small>
+          <div className="turno-card-stats">
+            <div className="turno-stat turno-stat-highlight">
+              <span>Pagado</span>
+              <strong>${pagado.toLocaleString("es-AR")}</strong>
+              <small>
+                {pagado > 0
+                  ? "Registrado en tu turno"
+                  : "Todavia no tenes pagos registrados"}
+              </small>
             </div>
-          )}
-        </div>
+            {anticipo > 0 && (
+              <div className="turno-stat">
+                <span>Seña</span>
+                <strong>${anticipo.toLocaleString("es-AR")}</strong>
+                <small>Reserva solicitada para este servicio</small>
+              </div>
+            )}
+          </div>
         )}
 
         {!esHistorial && mostrarResumenPago && (
@@ -905,39 +926,38 @@ export default function MisTurnos() {
         {!esHistorial && (
           <div className="turno-card-actions">
             {isProximo && (
-            <>
-              <button
-                type="button"
-                className="btn turno-action-btn info"
-                onClick={() => reprogramarTurno(t)}
-                disabled={!canReprogramTurno(t, reservasConfig)}
-                title={
-                  canReprogramTurno(t, reservasConfig)
-                    ? ""
-                    : reservasConfig?.permitirReprogramacionUsuario === false
-                      ? "La reprogramacion por parte del usuario esta desactivada"
-                      : `Se permiten ${getMaxReprogramacionesUsuario(reservasConfig)} ${getMaxReprogramacionesUsuario(reservasConfig) === 1 ? "reprogramacion" : "reprogramaciones"} por turno con ${HORA_CANCELACION_MINIMA}h de anticipacion`
-                }
-              >
-                Reprogramar
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn turno-action-btn info"
+                  onClick={() => reprogramarTurno(t)}
+                  disabled={!canReprogramTurno(t, reservasConfig)}
+                  title={
+                    canReprogramTurno(t, reservasConfig)
+                      ? ""
+                      : reservasConfig?.permitirReprogramacionUsuario === false
+                        ? "La reprogramacion por parte del usuario esta desactivada"
+                        : `Se permiten ${getMaxReprogramacionesUsuario(reservasConfig)} ${getMaxReprogramacionesUsuario(reservasConfig) === 1 ? "reprogramacion" : "reprogramaciones"} por turno con ${HORA_CANCELACION_MINIMA}h de anticipacion`
+                  }
+                >
+                  Reprogramar
+                </button>
 
-              <button
-                type="button"
-                className="btn turno-action-btn danger"
-                onClick={() => cancelarTurno(t)}
-                disabled={!canCancelTurno(t)}
-                title={
-                  canCancelTurno(t)
-                    ? ""
-                    : `Cancelable con ${HORA_CANCELACION_MINIMA}h de anticipacion`
-                }
-              >
-                Cancelar turno
-              </button>
-            </>
+                <button
+                  type="button"
+                  className="btn turno-action-btn danger"
+                  onClick={() => cancelarTurno(t)}
+                  disabled={!canCancelTurno(t)}
+                  title={
+                    canCancelTurno(t)
+                      ? ""
+                      : `Cancelable con ${HORA_CANCELACION_MINIMA}h de anticipacion`
+                  }
+                >
+                  Cancelar turno
+                </button>
+              </>
             )}
-
           </div>
         )}
       </article>
@@ -999,7 +1019,10 @@ export default function MisTurnos() {
         <div className="turnos-section-head turnos-section-head-confirmed">
           <div>
             <h2>Próximos</h2>
-            <p>Turnos confirmados y activos con opciones para reprogramar o cancelar.</p>
+            <p>
+              Turnos confirmados y activos con opciones para reprogramar o
+              cancelar.
+            </p>
           </div>
           <span className="turnos-counter">
             {proximos.length} turno{proximos.length === 1 ? "" : "s"}
@@ -1021,7 +1044,10 @@ export default function MisTurnos() {
         <div className="turnos-section-head turnos-section-head-pending">
           <div>
             <h2>Pendientes de confirmacion o pago</h2>
-            <p>Turnos activos que todavia esperan aprobacion, confirmacion o un pago.</p>
+            <p>
+              Turnos activos que todavia esperan aprobación, confirmacion o un
+              pago.
+            </p>
           </div>
           <span className="turnos-counter">
             {pendientes.length} turno{pendientes.length === 1 ? "" : "s"}
@@ -1067,5 +1093,3 @@ export default function MisTurnos() {
     </div>
   );
 }
-
-

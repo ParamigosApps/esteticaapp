@@ -41,6 +41,46 @@ function formatTime(ms) {
   });
 }
 
+function parseIsoDate(iso) {
+  const [year, month, day] = String(iso || "")
+    .split("-")
+    .map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
+function toIsoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getWeekStartIso(isoDate) {
+  const base = parseIsoDate(isoDate);
+  if (!base) return "";
+  const day = base.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  base.setUTCDate(base.getUTCDate() + diffToMonday);
+  return toIsoDate(base);
+}
+
+function getWeekEndIso(weekStartIso) {
+  const start = parseIsoDate(weekStartIso);
+  if (!start) return "";
+  start.setUTCDate(start.getUTCDate() + 6);
+  return toIsoDate(start);
+}
+
+function formatWeekRangeLabel(weekStartIso) {
+  const start = parseIsoDate(weekStartIso);
+  const end = parseIsoDate(getWeekEndIso(weekStartIso));
+  if (!start || !end) return "Semana";
+
+  const fmt = new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "short",
+  });
+  return `Semana ${fmt.format(start)} - ${fmt.format(end)}`;
+}
+
 function isClosedStatus(status) {
   return ["cancelado", "rechazado", "finalizado", "perdido"].includes(status);
 }
@@ -120,50 +160,70 @@ export default function AdminDashboard() {
   const [gabinetes, setGabinetes] = useState([]);
   const [pagos, setPagos] = useState([]);
 
-  useEffect(() => onSnapshot(collection(db, "turnos"), (snap) => {
-    setTurnos(
-      snap.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })),
-    );
-  }), []);
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "turnos"), (snap) => {
+        setTurnos(
+          snap.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })),
+        );
+      }),
+    [],
+  );
 
-  useEffect(() => onSnapshot(collection(db, "usuarios"), (snap) => {
-    setUsuarios(
-      snap.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })),
-    );
-  }), []);
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "usuarios"), (snap) => {
+        setUsuarios(
+          snap.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })),
+        );
+      }),
+    [],
+  );
 
-  useEffect(() => onSnapshot(collection(db, "servicios"), (snap) => {
-    setServicios(
-      snap.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })),
-    );
-  }), []);
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "servicios"), (snap) => {
+        setServicios(
+          snap.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })),
+        );
+      }),
+    [],
+  );
 
-  useEffect(() => onSnapshot(collection(db, "gabinetes"), (snap) => {
-    setGabinetes(
-      snap.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })),
-    );
-  }), []);
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "gabinetes"), (snap) => {
+        setGabinetes(
+          snap.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })),
+        );
+      }),
+    [],
+  );
 
-  useEffect(() => onSnapshot(collection(db, "pagos"), (snap) => {
-    setPagos(
-      snap.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })),
-    );
-  }), []);
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "pagos"), (snap) => {
+        setPagos(
+          snap.docs.map((docItem) => ({
+            id: docItem.id,
+            ...docItem.data(),
+          })),
+        );
+      }),
+    [],
+  );
 
   const today = useMemo(() => {
     const now = new Date();
@@ -171,6 +231,7 @@ export default function AdminDashboard() {
       nowMs: now.getTime(),
       iso: now.toISOString().slice(0, 10),
       plus7Ms: now.getTime() + 7 * 24 * 60 * 60 * 1000,
+      plus21Ms: now.getTime() + 21 * 24 * 60 * 60 * 1000,
       label: now.toLocaleDateString("es-AR", {
         weekday: "long",
         day: "numeric",
@@ -194,10 +255,47 @@ export default function AdminDashboard() {
 
   const proximosTurnos = useMemo(() => {
     return [...turnosActivos]
-      .filter((turno) => Number(turno.horaInicio || 0) >= today.nowMs)
+      .filter((turno) => {
+        const inicio = Number(turno.horaInicio || 0);
+        return inicio >= today.nowMs && inicio <= today.plus21Ms;
+      })
       .sort((a, b) => Number(a.horaInicio || 0) - Number(b.horaInicio || 0))
-      .slice(0, 6);
-  }, [today.nowMs, turnosActivos]);
+      .slice(0, 60);
+  }, [today.nowMs, today.plus21Ms, turnosActivos]);
+
+  const proximosTurnosPorSemana = useMemo(() => {
+    const weekOfToday = getWeekStartIso(today.iso);
+    const weekOfNext = getWeekStartIso(toIsoDate(new Date(today.plus7Ms)));
+    const groupsMap = new Map();
+
+    proximosTurnos.forEach((turno) => {
+      const turnoIso = String(turno.fecha || "").trim();
+      const weekKey = getWeekStartIso(turnoIso);
+      const fallbackKey = weekKey || "sin-fecha";
+
+      if (!groupsMap.has(fallbackKey)) {
+        groupsMap.set(fallbackKey, []);
+      }
+      groupsMap.get(fallbackKey).push(turno);
+    });
+
+    return Array.from(groupsMap.entries()).map(([weekKey, items]) => {
+      let label = "Sin fecha";
+      if (weekKey === weekOfToday) {
+        label = "Esta semana";
+      } else if (weekKey === weekOfNext) {
+        label = "Proxima semana";
+      } else if (weekKey !== "sin-fecha") {
+        label = formatWeekRangeLabel(weekKey);
+      }
+
+      return {
+        key: weekKey,
+        label,
+        items,
+      };
+    });
+  }, [proximosTurnos, today.iso, today.plus7Ms]);
 
   const agendaHoy = useMemo(() => {
     return turnosActivos
@@ -210,10 +308,14 @@ export default function AdminDashboard() {
       isPendienteAprobacionTurno,
     ).length;
     const pendientesMp = turnosActivos.filter(isPendientePagoMpTurno).length;
-
-    const confirmadosHoy = agendaHoy.filter(
-      (turno) => getEstadoTurno(turno) === "confirmado",
-    ).length;
+    const confirmadosHoy = agendaHoy.filter((turno) => {
+      const estadoTurno = getEstadoTurno(turno);
+      const estadoPago = String(getEstadoPago(turno) || "").toLowerCase();
+      return (
+        estadoTurno === "confirmado" &&
+        (estadoPago === "abonado" || estadoPago === "aprobado")
+      );
+    }).length;
 
     const saldoPendiente = turnosActivos.reduce((acc, turno) => {
       const total = Number(turno?.montoTotal ?? turno?.precioTotal ?? 0);
@@ -247,8 +349,12 @@ export default function AdminDashboard() {
       clientesConProximoTurno,
       pagosPendientesLiquidar: pagosPendientesLiquidar.length,
       netoPendienteLiquidar: ingresosSemana,
-      serviciosActivos: servicios.filter((servicio) => servicio.activo !== false).length,
-      gabinetesActivos: gabinetes.filter((gabinete) => gabinete.activo !== false).length,
+      serviciosActivos: servicios.filter(
+        (servicio) => servicio.activo !== false,
+      ).length,
+      gabinetesActivos: gabinetes.filter(
+        (gabinete) => gabinete.activo !== false,
+      ).length,
     };
   }, [agendaHoy, gabinetes, pagos, servicios, today.nowMs, turnosActivos]);
 
@@ -274,7 +380,9 @@ export default function AdminDashboard() {
         nombre: gabinete.nombreGabinete || "Gabinete",
         total: counts[gabinete.id] || 0,
       }))
-      .sort((a, b) => b.total - a.total || a.nombre.localeCompare(b.nombre, "es"))
+      .sort(
+        (a, b) => b.total - a.total || a.nombre.localeCompare(b.nombre, "es"),
+      )
       .slice(0, 4);
   }, [agendaHoy, gabinetes]);
 
@@ -293,7 +401,7 @@ export default function AdminDashboard() {
 
     return [
       {
-        label: "Pendientes de aprobacion",
+        label: "Pendientes de aprobación",
         value: resumen.pendientesAprobacion,
         tone: resumen.pendientesAprobacion > 0 ? "warning" : "ok",
         icon: FiClock,
@@ -301,7 +409,7 @@ export default function AdminDashboard() {
       {
         label: "Pendientes MP",
         value: resumen.pendientesMp,
-        tone: resumen.pendientesMp > 0 ? "warning" : "ok",
+        tone: "soft",
         icon: FiDollarSign,
       },
       {
@@ -337,11 +445,12 @@ export default function AdminDashboard() {
         <div className="dashboard-hero-copy">
           <span className="dashboard-kicker">Centro operativo</span>
           <h2>
-            {user?.nombre || user?.displayName || "Administracion"} | resumen del dia
+            {user?.nombre || user?.displayName || "Administracion"} | resumen
+            del dia
           </h2>
           <p>
-            Controla agenda, clientes, cobros y configuracion desde una vista clara y
-            util para trabajar.
+            Controla agenda, clientes, cobros y configuracion desde una vista
+            clara y util para trabajar.
           </p>
 
           <div className="dashboard-hero-meta">
@@ -353,9 +462,9 @@ export default function AdminDashboard() {
 
         <div className="dashboard-hero-side">
           <div className="dashboard-hero-stat">
-            <small>Turnos hoy</small>
-            <strong>{resumen.hoy}</strong>
-            <span>{resumen.confirmadosHoy} confirmados</span>
+            <small>Turnos confirmados para hoy</small>
+            <strong>{resumen.confirmadosHoy}</strong>
+            <span>{resumen.porConfirmar} pendientes</span>
           </div>
           <div className="dashboard-hero-stat dashboard-hero-stat-soft">
             <small>Neto pendiente</small>
@@ -367,7 +476,7 @@ export default function AdminDashboard() {
 
       <section className="dashboard-metrics-grid">
         <article className="dashboard-metric-card">
-          <span>Pend. aprobacion</span>
+          <span>Pend. aprobación</span>
           <strong>{resumen.pendientesAprobacion}</strong>
           <small>Reservas manuales pendientes.</small>
         </article>
@@ -410,38 +519,54 @@ export default function AdminDashboard() {
           </div>
 
           <div className="dashboard-list">
-            {proximosTurnos.map((turno) => {
-              const clienteId = turno.clienteId || turno.usuarioId || turno.uid;
-              const cliente = usuariosMap[clienteId];
-              const nombreCliente =
-                cliente?.nombre ||
-                cliente?.email ||
-                turno.nombreCliente ||
-                turno.clienteEmail ||
-                "Cliente";
-              const estadoDashboard = getEstadoDashboard(turno);
+            {proximosTurnosPorSemana.map((group) => (
+              <div key={group.key} className="dashboard-week-group">
+                <div className="dashboard-week-divider">
+                  <span>{group.label}</span>
+                </div>
 
-              return (
-                <article key={turno.id} className="dashboard-appointment-item">
-                  <div className="dashboard-appointment-time">
-                    <strong>{formatTime(turno.horaInicio)}</strong>
-                    <span>{turno.fecha ? formatDateLabel(turno.fecha) : "-"}</span>
-                  </div>
+                {group.items.map((turno) => {
+                  const clienteId =
+                    turno.clienteId || turno.usuarioId || turno.uid;
+                  const cliente = usuariosMap[clienteId];
+                  const nombreCliente =
+                    cliente?.nombre ||
+                    cliente?.email ||
+                    turno.nombreCliente ||
+                    turno.clienteEmail ||
+                    "Cliente";
+                  const estadoDashboard = getEstadoDashboard(turno);
 
-                  <div className="dashboard-appointment-copy">
-                    <strong>{turno.nombreServicio || "Servicio"}</strong>
-                    <span>{nombreCliente}</span>
-                    <small>{turno.nombreGabinete || "Sin gabinete"}</small>
-                  </div>
+                  return (
+                    <article
+                      key={turno.id}
+                      className="dashboard-appointment-item"
+                    >
+                      <div className="dashboard-appointment-time">
+                        <strong>{formatTime(turno.horaInicio)}</strong>
+                        <span>
+                          {turno.fecha ? formatDateLabel(turno.fecha) : "-"}
+                        </span>
+                      </div>
 
-                  <div className={`dashboard-badge is-${estadoDashboard.key}`}>
-                    {estadoDashboard.label}
-                  </div>
-                </article>
-              );
-            })}
+                      <div className="dashboard-appointment-copy">
+                        <strong>{turno.nombreServicio || "Servicio"}</strong>
+                        <span>{nombreCliente}</span>
+                        <small>{turno.nombreGabinete || "Sin gabinete"}</small>
+                      </div>
 
-            {!proximosTurnos.length ? (
+                      <div
+                        className={`dashboard-badge is-${estadoDashboard.key}`}
+                      >
+                        {estadoDashboard.label}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ))}
+
+            {!proximosTurnosPorSemana.length ? (
               <div className="dashboard-empty">
                 No hay turnos proximos cargados. Si esta vista no aporta valor,
                 conviene operar directo desde Turnos.
@@ -523,7 +648,11 @@ export default function AdminDashboard() {
           const Icon = action.icon;
 
           return (
-            <Link key={action.to} to={action.to} className="dashboard-action-card">
+            <Link
+              key={action.to}
+              to={action.to}
+              className="dashboard-action-card"
+            >
               <span className="dashboard-action-icon">
                 <Icon />
               </span>
@@ -539,3 +668,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

@@ -19,6 +19,11 @@ const { defineSecret } = require('firebase-functions/params')
 
 const { FieldValue, Timestamp } = require('firebase-admin/firestore')
 const { getAdmin } = require('./_lib/firebaseAdmin')
+const {
+  getMpConnectionByUid,
+  getMpConnectionByCollectorId,
+  getActiveMpConnection,
+} = require('./mp/oauthStore')
 
 const { setAdminClaimHandler } = require('./setAdminClaim')
 
@@ -33,6 +38,14 @@ const MP_COLLECTOR_ID = defineSecret('MP_COLLECTOR_ID')
 // ======================================================
 exports.webhookMP =
   require('./mp/webhookMP').webhookMP;
+exports.mpOAuthStart =
+  require('./mp/oauthConnect').mpOAuthStart;
+exports.mpOAuthStatus =
+  require('./mp/oauthConnect').mpOAuthStatus;
+exports.mpOAuthDisconnect =
+  require('./mp/oauthConnect').mpOAuthDisconnect;
+exports.mpOAuthCallback =
+  require('./mp/oauthConnect').mpOAuthCallback;
 
   
 // ======================================================
@@ -166,6 +179,117 @@ async function mpGet(url, token, retries = 5) {
   }
 
   throw new Error(`MP fetch failed: ${lastErr}`)
+}
+
+function uniqueTokenCandidates(candidates = []) {
+  const out = []
+  const seen = new Set()
+
+  for (const item of candidates) {
+    const token = String(item?.token || '').trim()
+    if (!token || seen.has(token)) continue
+    seen.add(token)
+    out.push({
+      token,
+      source: item?.source || 'unknown',
+      accountUid: item?.accountUid || null,
+      collectorId: Number(item?.collectorId || 0) || null,
+    })
+  }
+
+  return out
+}
+
+async function resolveTokenCandidateForPago({ db, pago, globalToken }) {
+  const accountUid = String(pago?.mpAccountUid || '').trim()
+
+  if (accountUid) {
+    const conn = await getMpConnectionByUid(db, accountUid)
+    if (conn?.accessToken) {
+      return {
+        token: conn.accessToken,
+        source: 'oauth',
+        accountUid: conn.uid,
+        collectorId: Number(conn.mpUserId || 0) || null,
+      }
+    }
+  }
+
+  if (pago?.mpTokenSource === 'oauth') {
+    const activeConn = await getActiveMpConnection(db)
+    if (activeConn?.accessToken) {
+      return {
+        token: activeConn.accessToken,
+        source: 'oauth_active',
+        accountUid: activeConn.uid,
+        collectorId: Number(activeConn.mpUserId || 0) || null,
+      }
+    }
+  }
+
+  const fallbackToken = String(globalToken || '').trim()
+  if (!fallbackToken) return null
+
+  return {
+    token: fallbackToken,
+    source: 'global',
+    accountUid: null,
+    collectorId: null,
+  }
+}
+
+async function buildWebhookTokenCandidates({ db, data, globalToken }) {
+  const candidates = []
+  let hintedPago = null
+
+  const hintedPagoId = String(data?.pagoId || '').trim()
+  if (hintedPagoId) {
+    const hintedPagoSnap = await db.collection('pagos').doc(hintedPagoId).get()
+    if (hintedPagoSnap.exists) {
+      hintedPago = {
+        id: hintedPagoSnap.id,
+        ...hintedPagoSnap.data(),
+      }
+      const tokenFromPago = await resolveTokenCandidateForPago({
+        db,
+        pago: hintedPago,
+        globalToken,
+      })
+      if (tokenFromPago) candidates.push(tokenFromPago)
+    }
+  }
+
+  const rawCollectorId =
+    data?.raw?.user_id ||
+    data?.raw?.userId ||
+    data?.raw?.collector_id ||
+    null
+
+  if (rawCollectorId) {
+    const connByCollector = await getMpConnectionByCollectorId(db, rawCollectorId)
+    if (connByCollector?.accessToken) {
+      candidates.push({
+        token: connByCollector.accessToken,
+        source: 'oauth_collector',
+        accountUid: connByCollector.uid,
+        collectorId: Number(connByCollector.mpUserId || 0) || null,
+      })
+    }
+  }
+
+  if (globalToken) {
+    candidates.push({
+      token: globalToken,
+      source: 'global',
+      accountUid: null,
+      collectorId: null,
+    })
+  }
+
+  return {
+    candidates: uniqueTokenCandidates(candidates),
+    hintedPago,
+  }
 }
 
 function calcularEstadoPago(montoTotal = 0, montoPagado = 0) {
@@ -303,13 +427,37 @@ exports.processWebhookEvent = onDocumentWritten(
 
     try {
 
-      const payment = await mpGet(
-        `https://api.mercadopago.com/v1/payments/${paymentId}`,
-        mpToken
-      )
+      const tokenData = await buildWebhookTokenCandidates({
+        db,
+        data,
+        globalToken: mpToken,
+      })
 
-      if (collectorId && Number(payment.collector_id) !== collectorId) {
-        throw new Error('collector_mismatch')
+      if (!tokenData.candidates.length) {
+        throw new Error('mp_token_missing')
+      }
+
+      let payment = null
+      let tokenUsed = null
+      let lastTokenErr = null
+
+      for (const candidate of tokenData.candidates) {
+        try {
+          payment = await mpGet(
+            `https://api.mercadopago.com/v1/payments/${paymentId}`,
+            candidate.token
+          )
+          tokenUsed = candidate
+          break
+        } catch (errToken) {
+          lastTokenErr = errToken
+        }
+      }
+
+      if (!payment) {
+        throw new Error(
+          `payment_lookup_failed: ${lastTokenErr?.message || 'sin_token_valido'}`
+        )
       }
 
       const pagoId = payment.external_reference
@@ -330,6 +478,24 @@ exports.processWebhookEvent = onDocumentWritten(
       }
 
       const pago = pagoSnap.data()
+      const expectedCollectorId = Number(
+        pago?.mpCollectorIdExpected ||
+        tokenData.hintedPago?.mpCollectorIdExpected ||
+        0
+      )
+
+      if (expectedCollectorId && Number(payment.collector_id) !== expectedCollectorId) {
+        throw new Error('collector_mismatch')
+      }
+
+      if (
+        !expectedCollectorId &&
+        collectorId &&
+        tokenUsed?.source === 'global' &&
+        Number(payment.collector_id) !== collectorId
+      ) {
+        throw new Error('collector_mismatch')
+      }
 
       // ================================
       // PAYMENT APPROVED
@@ -356,6 +522,8 @@ exports.processWebhookEvent = onDocumentWritten(
         origen: pago.origen || 'turno_online',
         mpStatus: payment.status,
         mpPaymentId: payment.id,
+        mpCollectorId: Number(payment.collector_id || 0) || null,
+        mpTokenSource: pago.mpTokenSource || tokenUsed?.source || 'global',
         approvedAt: now,
         updatedAt: now,
       })
@@ -384,6 +552,8 @@ exports.processWebhookEvent = onDocumentWritten(
       origen: pago.origen || 'turno_online',
       mpStatus: payment.status,
       mpPaymentId: payment.id,
+      mpCollectorId: Number(payment.collector_id || 0) || null,
+      mpTokenSource: pago.mpTokenSource || tokenUsed?.source || 'global',
       updatedAt: now,
     })
 
@@ -397,6 +567,8 @@ exports.processWebhookEvent = onDocumentWritten(
           estado: 'pendiente',
           mpStatus: payment.status,
           mpPaymentId: payment.id,
+          mpCollectorId: Number(payment.collector_id || 0) || null,
+          mpTokenSource: pago.mpTokenSource || tokenUsed?.source || 'global',
           updatedAt: now,
         })
 
@@ -437,8 +609,8 @@ exports.reconciliarPagosPendientes = onSchedule(
 
     const admin = getAdmin()
     const db = admin.firestore()
-    const token = MP_ACCESS_TOKEN.value()
-    if (!token) return
+    const globalToken = MP_ACCESS_TOKEN.value()
+    if (!globalToken) return
 
     const pagosTurnosSnap = await db
       .collection('pagos')
@@ -453,10 +625,19 @@ exports.reconciliarPagosPendientes = onSchedule(
       const pagoRef = doc.ref
 
       try {
+        const tokenData = await resolveTokenCandidateForPago({
+          db,
+          pago,
+          globalToken,
+        })
+
+        if (!tokenData?.token) {
+          continue
+        }
 
         const payment = await mpGet(
           `https://api.mercadopago.com/v1/payments/${pago.mpPaymentId}`,
-          token
+          tokenData.token
         )
 
         const now = FieldValue.serverTimestamp()
@@ -467,6 +648,8 @@ exports.reconciliarPagosPendientes = onSchedule(
             await pagoRef.update({
               estado: 'aprobado',
               mpStatus: payment.status,
+              mpCollectorId: Number(payment.collector_id || 0) || null,
+              mpTokenSource: pago.mpTokenSource || tokenData.source || 'global',
               approvedAt: now,
               updatedAt: now,
             })
@@ -488,6 +671,8 @@ exports.reconciliarPagosPendientes = onSchedule(
           await pagoRef.update({
             estado: 'rechazado',
             mpStatus: payment.status,
+            mpCollectorId: Number(payment.collector_id || 0) || null,
+            mpTokenSource: pago.mpTokenSource || tokenData.source || 'global',
             updatedAt: now,
           })
         }

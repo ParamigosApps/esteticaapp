@@ -153,10 +153,9 @@ export default function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="admin-sidebar-brand">
           <span className="admin-sidebar-kicker">Panel</span>
-          <h3 className="admin-logo">Administracion</h3>
+          <h3 className="admin-logo">Administración</h3>
           <p className="admin-sidebar-copy">
-            Gestiona turnos, clientes, liquidaciones y configuracion desde un
-            solo lugar.
+            Gestiona turnos, clientes, liquidaciones y configuracion.
           </p>
         </div>
 

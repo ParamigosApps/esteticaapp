@@ -160,8 +160,8 @@ function getModoReservaServicio(servicio = {}) {
 
 function getModoReservaLabel(servicio = {}) {
   return getModoReservaServicio(servicio) === "reserva"
-    ? "Requiere aprobacion"
-    : "Confirmacion automatica";
+    ? "Requiere aprobación"
+    : "Confirmación automática";
 }
 
 function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
@@ -1446,7 +1446,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       Number(precioEfectivo) >= Number(precio)
     ) {
       return showError(
-        "El precio en efectivo debe ser menor al precio general",
+        "El precio en efectivo debe ser menor al precio general o dejar vacio si no aplica.",
       );
     }
     if (responsableGestion === "profesional" && !profesionalId) {
@@ -1879,7 +1879,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                     onChange={(e) => setModoReserva(e.target.value)}
                   >
                     <option value="automatico">Confirmacion automatica</option>
-                    <option value="reserva">Requiere aprobacion</option>
+                    <option value="reserva">Requiere aprobación</option>
                   </select>
                 </div>
                 <div className="field-group">
@@ -2005,7 +2005,6 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                     <option value="profesional">Profesional vinculado</option>
                   </select>
                 </div>
-
               </div>
             </section>
 
@@ -2353,7 +2352,7 @@ export default function ServiciosPanel() {
         "Ya existe un servicio activo con ese nombre para ese profesional en esta categoria",
       );
 
-    if (Number(duracion) <= 0) return showError("Duracion invalida");
+    if (Number(duracion) <= 0) return showError("Duración invalida");
     if (Number(precio) < 0) return showError("Precio invalido");
     if (Number(precioEfectivo) < 0)
       return showError("Precio en efectivo invalido");
@@ -2362,7 +2361,7 @@ export default function ServiciosPanel() {
       Number(precioEfectivo) >= Number(precio)
     ) {
       return showError(
-        "El precio en efectivo debe ser menor al precio general",
+        "El precio en efectivo debe ser menor al precio general o dejar vacio si no aplica.",
       );
     }
     if (responsableGestion === "profesional" && !profesionalId) {
@@ -2721,7 +2720,6 @@ export default function ServiciosPanel() {
                         </option>
                       </select>
                     </div>
-
                   </div>
                 </div>
 

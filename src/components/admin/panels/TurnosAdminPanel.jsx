@@ -1493,7 +1493,7 @@ export default function TurnosAdminPanel() {
             >
               <option value="todos">Todos</option>
               <option value="pendiente">Pendientes</option>
-              <option value="pendiente_aprobacion">Pendiente aprobacion</option>
+              <option value="pendiente_aprobacion">Pendiente aprobación</option>
               <option value="confirmado">Confirmados</option>
               <option value="rechazado">Rechazados</option>
               <option value="cancelado">Cancelados</option>
@@ -1522,7 +1522,7 @@ export default function TurnosAdminPanel() {
               <option value="todos">Todos los pagos</option>
               <option value="pendiente">Pago pendiente</option>
               <option value="pendiente_aprobacion">
-                Pendiente aprobacion pago
+                Pendiente aprobación pago
               </option>
               <option value="parcial">Pago parcial</option>
               <option value="abonado">Abonado</option>

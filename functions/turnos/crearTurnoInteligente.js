@@ -9,6 +9,7 @@ const { WHATSAPP_TOKEN, enviarWhatsApp } = require("./whatsapp");
 
 const MAX_TURNOS_SIN_CONFIRMAR_SIN_TURNOS_CONFIRMADOS = 8;
 const AGENDA_24HS_FALLBACK_DIAS = 90;
+const RESERVA_PAGO_MP_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
 
 function normalizarEstadoTurno(turno = {}) {
   if (turno.estadoTurno) return turno.estadoTurno;
@@ -715,7 +716,7 @@ const {
         if (requiereAnticipo) {
           estadoTurnoInicial = "pendiente";
           estadoPagoInicial = "pendiente";
-          venceTurno = Date.now() + 60 * 60 * 1000;
+          venceTurno = Date.now() + RESERVA_PAGO_MP_TIMEOUT_MS;
         } else {
           estadoTurnoInicial = "confirmado";
           estadoPagoInicial = montoTotal > 0 ? "pendiente" : "abonado";

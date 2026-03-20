@@ -2724,17 +2724,35 @@ object-fit:cover;
 
 .dashboard-hero-meta {
   grid-template-columns: repeat(3, minmax(0, max-content));
-  gap: 10px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .dashboard-hero-meta span {
-  padding: 10px 12px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(215, 199, 182, 0.75);
-  color: #6b5b4f;
-  font-size: 0.88rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(249, 244, 238, 0.96));
+  border: 1px solid rgba(207, 187, 166, 0.62);
+  color: #5f4f44;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 14px rgba(67, 49, 35, 0.08);
+}
+
+.dashboard-hero-meta span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #d58e45, #b9691b);
+  box-shadow: 0 0 0 3px rgba(213, 142, 69, 0.14);
 }
 
 .dashboard-hero-side {
@@ -2798,6 +2816,26 @@ object-fit:cover;
   gap: 6px;
 }
 
+.dashboard-metrics-grid > .dashboard-metric-card:nth-child(1) {
+  background: linear-gradient(180deg, #fff8eb 0%, #fff1d9 100%);
+  border-color: rgba(231, 182, 106, 0.65);
+}
+
+.dashboard-metrics-grid > .dashboard-metric-card:nth-child(2) {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+  border-color: rgba(166, 187, 219, 0.62);
+}
+
+.dashboard-metric-card.is-warning {
+  background: linear-gradient(180deg, #fff8eb 0%, #fff1d9 100%);
+  border-color: rgba(231, 182, 106, 0.65);
+}
+
+.dashboard-metric-card.is-neutral {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+  border-color: rgba(166, 187, 219, 0.62);
+}
+
 .dashboard-main-grid {
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.9fr);
   gap: 18px;
@@ -2835,7 +2873,34 @@ object-fit:cover;
 .dashboard-alert-grid,
 .dashboard-actions-grid,
 .dashboard-util-list {
+  display: grid;
   gap: 12px;
+}
+
+.dashboard-week-group {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-week-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-week-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(170, 141, 112, 0.28), rgba(170, 141, 112, 0));
+}
+
+.dashboard-week-divider span {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9b5c2d;
 }
 
 .dashboard-appointment-item,

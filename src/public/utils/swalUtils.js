@@ -595,7 +595,7 @@ export function swalResumenTurno({
               Un administrador verificará disponibilidad y te responderá por WhatsApp.
               `
               : `
-              Serás redirigido a MercadoPago para completar el pago y confirmar el turno.
+              Serás redirigido a MercadoPago para completar el pago y confirmar el turno.\n              El horario quedara reservado por <strong>10 minutos</strong>. Si no se acredita el pago en ese plazo, la reserva se libera automaticamente.
               `
           }
         </div>
@@ -899,3 +899,5 @@ export function swalTurnoConfirmado({
     buttonsStyling: false,
   });
 }
+
+

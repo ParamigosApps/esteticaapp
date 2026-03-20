@@ -7,6 +7,7 @@ const { getAdmin } = require("../_lib/firebaseAdmin");
 const { defineSecret } = require("firebase-functions/params");
 const { FieldValue } = require("firebase-admin/firestore");
 const { desglosarPagoTurno, normalizarMontosTurno } = require("../config/comisiones");
+const { getActiveMpConnection } = require("../mp/oauthStore");
 
 const MP_ACCESS_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const FRONT_URL = defineSecret("FRONT_URL");
@@ -130,6 +131,12 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("internal", "MP no configurado");
     }
 
+    const activeMpConnection = await getActiveMpConnection(db);
+    const mpTokenOAuth = String(activeMpConnection?.accessToken || "").trim();
+    const usaOauthMp = Boolean(mpTokenOAuth);
+    const mpAccessTokenFinal = usaOauthMp ? mpTokenOAuth : mpAccessToken;
+    const mpCollectorIdEsperado = Number(activeMpConnection?.mpUserId || 0) || null;
+
     const montosTurno = normalizarMontosTurno(turno);
     const montoAnticipo = montosTurno.montoAnticipo;
     const montoTotal = montosTurno.montoTotal;
@@ -168,6 +175,10 @@ await pagoRef.set({
   mpInitPoint: null,
   mpPaymentId: null,
   mpStatus: null,
+  mpTokenSource: usaOauthMp ? "oauth" : "global",
+  mpAccountUid: usaOauthMp ? activeMpConnection.uid : null,
+  mpCollectorIdExpected: usaOauthMp ? mpCollectorIdEsperado : null,
+  mpMarketplaceFee: usaOauthMp ? Number(desglosePago.montoComision || 0) : 0,
 
   expiraEn: turno.venceEn || null,
   comprobanteUrl: null,
@@ -199,28 +210,34 @@ await turnoRef.update({
     const { MercadoPagoConfig, Preference } = await import("mercadopago");
 
     const client = new MercadoPagoConfig({
-      accessToken: mpAccessToken,
+      accessToken: mpAccessTokenFinal,
     });
 
     const preference = new Preference(client);
 
-    const pref = await preference.create({
-      body: {
-        items: [
-          {
-            title: tituloPago,
-            quantity: 1,
-            unit_price: montoAnticipo,
-            currency_id: "ARS",
-          },
-        ],
-        external_reference: pagoRef.id,
-        back_urls: {
-          success: `${frontUrl}/pago-resultado`,
-          failure: `${frontUrl}/pago-resultado`,
-          pending: `${frontUrl}/pago-resultado`,
+    const preferenceBody = {
+      items: [
+        {
+          title: tituloPago,
+          quantity: 1,
+          unit_price: montoAnticipo,
+          currency_id: "ARS",
         },
+      ],
+      external_reference: pagoRef.id,
+      back_urls: {
+        success: `${frontUrl}/pago-resultado`,
+        failure: `${frontUrl}/pago-resultado`,
+        pending: `${frontUrl}/pago-resultado`,
       },
+    };
+
+    if (usaOauthMp && Number(desglosePago.montoComision || 0) > 0) {
+      preferenceBody.marketplace_fee = Number(desglosePago.montoComision || 0);
+    }
+
+    const pref = await preference.create({
+      body: preferenceBody,
     });
 
     await pagoRef.update({

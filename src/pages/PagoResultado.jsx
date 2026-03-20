@@ -1,7 +1,7 @@
 // --------------------------------------------------------------
 // src/pages/PagoResultado.jsx
 // --------------------------------------------------------------
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { doc, getDoc, getDocFromServer } from "firebase/firestore";
 import Swal from "sweetalert2";
@@ -11,6 +11,7 @@ import { showLoading, hideLoading } from "../services/loadingService.js";
 
 const POLL_INTERVAL = 3000;
 const MAX_INTENTOS = 40;
+const RESERVA_TIMEOUT_MS = 10 * 60 * 1000;
 
 function normalizarEstado(raw) {
   const s = (raw || "").toLowerCase();
@@ -42,10 +43,28 @@ export default function PagoResultado() {
     params.get("external_reference") || localStorage.getItem("pagoIdEnProceso");
 
   const intervalRef = useRef(null);
+  const countdownRef = useRef(null);
   const intentosRef = useRef(0);
   const initPointRef = useRef(
     localStorage.getItem("pagoInitPointEnProceso") || "",
   );
+  const fallbackExpiraEnRef = useRef(Date.now() + RESERVA_TIMEOUT_MS);
+  const [expiraEnMs, setExpiraEnMs] = useState(null);
+  const [restanteMs, setRestanteMs] = useState(RESERVA_TIMEOUT_MS);
+
+  const formatearRestante = (ms) => {
+    const safe = Math.max(0, Number(ms || 0));
+    const totalSegundos = Math.floor(safe / 1000);
+    const minutos = String(Math.floor(totalSegundos / 60)).padStart(2, "0");
+    const segundos = String(totalSegundos % 60).padStart(2, "0");
+    return `${minutos}:${segundos}`;
+  };
+
+  const actualizarTextoModal = (ms) => {
+    const el = document.querySelector(".loading-text");
+    if (!el) return;
+    el.innerHTML = `Estamos verificando tu pago. Esto puede demorar unos instantes...<br/>Tu turno se mantiene reservado por <strong>${formatearRestante(ms)}</strong>.`;
+  };
 
   const limpiarPagoEnProceso = () => {
     localStorage.removeItem("pagoIdEnProceso");
@@ -53,9 +72,12 @@ export default function PagoResultado() {
   };
 
   const abrirModalVerificacion = () => {
+    const baseMs = expiraEnMs || fallbackExpiraEnRef.current;
+    const restante = Math.max(0, Number(baseMs || 0) - Date.now());
+
     showLoading({
       title: "Confirmando pago",
-      text: "Estamos verificando tu pago. Esto puede demorar unos instantes...",
+      text: `Estamos verificando tu pago. Esto puede demorar unos instantes... Tu turno se mantiene reservado por ${formatearRestante(restante)}.`,
       showBackButton: true,
       showCloseButton: true,
       backButtonText: "Volver al pago",
@@ -133,6 +155,10 @@ export default function PagoResultado() {
         if (!snap.exists()) return;
 
         const pago = snap.data();
+        const expiraPagoMs = Number(pago?.expiraEn || 0);
+        if (expiraPagoMs > 0) {
+          setExpiraEnMs(expiraPagoMs);
+        }
         if (pago?.mpInitPoint) {
           initPointRef.current = pago.mpInitPoint;
           localStorage.setItem("pagoInitPointEnProceso", pago.mpInitPoint);
@@ -177,6 +203,18 @@ export default function PagoResultado() {
           return;
         }
 
+        const expiraObjetivo = expiraPagoMs || expiraEnMs || fallbackExpiraEnRef.current;
+        if (Date.now() >= Number(expiraObjetivo || 0)) {
+          localStorage.setItem(
+            "avisoPostPago",
+            "turno_pendiente",
+          );
+          clearInterval(intervalRef.current);
+          hideLoading();
+          navigate("/");
+          return;
+        }
+
         if (intentosRef.current >= MAX_INTENTOS) {
           localStorage.setItem(
             "avisoPostPago",
@@ -196,9 +234,27 @@ export default function PagoResultado() {
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
       hideLoading();
     };
-  }, [navigate, pagoId]);
+  }, [navigate, pagoId, expiraEnMs]);
+
+  useEffect(() => {
+    const tick = () => {
+      const objetivo = Number(expiraEnMs || fallbackExpiraEnRef.current || 0);
+      const restante = Math.max(0, objetivo - Date.now());
+      setRestanteMs(restante);
+      actualizarTextoModal(restante);
+    };
+
+    tick();
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(tick, 1000);
+
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [expiraEnMs]);
 
   return (
     <div
@@ -206,7 +262,8 @@ export default function PagoResultado() {
       style={{ minHeight: "100vh", padding: "24px" }}
     >
       <p className="text-muted mb-3">
-        Si cerraste la ventana de verificacion, podes volver al pago desde aca.
+        Estamos verificando tu pago. El turno se mantiene reservado por{" "}
+        <strong>{formatearRestante(restanteMs)}</strong>.
       </p>
 
       <button

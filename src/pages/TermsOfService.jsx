@@ -23,7 +23,7 @@ const TERMS_SECTIONS = [
   {
     title: "4. Pagos y senas",
     paragraphs: [
-      "Cuando la plataforma ofrezca pagos online, estos podran procesarse mediante terceros especializados. La aprobacion, observacion o rechazo de una operacion depende tanto de las validaciones internas como de la pasarela de pago utilizada.",
+      "Cuando la plataforma ofrezca pagos online, estos podran procesarse mediante terceros especializados. La aprobación, observacion o rechazo de una operacion depende tanto de las validaciones internas como de la pasarela de pago utilizada.",
       "Las senas abonadas se imputan a la reserva correspondiente segun las condiciones indicadas al momento de confirmar el turno.",
     ],
   },

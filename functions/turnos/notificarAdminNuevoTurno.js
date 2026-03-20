@@ -24,7 +24,7 @@ function resolveEstadoTurno(turno = {}) {
 
 function getAsunto(estadoTurno) {
   return estadoTurno === "pendiente_aprobacion"
-    ? "Nueva reserva pendiente de aprobacion"
+    ? "Nueva reserva pendiente de aprobación"
     : "Nuevo turno confirmado";
 }
 

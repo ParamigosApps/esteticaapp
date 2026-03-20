@@ -1410,7 +1410,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
             {horaFinFormateada}
           </div>
           <div className="resumen-turno-row">
-            <strong>Duracion:</strong> {servicio.duracionMin} min
+            <strong>Duración:</strong> {servicio.duracionMin} min
           </div>
 
           {precioTotal > 0 && (
