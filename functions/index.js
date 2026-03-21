@@ -380,6 +380,78 @@ async function aplicarPagoAprobadoEnTurno({
   await turnoRef.update(updateData)
 }
 
+function getTurnoIdsFromPago(pago = {}) {
+  const ids = Array.isArray(pago?.turnoIds)
+    ? pago.turnoIds
+    : pago?.turnoId
+      ? [pago.turnoId]
+      : []
+
+  return [...new Set(ids.map(id => String(id || '').trim()).filter(Boolean))]
+}
+
+async function aplicarPagoAprobadoEnTurnos({
+  db,
+  pago,
+  payment,
+  now,
+}) {
+  const turnoIds = getTurnoIdsFromPago(pago)
+  if (!turnoIds.length) return
+
+  const montoPagoTotal = Number(
+    payment?.transaction_amount ??
+      pago?.monto ??
+      0
+  )
+
+  if (turnoIds.length === 1) {
+    await aplicarPagoAprobadoEnTurno({
+      db,
+      turnoId: turnoIds[0],
+      pago: { ...pago, monto: montoPagoTotal },
+      payment,
+      now,
+    })
+    return
+  }
+
+  let montoRestante = Math.max(0, montoPagoTotal)
+  const turnos = []
+
+  for (const turnoId of turnoIds) {
+    const turnoRef = db.collection('turnos').doc(turnoId)
+    const turnoSnap = await turnoRef.get()
+    if (!turnoSnap.exists) continue
+    turnos.push({ id: turnoId, data: turnoSnap.data() || {} })
+  }
+
+  for (let i = 0; i < turnos.length; i += 1) {
+    const turno = turnos[i]
+    const montoObjetivo = Math.max(
+      0,
+      Number(turno?.data?.montoAnticipo ?? 0)
+    )
+    const montoPagoTurno =
+      i === turnos.length - 1
+        ? Math.max(0, montoRestante)
+        : Math.max(0, Math.min(montoObjetivo, montoRestante))
+
+    montoRestante = Math.max(0, montoRestante - montoPagoTurno)
+
+    await aplicarPagoAprobadoEnTurno({
+      db,
+      turnoId: turno.id,
+      pago: {
+        ...pago,
+        monto: montoPagoTurno,
+      },
+      payment,
+      now,
+    })
+  }
+}
+
 // ======================================================
 // WEBHOOK MERCADOPAGO (CORE)
 // ======================================================
@@ -528,9 +600,8 @@ exports.processWebhookEvent = onDocumentWritten(
         updatedAt: now,
       })
 
-        await aplicarPagoAprobadoEnTurno({
+        await aplicarPagoAprobadoEnTurnos({
           db,
-          turnoId: pago.turnoId,
           pago,
           payment,
           now,
@@ -654,9 +725,8 @@ exports.reconciliarPagosPendientes = onSchedule(
               updatedAt: now,
             })
 
-            await aplicarPagoAprobadoEnTurno({
+            await aplicarPagoAprobadoEnTurnos({
               db,
-              turnoId: pago.turnoId,
               pago,
               payment,
               now,
@@ -709,30 +779,30 @@ exports.expirarPagosTurnos = onSchedule(
         updatedAt: FieldValue.serverTimestamp(),
       })
 
-      const turnoId = doc.data().turnoId
+      const turnoIds = getTurnoIdsFromPago(doc.data() || {})
 
-      if (turnoId) {
+      for (const turnoId of turnoIds) {
         const turnoRef = db.collection('turnos').doc(turnoId)
         const turnoSnap = await turnoRef.get()
 
-        if (turnoSnap.exists) {
-          const turno = turnoSnap.data() || {}
-          const estadoTurnoActual =
-            turno.estadoTurno ||
-            turno.estado ||
-            'pendiente'
+        if (!turnoSnap.exists) continue
 
-          await turnoRef.update({
-            estadoPago: 'expirado',
-            metodoPagoEsperado: turno.metodoPagoEsperado || doc.data().metodo || 'mercadopago',
-            metodoPagoUsado: turno.metodoPagoUsado || null,
-            estadoTurno: ['cancelado', 'perdido', 'finalizado', 'pendiente_aprobacion'].includes(estadoTurnoActual)
-              ? estadoTurnoActual
-              : 'cancelado',
-            venceEn: null,
-            updatedAt: FieldValue.serverTimestamp(),
-          })
-        }
+        const turno = turnoSnap.data() || {}
+        const estadoTurnoActual =
+          turno.estadoTurno ||
+          turno.estado ||
+          'pendiente'
+
+        await turnoRef.update({
+          estadoPago: 'expirado',
+          metodoPagoEsperado: turno.metodoPagoEsperado || doc.data().metodo || 'mercadopago',
+          metodoPagoUsado: turno.metodoPagoUsado || null,
+          estadoTurno: ['cancelado', 'perdido', 'finalizado', 'pendiente_aprobacion'].includes(estadoTurnoActual)
+            ? estadoTurnoActual
+            : 'cancelado',
+          venceEn: null,
+          updatedAt: FieldValue.serverTimestamp(),
+        })
       }
     }
   }

@@ -164,6 +164,32 @@ function getModoReservaLabel(servicio = {}) {
     : "Confirmación automática";
 }
 
+function getTipoServicioReserva(servicio = {}) {
+  return Boolean(servicio?.esPack) ? "pack" : "individual";
+}
+
+function getTipoServicioReservaLabel(servicio = {}) {
+  return getTipoServicioReserva(servicio) === "pack"
+    ? "Pack de turnos"
+    : "Turno individual";
+}
+
+function getPackCantidadTurnos(servicio = {}) {
+  const cantidad = Number(servicio?.packCantidadTurnos || 1);
+  return Math.max(2, cantidad);
+}
+
+function getPackFrecuenciaDias(servicio = {}) {
+  const frecuencia = Number(servicio?.packFrecuenciaDias || 7);
+  return Math.max(1, frecuencia);
+}
+
+function getAgendaMinimaSugeridaPack(cantidadTurnos = 2, frecuenciaDias = 7) {
+  const cantidad = Math.max(2, Number(cantidadTurnos || 2));
+  const frecuencia = Math.max(1, Number(frecuenciaDias || 1));
+  return frecuencia * (cantidad + 1);
+}
+
 function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
   return [
     normalizar(nombreServicio || ""),
@@ -1304,6 +1330,15 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [responsableGestion, setResponsableGestion] = useState(
     servicio.responsableGestion || "admin",
   );
+  const [tipoServicioReserva, setTipoServicioReserva] = useState(
+    getTipoServicioReserva(servicio),
+  );
+  const [packCantidadTurnos, setPackCantidadTurnos] = useState(
+    getPackCantidadTurnos(servicio),
+  );
+  const [packFrecuenciaDias, setPackFrecuenciaDias] = useState(
+    getPackFrecuenciaDias(servicio),
+  );
   const [modoReserva, setModoReserva] = useState(
     getModoReservaServicio(servicio),
   );
@@ -1340,6 +1375,13 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
   const [seleccionados, setSeleccionados] = useState(
     servicio.gabinetes?.map((g) => g.id) ?? [],
   );
+  const agendaMinimaSugeridaPack = getAgendaMinimaSugeridaPack(
+    packCantidadTurnos,
+    packFrecuenciaDias,
+  );
+  const packAgendaSugeridaInsuficiente =
+    tipoServicioReserva === "pack" &&
+    Number(agendaMaxDias || 0) < Number(agendaMinimaSugeridaPack || 0);
 
   function abrirEditor() {
     setCategoriaId(servicio.categoriaId || "");
@@ -1358,6 +1400,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
       normalizarItemsPrecioVariable(servicio.itemsPrecioVariable || []),
     );
     setResponsableGestion(servicio.responsableGestion || "admin");
+    setTipoServicioReserva(getTipoServicioReserva(servicio));
+    setPackCantidadTurnos(getPackCantidadTurnos(servicio));
+    setPackFrecuenciaDias(getPackFrecuenciaDias(servicio));
     setModoReserva(getModoReservaServicio(servicio));
     setPedirAnticipo(Boolean(servicio.pedirAnticipo));
     setPorcentajeAnticipo(servicio.porcentajeAnticipo ?? 50);
@@ -1454,6 +1499,21 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
         "Debes vincular un profesional si el servicio sera gestionado por profesionales",
       );
     }
+    if (tipoServicioReserva === "pack" && Number(packCantidadTurnos) < 2) {
+      return showError("En un pack la cantidad de turnos debe ser al menos 2.");
+    }
+    if (tipoServicioReserva === "pack" && Number(packFrecuenciaDias) < 1) {
+      return showError("La frecuencia del pack debe ser de al menos 1 dia.");
+    }
+    if (
+      tipoServicioReserva === "pack" &&
+      agendaTipo !== "mensual" &&
+      Number(agendaMaxDias || 0) < Number(agendaMinimaSugeridaPack || 0)
+    ) {
+      return showError(
+        `Para este pack recomendamos al menos ${agendaMinimaSugeridaPack} dias de agenda maxima.`,
+      );
+    }
     if (
       precioVariable &&
       !tieneItemsPrecioVariableValidos(itemsPrecioVariable)
@@ -1532,6 +1592,15 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
           ? serializarItemsPrecioVariable(itemsPrecioVariable)
           : [],
         responsableGestion,
+        esPack: tipoServicioReserva === "pack",
+        packCantidadTurnos:
+          tipoServicioReserva === "pack"
+            ? Math.max(2, Number(packCantidadTurnos || 2))
+            : null,
+        packFrecuenciaDias:
+          tipoServicioReserva === "pack"
+            ? Math.max(1, Number(packFrecuenciaDias || 1))
+            : null,
         modoReserva,
         pedirAnticipo,
         porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
@@ -1738,6 +1807,18 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
               : "Administrador"}
           </strong>
         </span>
+        <span>
+          Tipo: <strong>{getTipoServicioReservaLabel(servicio)}</strong>
+        </span>
+        {getTipoServicioReserva(servicio) === "pack" && (
+          <span>
+            Pack:{" "}
+            <strong>
+              {getPackCantidadTurnos(servicio)} turnos cada{" "}
+              {getPackFrecuenciaDias(servicio)} dia(s)
+            </strong>
+          </span>
+        )}
         <span>
           Reserva: <strong>{getModoReservaLabel(servicio)}</strong>
         </span>
@@ -2005,6 +2086,56 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                     <option value="profesional">Profesional vinculado</option>
                   </select>
                 </div>
+
+                <div className="field-group">
+                  <label>Tipo de reserva</label>
+                  <select
+                    className="admin-input reserva"
+                    value={tipoServicioReserva}
+                    onChange={(e) => setTipoServicioReserva(e.target.value)}
+                  >
+                    <option value="individual">Turno individual</option>
+                    <option value="pack">Pack de turnos</option>
+                  </select>
+                </div>
+
+                {tipoServicioReserva === "pack" && (
+                  <>
+                    <div className="field-group">
+                      <label>Cantidad de turnos del pack</label>
+                      <input
+                        type="number"
+                        min={2}
+                        className="admin-input"
+                        value={packCantidadTurnos}
+                        onChange={(e) =>
+                          setPackCantidadTurnos(Number(e.target.value || 2))
+                        }
+                      />
+                      <small className="text-muted">
+                        Para frecuencia de {packFrecuenciaDias} dia(s), sugerimos
+                        una agenda de al menos {agendaMinimaSugeridaPack} dias.
+                      </small>
+                    </div>
+
+                    <div className="field-group">
+                      <label>Frecuencia entre turnos (dias)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        className="admin-input"
+                        value={packFrecuenciaDias}
+                        onChange={(e) =>
+                          setPackFrecuenciaDias(Number(e.target.value || 1))
+                        }
+                      />
+                      <small className="text-muted">
+                        Ejemplo: pack de {packCantidadTurnos} turnos cada{" "}
+                        {packFrecuenciaDias} dia(s).
+                      </small>
+                    </div>
+                  </>
+                )}
               </div>
             </section>
 
@@ -2064,17 +2195,29 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                 <div className="service-editor-fields service-editor-fields-1 service-agenda-maxdias">
                   <div className="field-group service-field-sm">
                     <label>Anticipación máxima (días)</label>
-                    <input
-                      type="number"
-                      className="admin-input"
-                      value={agendaMaxDias}
-                      onChange={(e) => setAgendaMaxDias(e.target.value)}
-                      min={1}
-                      max={180}
-                    />
-                  </div>
-                </div>
-              )}
+	                    <input
+	                      type="number"
+	                      className="admin-input"
+	                      value={agendaMaxDias}
+	                      onChange={(e) => setAgendaMaxDias(e.target.value)}
+	                      min={1}
+	                      max={180}
+	                    />
+	                    {tipoServicioReserva === "pack" && (
+	                      <small
+	                        className={
+	                          packAgendaSugeridaInsuficiente
+	                            ? "text-danger"
+	                            : "text-muted"
+	                        }
+	                      >
+	                        Agenda sugerida para este pack: al menos{" "}
+	                        {agendaMinimaSugeridaPack} dias.
+	                      </small>
+	                    )}
+	                  </div>
+	                </div>
+	              )}
 
               <AgendaServicioEditor
                 agendaTipo={agendaTipo}
@@ -2169,6 +2312,9 @@ export default function ServiciosPanel() {
   const [precioVariableModo, setPrecioVariableModo] = useState("multiple");
   const [itemsPrecioVariable, setItemsPrecioVariable] = useState([]);
   const [responsableGestion, setResponsableGestion] = useState("admin");
+  const [tipoServicioReserva, setTipoServicioReserva] = useState("individual");
+  const [packCantidadTurnos, setPackCantidadTurnos] = useState(4);
+  const [packFrecuenciaDias, setPackFrecuenciaDias] = useState(7);
   const [modoReserva, setModoReserva] = useState("reserva");
   const [pedirAnticipo, setPedirAnticipo] = useState(true);
   const [porcentajeAnticipo, setPorcentajeAnticipo] = useState(50);
@@ -2183,6 +2329,13 @@ export default function ServiciosPanel() {
     crearHorariosServicioBase(),
   );
   const [agendaMensual, setAgendaMensual] = useState(crearAgendaMensualBase());
+  const agendaMinimaSugeridaPack = getAgendaMinimaSugeridaPack(
+    packCantidadTurnos,
+    packFrecuenciaDias,
+  );
+  const packAgendaSugeridaInsuficiente =
+    tipoServicioReserva === "pack" &&
+    Number(agendaMaxDias || 0) < Number(agendaMinimaSugeridaPack || 0);
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [nuevoServicioAbierto, setNuevoServicioAbierto] = useState(false);
@@ -2369,6 +2522,21 @@ export default function ServiciosPanel() {
         "Debes vincular un profesional si el servicio sera gestionado por profesionales",
       );
     }
+    if (tipoServicioReserva === "pack" && Number(packCantidadTurnos) < 2) {
+      return showError("En un pack la cantidad de turnos debe ser al menos 2.");
+    }
+    if (tipoServicioReserva === "pack" && Number(packFrecuenciaDias) < 1) {
+      return showError("La frecuencia del pack debe ser de al menos 1 dia.");
+    }
+    if (
+      tipoServicioReserva === "pack" &&
+      agendaTipo !== "mensual" &&
+      Number(agendaMaxDias || 0) < Number(agendaMinimaSugeridaPack || 0)
+    ) {
+      return showError(
+        `Para este pack recomendamos al menos ${agendaMinimaSugeridaPack} dias de agenda maxima.`,
+      );
+    }
     if (
       precioVariable &&
       !tieneItemsPrecioVariableValidos(itemsPrecioVariable)
@@ -2434,6 +2602,15 @@ export default function ServiciosPanel() {
           ? serializarItemsPrecioVariable(itemsPrecioVariable)
           : [],
         responsableGestion,
+        esPack: tipoServicioReserva === "pack",
+        packCantidadTurnos:
+          tipoServicioReserva === "pack"
+            ? Math.max(2, Number(packCantidadTurnos || 2))
+            : null,
+        packFrecuenciaDias:
+          tipoServicioReserva === "pack"
+            ? Math.max(1, Number(packFrecuenciaDias || 1))
+            : null,
         modoReserva,
         pedirAnticipo,
         porcentajeAnticipo: pedirAnticipo ? Number(porcentajeAnticipo) : null,
@@ -2476,6 +2653,9 @@ export default function ServiciosPanel() {
       setPrecioVariableModo("multiple");
       setItemsPrecioVariable([]);
       setResponsableGestion("admin");
+      setTipoServicioReserva("individual");
+      setPackCantidadTurnos(4);
+      setPackFrecuenciaDias(7);
       setModoReserva("reserva");
       setPedirAnticipo(true);
       setPorcentajeAnticipo(50);
@@ -2720,6 +2900,60 @@ export default function ServiciosPanel() {
                         </option>
                       </select>
                     </div>
+
+                    <div className="form-field">
+                      <label>Tipo de reserva</label>
+                      <select
+                        className="admin-input reserva"
+                        value={tipoServicioReserva}
+                        onChange={(e) => setTipoServicioReserva(e.target.value)}
+                      >
+                        <option value="individual">Turno individual</option>
+                        <option value="pack">Pack de turnos</option>
+                      </select>
+                    </div>
+
+                    {tipoServicioReserva === "pack" && (
+                      <>
+	                        <div className="form-field">
+	                          <label>Cantidad de turnos del pack</label>
+	                          <input
+	                            type="number"
+                            min={2}
+                            className="admin-input"
+                            value={packCantidadTurnos}
+                            onChange={(e) =>
+                              setPackCantidadTurnos(
+                                Number(e.target.value || 2),
+	                              )
+	                            }
+	                          />
+	                          <small className="text-muted">
+	                            Sugerencia de agenda para esta configuracion: al
+	                            menos {agendaMinimaSugeridaPack} dias.
+	                          </small>
+	                        </div>
+
+	                        <div className="form-field">
+	                          <label>Frecuencia entre turnos (dias)</label>
+	                          <input
+                            type="number"
+                            min={1}
+                            className="admin-input"
+                            value={packFrecuenciaDias}
+                            onChange={(e) =>
+                              setPackFrecuenciaDias(
+                                Number(e.target.value || 1),
+	                              )
+	                            }
+	                          />
+	                          <small className="text-muted">
+	                            Ejemplo: pack de {packCantidadTurnos} turnos cada{" "}
+	                            {packFrecuenciaDias} dia(s).
+	                          </small>
+	                        </div>
+	                      </>
+	                    )}
                   </div>
                 </div>
 
@@ -2781,15 +3015,27 @@ export default function ServiciosPanel() {
                   {agendaTipo !== "mensual" && (
                     <div className="form-field servicios-agenda-maxdias">
                       <label>Anticipación máxima (días)</label>
-                      <input
-                        className="admin-input"
-                        type="number"
-                        value={agendaMaxDias}
-                        onChange={(e) => setAgendaMaxDias(e.target.value)}
-                        min={1}
-                        max={180}
-                      />
-                    </div>
+	                      <input
+	                        className="admin-input"
+	                        type="number"
+	                        value={agendaMaxDias}
+	                        onChange={(e) => setAgendaMaxDias(e.target.value)}
+	                        min={1}
+	                        max={180}
+	                      />
+	                      {tipoServicioReserva === "pack" && (
+	                        <small
+	                          className={
+	                            packAgendaSugeridaInsuficiente
+	                              ? "text-danger"
+	                              : "text-muted"
+	                          }
+	                        >
+	                          Agenda sugerida para este pack: al menos{" "}
+	                          {agendaMinimaSugeridaPack} dias.
+	                        </small>
+	                      )}
+	                    </div>
                   )}
 
                   <AgendaServicioEditor

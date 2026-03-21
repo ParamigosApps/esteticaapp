@@ -14,7 +14,11 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { db, functions as firebaseFunctions, storage } from "../../../Firebase.js";
-import { swalError, swalSuccess } from "../../../public/utils/swalUtils.js";
+import {
+  swalConfirmDanger,
+  swalError,
+  swalSuccess,
+} from "../../../public/utils/swalUtils.js";
 import { hideLoading, showLoading } from "../../../services/loadingService.js";
 import profesionalFemImg from "../../../assets/icons/profesional-fem.png";
 import profesionalMascImg from "../../../assets/icons/profesional-masc.png";
@@ -166,6 +170,8 @@ function Seccion({
   open,
   onToggle,
   completo = null,
+  textoCompleto = "Completo",
+  textoPendiente = "Pendiente",
   loading = false,
   children,
 }) {
@@ -190,7 +196,7 @@ function Seccion({
               className={`config-section-status ${completo ? "ok" : "pending"}`}
             >
               <span className="config-section-status-dot" />
-              {completo ? "Completo" : "Pendiente"}
+              {completo ? textoCompleto : textoPendiente}
             </span>
           ) : null}
           <span className="config-section-chevron" aria-hidden="true">
@@ -259,6 +265,10 @@ async function runWithLoading(task, options = {}) {
   } finally {
     hideLoading();
   }
+}
+
+function confirmDanger(config) {
+  return swalConfirmDanger(config);
 }
 
 export default function AdminConfiguracion() {
@@ -1441,6 +1451,8 @@ export default function AdminConfiguracion() {
           subtitle="Conecta la cuenta del negocio para split de comision."
           open={open.mercadoPago}
           onToggle={() => toggle("mercadoPago")}
+          completo={mpOauth.loading ? null : mpOauth.connected}
+          textoPendiente="Incompleto"
           loading={false}
         >
           <div className="config-note">

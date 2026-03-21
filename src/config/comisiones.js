@@ -33,6 +33,50 @@ export function obtenerComisionTurno() {
   return COMISION_FIJA_TURNO
 }
 
+export function parseAmount(value) {
+  if (Number.isFinite(value)) return Number(value)
+
+  const raw = String(value ?? '').trim()
+  if (!raw) return 0
+
+  const cleaned = raw.replace(/\s+/g, '').replace(/[$]/g, '')
+  const hasDot = cleaned.includes('.')
+  const hasComma = cleaned.includes(',')
+
+  if (hasDot && hasComma) {
+    const lastDot = cleaned.lastIndexOf('.')
+    const lastComma = cleaned.lastIndexOf(',')
+    const decimalSep = lastDot > lastComma ? '.' : ','
+    const thousandsSep = decimalSep === '.' ? ',' : '.'
+    const normalized = cleaned
+      .replace(new RegExp(`\\${thousandsSep}`, 'g'), '')
+      .replace(decimalSep, '.')
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  if (hasDot) {
+    if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+      const parsed = Number(cleaned.replace(/\./g, ''))
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    const parsed = Number(cleaned)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  if (hasComma) {
+    if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
+      const parsed = Number(cleaned.replace(/,/g, ''))
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    const parsed = Number(cleaned.replace(/,/g, '.'))
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export function calcularMontosTurno({
   precioServicio = 0,
   ajusteServicio = 0,
@@ -40,8 +84,8 @@ export function calcularMontosTurno({
   cobrarComision = true,
 } = {}) {
   const precioBase =
-    Math.max(0, Number(precioServicio || 0)) +
-    Math.max(0, Number(ajusteServicio || 0))
+    Math.max(0, parseAmount(precioServicio)) +
+    Math.max(0, parseAmount(ajusteServicio))
   const porcentaje = Math.max(0, Number(porcentajeAnticipo || 0))
 
   const montoAnticipoServicio =
@@ -63,25 +107,25 @@ export function calcularMontosTurno({
 export function normalizarMontosTurno(turno = {}) {
   const montoServicio = Math.max(
     0,
-    Number(turno.montoServicio ?? turno.precioServicio ?? turno.precio ?? 0),
+    parseAmount(turno.montoServicio ?? turno.precioServicio ?? turno.precio ?? 0),
   )
   const comisionTurno = Math.max(
     0,
-    Number(turno.comisionTurno ?? turno.montoComision ?? 0),
+    parseAmount(turno.comisionTurno ?? turno.montoComision ?? 0),
   )
   const montoAnticipoServicio = Math.max(
     0,
-    Number(turno.montoAnticipoServicio ?? 0),
+    parseAmount(turno.montoAnticipoServicio ?? 0),
   )
   const montoAnticipo = Math.max(
     0,
-    Number(turno.montoAnticipo ?? turno.senaRequerida ?? montoAnticipoServicio + comisionTurno),
+    parseAmount(turno.montoAnticipo ?? turno.senaRequerida ?? montoAnticipoServicio + comisionTurno),
   )
   const montoTotal = Math.max(
     0,
-    Number(turno.montoTotal ?? turno.precioTotal ?? montoServicio + comisionTurno),
+    parseAmount(turno.montoTotal ?? turno.precioTotal ?? montoServicio + comisionTurno),
   )
-  const montoPagado = Math.max(0, Number(turno.montoPagado ?? 0))
+  const montoPagado = Math.max(0, parseAmount(turno.montoPagado ?? 0))
 
   return {
     montoServicio,

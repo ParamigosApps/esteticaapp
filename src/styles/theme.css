@@ -8,15 +8,15 @@
      🎀 COLORES BASE (Estética Premium)
   ====================================== */
 
-  --color-primary: #c77dff;          /* violeta suave */
-  --color-primary-hover: #b266f5;
+  --color-primary: #d974a2;          /* rosa frambuesa suave */
+  --color-primary-hover: #c85f90;
 
-  --color-secondary: #f78fb3;        /* rosa elegante */
-  --color-secondary-hover: #f368a6;
+  --color-secondary: #f3a3bf;        /* rosa claro */
+  --color-secondary-hover: #ea87ab;
 
-  --color-accent: #ffd6e8;           /* rosa pastel claro */
-   --color-soft: #ffd6e834; 
-   --color-gray: #cbc5c742; 
+  --color-accent: #ffe3ed;           /* rosa pastel claro */
+   --color-soft: #ffe3ed38; 
+   --color-gray: #d6c8ce42; 
 
   --color-success: #4caf7d;
   --color-warning: #f4b740;
@@ -27,10 +27,10 @@
      🧱 SUPERFICIES
   ====================================== */
 
-  --color-bg: #fdf9ff;               /* fondo muy suave violeta */
+  --color-bg: #fffafc;               /* fondo muy suave rosado */
   --color-surface: #ffffff;
-  --color-surface-alt: #f6f1fb;      /* violeta muy claro */
-  --color-surface-soft: #fff3f8;     /* rosita suave */
+  --color-surface-alt: #fff2f8;      /* rosa muy claro */
+  --color-surface-soft: #fff5f9;     /* rosita suave */
 
   /* ======================================
      📝 TEXTO
@@ -61,23 +61,23 @@
      🧊 BORDES
   ====================================== */
 
-  --border-soft: #f0e6f7;
-  --border-medium: #e4d7f5;
-  --border-strong: #d6c2f0;
+  --border-soft: #f4e4ec;
+  --border-medium: #eed1df;
+  --border-strong: #dfb8cc;
 
   /* ======================================
      🌫 SOMBRAS (suaves y femeninas)
   ====================================== */
 
   --shadow-soft:
-    0 4px 14px rgba(199, 125, 255, 0.10),
+    0 4px 14px rgba(217, 116, 162, 0.10),
     0 1px 2px rgba(0, 0, 0, 0.04);
 
   --shadow-medium:
-    0 8px 24px rgba(199, 125, 255, 0.15);
+    0 8px 24px rgba(217, 116, 162, 0.15);
 
   --shadow-strong:
-    0 14px 36px rgba(199, 125, 255, 0.20);
+    0 14px 36px rgba(217, 116, 162, 0.20);
 
   /* ======================================
      🔵 RADIOS

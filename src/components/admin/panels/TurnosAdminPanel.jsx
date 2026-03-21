@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  addDoc,
   collection,
   doc,
   onSnapshot,
@@ -68,6 +67,17 @@ function parseISODateLocal(value) {
   const date = new Date(Number(y), Number(m) - 1, Number(d));
   date.setHours(0, 0, 0, 0);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function sumarDiasISO(fechaIso, dias) {
+  const base = parseISODateLocal(fechaIso);
+  if (!base) return "";
+  base.setDate(base.getDate() + Number(dias || 0));
+  return toISODateLocal(base);
+}
+
+function crearPackId() {
+  return `pack_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function formatDateShort(fechaIso) {
@@ -230,6 +240,8 @@ export default function TurnosAdminPanel() {
     metodoPagoEsperado: "manual",
     montoPagado: "",
     notas: "",
+    packCantidadTurnos: 1,
+    packFrecuenciaDias: 7,
   });
 
   useEffect(() => {
@@ -746,6 +758,8 @@ export default function TurnosAdminPanel() {
       metodoPagoEsperado: "manual",
       montoPagado: "",
       notas: "",
+      packCantidadTurnos: 1,
+      packFrecuenciaDias: 7,
     });
   }
 
@@ -760,6 +774,7 @@ export default function TurnosAdminPanel() {
     if (!servicioSeleccionado) return;
 
     const gabineteDisponible = servicioSeleccionado.gabinetes?.[0]?.id || "";
+    const esPack = Boolean(servicioSeleccionado?.esPack);
     setNuevoTurno((prev) => ({
       ...prev,
       gabineteId:
@@ -767,6 +782,12 @@ export default function TurnosAdminPanel() {
           ? prev.gabineteId
           : gabineteDisponible,
       montoPagado: montoSugerido ? String(montoSugerido) : "",
+      packCantidadTurnos: esPack
+        ? Math.max(2, Number(servicioSeleccionado.packCantidadTurnos || 2))
+        : 1,
+      packFrecuenciaDias: esPack
+        ? Math.max(1, Number(servicioSeleccionado.packFrecuenciaDias || 7))
+        : 7,
     }));
   }, [montoSugerido, servicioSeleccionado]);
 
@@ -931,23 +952,18 @@ export default function TurnosAdminPanel() {
       return;
     }
 
-    const inicio = buildTurnoDate(nuevoTurno.fecha, nuevoTurno.horaInicio);
-    const inicioMs = inicio.getTime();
-
-    if (Number.isNaN(inicioMs)) {
-      await swalError({
-        title: "Fecha u hora invalida",
-        text: "Revisa la fecha y el horario elegidos.",
-      });
-      return;
-    }
-
+    const esPack = Boolean(servicioSeleccionado?.esPack);
+    const cantidadTurnos = esPack
+      ? Math.max(2, Number(nuevoTurno.packCantidadTurnos || 2))
+      : 1;
+    const frecuenciaDias = esPack
+      ? Math.max(1, Number(nuevoTurno.packFrecuenciaDias || 1))
+      : 0;
     const duracionMin = Math.max(
       1,
       Number(servicioSeleccionado.duracionMin || 0),
     );
-    const finMs = inicioMs + duracionMin * 60000;
-    const montoPagado = Math.max(0, Number(nuevoTurno.montoPagado || 0));
+    const montoPagadoTotal = Math.max(0, Number(nuevoTurno.montoPagado || 0));
     const montos = calcularMontosTurno({
       precioServicio: Number(servicioSeleccionado.precio || 0),
       porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
@@ -956,60 +972,10 @@ export default function TurnosAdminPanel() {
       cobrarComision: true,
     });
 
-    if (montoPagado > montos.montoTotal) {
+    if (montoPagadoTotal > montos.montoTotal * cantidadTurnos) {
       await swalError({
         title: "Monto invalido",
-        text: "El monto pagado no puede ser mayor al total.",
-      });
-      return;
-    }
-
-    if (!estaDentroVentanaAgenda(servicioSeleccionado, nuevoTurno.fecha)) {
-      await swalError({
-        title: "Fecha fuera de agenda",
-        text: "La fecha elegida queda fuera de la agenda abierta para este servicio.",
-      });
-      return;
-    }
-
-    if (
-      !horarioPermitidoPorServicio(
-        servicioSeleccionado,
-        nuevoTurno.fecha,
-        inicioMs,
-        finMs,
-      )
-    ) {
-      await swalError({
-        title: "Horario no disponible",
-        text: "El horario elegido no esta disponible en la agenda del servicio.",
-      });
-      return;
-    }
-
-    const conflicto = turnos.some((turno) => {
-      if (turno.fecha !== nuevoTurno.fecha) return false;
-      if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
-
-      const estadoTurno = getEstadoTurno(turno);
-      if (
-        ["cancelado", "rechazado", "finalizado", "perdido"].includes(
-          estadoTurno,
-        )
-      ) {
-        return false;
-      }
-
-      const inicioExistente = Number(turno.horaInicio || 0);
-      const finExistente = Number(turno.horaFin || 0);
-
-      return inicioMs < finExistente && finMs > inicioExistente;
-    });
-
-    if (conflicto) {
-      await swalError({
-        title: "Horario ocupado",
-        text: "Ya existe un turno en ese gabinete y horario.",
+        text: "El monto pagado no puede ser mayor al total de los turnos a crear.",
       });
       return;
     }
@@ -1019,24 +985,147 @@ export default function TurnosAdminPanel() {
       gabinetesDisponibles.find(
         (gabinete) => gabinete.id === nuevoTurno.gabineteId,
       );
+    const fechasTurnos = Array.from({ length: cantidadTurnos }, (_, index) =>
+      index === 0
+        ? nuevoTurno.fecha
+        : sumarDiasISO(nuevoTurno.fecha, index * frecuenciaDias),
+    );
 
-    const montoAnticipo = montos.montoAnticipoTotal;
-    const saldoPendiente = Math.max(0, montos.montoTotal - montoPagado);
-    const estadoPago =
-      montoPagado <= 0
-        ? montos.montoTotal > 0
-          ? "pendiente"
-          : "abonado"
-        : montoPagado >= montos.montoTotal
-          ? "abonado"
-          : "parcial";
+    const turnosARegistrar = fechasTurnos.map((fecha) => {
+      const inicio = buildTurnoDate(fecha, nuevoTurno.horaInicio);
+      const inicioMs = inicio.getTime();
+      return {
+        fecha,
+        inicioMs,
+        finMs: inicioMs + duracionMin * 60000,
+      };
+    });
+
+    const turnoInvalido = turnosARegistrar.find(
+      (turno) => !turno.fecha || Number.isNaN(turno.inicioMs),
+    );
+    if (turnoInvalido) {
+      await swalError({
+        title: "Fecha u hora invalida",
+        text: "Revisa la fecha inicial, la frecuencia y el horario elegidos.",
+      });
+      return;
+    }
+
+    for (let i = 0; i < turnosARegistrar.length; i += 1) {
+      const turnoPack = turnosARegistrar[i];
+
+      if (!estaDentroVentanaAgenda(servicioSeleccionado, turnoPack.fecha)) {
+        await swalError({
+          title: "Fecha fuera de agenda",
+          text: `El turno ${i + 1} del pack queda fuera de la agenda del servicio (${turnoPack.fecha}).`,
+        });
+        return;
+      }
+
+      if (
+        !horarioPermitidoPorServicio(
+          servicioSeleccionado,
+          turnoPack.fecha,
+          turnoPack.inicioMs,
+          turnoPack.finMs,
+        )
+      ) {
+        await swalError({
+          title: "Horario no disponible",
+          text: `El turno ${i + 1} del pack no respeta la agenda del servicio (${turnoPack.fecha}).`,
+        });
+        return;
+      }
+
+      const conflicto = turnos.some((turno) => {
+        if (turno.fecha !== turnoPack.fecha) return false;
+        if ((turno.gabineteId || "") !== nuevoTurno.gabineteId) return false;
+
+        const estadoTurno = getEstadoTurno(turno);
+        if (
+          ["cancelado", "rechazado", "finalizado", "perdido"].includes(
+            estadoTurno,
+          )
+        ) {
+          return false;
+        }
+
+        const inicioExistente = Number(turno.horaInicio || 0);
+        const finExistente = Number(turno.horaFin || 0);
+
+        return (
+          turnoPack.inicioMs < finExistente && turnoPack.finMs > inicioExistente
+        );
+      });
+
+      if (conflicto) {
+        await swalError({
+          title: "Horario ocupado",
+          text: `El turno ${i + 1} del pack ya esta ocupado en ese gabinete (${turnoPack.fecha}).`,
+        });
+        return;
+      }
+    }
 
     setCreandoTurno(true);
 
     try {
+      const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
+      const agendaMesCache = new Map();
+
+      async function getAgendaMes(fechaIso) {
+        const fecha = parseISODateLocal(fechaIso);
+        if (!fecha) return { horarios: [], turnos: [], bloqueos: [] };
+
+        const key = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+        if (agendaMesCache.has(key)) return agendaMesCache.get(key);
+
+        const { fechaDesde, fechaHasta } = getMonthRange(
+          fecha,
+          getFechaMaxReservableReal(servicioSeleccionado),
+        );
+        const result = await getAgendaFn({
+          gabineteIds: [nuevoTurno.gabineteId],
+          fechaDesde,
+          fechaHasta,
+        });
+        const agenda = result.data || { horarios: [], turnos: [], bloqueos: [] };
+        agendaMesCache.set(key, agenda);
+        return agenda;
+      }
+
+      for (let i = 0; i < turnosARegistrar.length; i += 1) {
+        const turnoPack = turnosARegistrar[i];
+        const agendaMes = await getAgendaMes(turnoPack.fecha);
+        const slots = generarSlotsDia(
+          agendaMes,
+          servicioSeleccionado,
+          new Date(`${turnoPack.fecha}T00:00:00`),
+        ).filter(
+          (slot) =>
+            !slot.ocupado && slotDentroDeVentanaAgenda(slot, servicioSeleccionado),
+        );
+
+        const horaDisponible = slots.some(
+          (slot) => formatHourLocal(slot.inicio) === nuevoTurno.horaInicio,
+        );
+
+        if (!horaDisponible) {
+          await swalError({
+            title: "Horario sin disponibilidad",
+            text: `El turno ${i + 1} del pack no tiene disponibilidad real en la agenda (${turnoPack.fecha}).`,
+          });
+          return;
+        }
+      }
+
       Swal.fire({
-        title: "Guardando turno",
-        text: "Estamos registrando la reserva manual.",
+        title: cantidadTurnos > 1 ? "Guardando pack" : "Guardando turno",
+        text:
+          cantidadTurnos > 1
+            ? "Estamos registrando todos los turnos del pack."
+            : "Estamos registrando la reserva manual.",
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
@@ -1045,64 +1134,98 @@ export default function TurnosAdminPanel() {
         },
       });
 
-      await addDoc(collection(db, "turnos"), {
-        servicioId: servicioSeleccionado.id,
-        categoriaId: servicioSeleccionado.categoriaId || "",
-        categoriaNombre: servicioSeleccionado.categoriaNombre || "",
-        nombreServicio: servicioSeleccionado.nombreServicio || "",
-        profesionalId: servicioSeleccionado.profesionalId || null,
-        nombreProfesional: servicioSeleccionado.nombreProfesional || "",
-        responsableGestion: servicioSeleccionado.responsableGestion || "admin",
-        descripcionServicio: servicioSeleccionado.descripcion || "",
-        gabineteId: nuevoTurno.gabineteId,
-        nombreGabinete: gabineteSeleccionado?.nombreGabinete || "",
-        fecha: nuevoTurno.fecha,
-        horaInicio: inicioMs,
-        horaFin: finMs,
-        duracionMin,
-        nombreCliente: nuevoTurno.nombreCliente.trim(),
-        clienteTelefono: nuevoTurno.clienteTelefono.trim(),
-        telefonoCliente: nuevoTurno.clienteTelefono.trim(),
-        clienteEmail: nuevoTurno.clienteEmail.trim(),
-        email: nuevoTurno.clienteEmail.trim(),
-        clienteId: nuevoTurno.clienteId || null,
-        usuarioId: nuevoTurno.clienteId || null,
-        uid: nuevoTurno.clienteId || null,
-        metodoPagoEsperado: nuevoTurno.metodoPagoEsperado,
-        metodoPagoUsado:
-          montoPagado > 0 && nuevoTurno.metodoPagoEsperado !== "sin_pago"
-            ? nuevoTurno.metodoPagoEsperado
-            : null,
-        modoReserva: servicioSeleccionado.modoReserva || "reserva",
-        pedirAnticipo: Boolean(servicioSeleccionado.pedirAnticipo),
-        porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
-          ? Number(servicioSeleccionado.porcentajeAnticipo || 0)
-          : 0,
-        montoServicio: montos.precioServicio,
-        precioServicio: montos.precioServicio,
-        comisionTurno: montos.comisionTurno,
-        montoComision: montos.comisionTurno,
-        montoAnticipoServicio: montos.montoAnticipoServicio,
-        montoAnticipo,
-        montoTotal: montos.montoTotal,
-        precioTotal: montos.montoTotal,
-        montoPagado,
-        saldoPendiente,
-        estadoTurno: "confirmado",
-        estadoPago,
-        creadoPorAdmin: true,
-        origenTurno: "admin_manual",
-        notasAdmin: nuevoTurno.notas.trim(),
-        createdAt: serverTimestamp(),
-        creadoEn: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const batch = writeBatch(db);
+      const packId = cantidadTurnos > 1 ? crearPackId() : null;
+      let saldoPagoARepartir = montoPagadoTotal;
+
+      turnosARegistrar.forEach((turnoPack, index) => {
+        const montoPagadoTurno = Math.max(
+          0,
+          Math.min(montos.montoTotal, saldoPagoARepartir),
+        );
+        saldoPagoARepartir = Math.max(0, saldoPagoARepartir - montoPagadoTurno);
+        const montoAnticipo = montos.montoAnticipoTotal;
+        const saldoPendiente = Math.max(0, montos.montoTotal - montoPagadoTurno);
+        const estadoPago =
+          montoPagadoTurno <= 0
+            ? montos.montoTotal > 0
+              ? "pendiente"
+              : "abonado"
+            : montoPagadoTurno >= montos.montoTotal
+              ? "abonado"
+              : "parcial";
+
+        const turnoRef = doc(collection(db, "turnos"));
+
+        batch.set(turnoRef, {
+          servicioId: servicioSeleccionado.id,
+          categoriaId: servicioSeleccionado.categoriaId || "",
+          categoriaNombre: servicioSeleccionado.categoriaNombre || "",
+          nombreServicio: servicioSeleccionado.nombreServicio || "",
+          profesionalId: servicioSeleccionado.profesionalId || null,
+          nombreProfesional: servicioSeleccionado.nombreProfesional || "",
+          responsableGestion: servicioSeleccionado.responsableGestion || "admin",
+          descripcionServicio: servicioSeleccionado.descripcion || "",
+          gabineteId: nuevoTurno.gabineteId,
+          nombreGabinete: gabineteSeleccionado?.nombreGabinete || "",
+          fecha: turnoPack.fecha,
+          horaInicio: turnoPack.inicioMs,
+          horaFin: turnoPack.finMs,
+          duracionMin,
+          nombreCliente: nuevoTurno.nombreCliente.trim(),
+          clienteTelefono: nuevoTurno.clienteTelefono.trim(),
+          telefonoCliente: nuevoTurno.clienteTelefono.trim(),
+          clienteEmail: nuevoTurno.clienteEmail.trim(),
+          email: nuevoTurno.clienteEmail.trim(),
+          clienteId: nuevoTurno.clienteId || null,
+          usuarioId: nuevoTurno.clienteId || null,
+          uid: nuevoTurno.clienteId || null,
+          metodoPagoEsperado: nuevoTurno.metodoPagoEsperado,
+          metodoPagoUsado:
+            montoPagadoTurno > 0 && nuevoTurno.metodoPagoEsperado !== "sin_pago"
+              ? nuevoTurno.metodoPagoEsperado
+              : null,
+          modoReserva: servicioSeleccionado.modoReserva || "reserva",
+          pedirAnticipo: Boolean(servicioSeleccionado.pedirAnticipo),
+          porcentajeAnticipo: servicioSeleccionado.pedirAnticipo
+            ? Number(servicioSeleccionado.porcentajeAnticipo || 0)
+            : 0,
+          montoServicio: montos.precioServicio,
+          precioServicio: montos.precioServicio,
+          comisionTurno: montos.comisionTurno,
+          montoComision: montos.comisionTurno,
+          montoAnticipoServicio: montos.montoAnticipoServicio,
+          montoAnticipo,
+          montoTotal: montos.montoTotal,
+          precioTotal: montos.montoTotal,
+          montoPagado: montoPagadoTurno,
+          saldoPendiente,
+          estadoTurno: "confirmado",
+          estadoPago,
+          esPack: Boolean(packId),
+          packId,
+          packIndice: packId ? index + 1 : null,
+          packCantidadTurnos: packId ? cantidadTurnos : null,
+          packFrecuenciaDias: packId ? frecuenciaDias : null,
+          creadoPorAdmin: true,
+          origenTurno: "admin_manual",
+          notasAdmin: nuevoTurno.notas.trim(),
+          createdAt: serverTimestamp(),
+          creadoEn: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
       });
+
+      await batch.commit();
 
       resetNuevoTurno();
       Swal.close();
       await swalSuccess({
-        title: "Turno agregado",
-        text: "La reserva manual se guardo correctamente.",
+        title: cantidadTurnos > 1 ? "Pack agregado" : "Turno agregado",
+        text:
+          cantidadTurnos > 1
+            ? `Se guardaron ${cantidadTurnos} turnos del pack correctamente.`
+            : "La reserva manual se guardo correctamente.",
       });
     } catch (error) {
       console.error("Error creando turno manual", error);
@@ -1300,6 +1423,45 @@ export default function TurnosAdminPanel() {
             />
           </div>
 
+          {servicioSeleccionado?.esPack ? (
+            <>
+              <div className="turnos-filtro-item">
+                <label>Cantidad de turnos del pack</label>
+                <input
+                  className="turnos-filtro-control"
+                  type="number"
+                  min="2"
+                  value={nuevoTurno.packCantidadTurnos}
+                  onChange={(e) =>
+                    updateNuevoTurno(
+                      "packCantidadTurnos",
+                      Math.max(2, Number(e.target.value || 2)),
+                    )
+                  }
+                />
+              </div>
+
+              <div className="turnos-filtro-item">
+                <label>Frecuencia (dias)</label>
+                <input
+                  className="turnos-filtro-control"
+                  type="number"
+                  min="1"
+                  value={nuevoTurno.packFrecuenciaDias}
+                  onChange={(e) =>
+                    updateNuevoTurno(
+                      "packFrecuenciaDias",
+                      Math.max(1, Number(e.target.value || 1)),
+                    )
+                  }
+                />
+                <small className="turnos-create-field-hint">
+                  Ejemplo: 4 turnos, cada 7 dias.
+                </small>
+              </div>
+            </>
+          ) : null}
+
           <div className="turnos-filtro-item">
             <label>Metodo esperado</label>
             <select
@@ -1429,9 +1591,14 @@ export default function TurnosAdminPanel() {
 
         <div className="turnos-create-footer">
           <div className="turnos-create-hint">
-            El turno se crea como <strong>confirmado</strong> y con estado de
-            pago calculado segun el monto ingresado. Desde admin no se aplica la
-            anticipacion minima publica de reserva.
+            {servicioSeleccionado?.esPack
+              ? "El pack crea todos los turnos en estado "
+              : "El turno se crea como "}
+            <strong>confirmado</strong>
+            {servicioSeleccionado?.esPack
+              ? " respetando la frecuencia configurada y con estado de pago calculado."
+              : " y con estado de pago calculado segun el monto ingresado."}{" "}
+            Desde admin no se aplica la anticipacion minima publica de reserva.
           </div>
 
           <div className="turnos-create-actions">
@@ -1448,7 +1615,11 @@ export default function TurnosAdminPanel() {
               onClick={crearTurnoManual}
               disabled={creandoTurno}
             >
-              {creandoTurno ? "Guardando..." : "Agregar turno"}
+              {creandoTurno
+                ? "Guardando..."
+                : servicioSeleccionado?.esPack
+                  ? "Agregar pack"
+                  : "Agregar turno"}
             </button>
           </div>
         </div>

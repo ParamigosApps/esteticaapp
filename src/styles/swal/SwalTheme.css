@@ -93,7 +93,7 @@
 
 .precio {
   font-size: 17px;
-  color: #b56cff;
+  color: #c85f90;
 }
 
 .swal-turno-body .precio-row:last-of-type {
@@ -116,9 +116,9 @@
 }
 
 .swal-turno-footer.automatico {
-  background: linear-gradient(180deg, #f7f2ff, #f3ecff);
-  color: #9d62ec;
-  border: 1px solid #e8d8ff;
+  background: linear-gradient(180deg, #fff4f9, #ffeaf3);
+  color: #b34f79;
+  border: 1px solid #f5d4e4;
 }
 
 /* BOTONES */
@@ -378,15 +378,19 @@
 }
 
 .swal-loading-close-btn {
-  width: 36px;
-  height: 36px;
-  top: 18px;
-  right: 18px;
+  width: 40px;
+  height: 40px;
+  top: 22px;
+  right: 22px;
   padding: 0;
   border-radius: 999px;
   color: #7e7290;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(226, 217, 239, 0.9);
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  line-height: 1;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 

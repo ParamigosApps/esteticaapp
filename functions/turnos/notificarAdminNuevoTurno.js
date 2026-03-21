@@ -9,13 +9,14 @@ const ADMIN_EMAIL = defineSecret("ADMIN_EMAIL");
 const FROM_EMAIL = defineSecret("FROM_EMAIL");
 const ESTADOS_NOTIFICABLES = new Set(["confirmado", "pendiente_aprobacion"]);
 const PLACEHOLDER = "-";
+const BUSINESS_TIME_ZONE = "America/Argentina/Buenos_Aires";
 
 function esc(v) {
   return String(v ?? PLACEHOLDER)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/\"/g, "&quot;");
 }
 
 function resolveEstadoTurno(turno = {}) {
@@ -24,57 +25,123 @@ function resolveEstadoTurno(turno = {}) {
 
 function getAsunto(estadoTurno) {
   return estadoTurno === "pendiente_aprobacion"
-    ? "Nueva reserva pendiente de aprobación"
+    ? "Nueva reserva pendiente de aprobacion"
     : "Nuevo turno confirmado";
+}
+
+function getEstadoLabel(estadoTurno) {
+  if (estadoTurno === "pendiente_aprobacion") return "Pendiente de aprobacion";
+  if (estadoTurno === "confirmado") return "Confirmado";
+  return estadoTurno || PLACEHOLDER;
+}
+
+function getEstadoBadgeColors(estadoTurno) {
+  if (estadoTurno === "pendiente_aprobacion") {
+    return { bg: "#fff4dd", fg: "#92400e", border: "#f3d39b" };
+  }
+
+  if (estadoTurno === "confirmado") {
+    return { bg: "#eafaf1", fg: "#166534", border: "#b7ebc8" };
+  }
+
+  return { bg: "#f3f4f6", fg: "#374151", border: "#d1d5db" };
 }
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString("es-AR");
 }
 
-function formatFechaHora(fecha, horaInicio) {
-  if (!fecha || !horaInicio) return { fechaTexto: "-", horaTexto: "-" };
+function formatHour(ts) {
+  if (!ts && ts !== 0) return "-";
 
-  const d = new Date(Number(horaInicio));
-  const fechaObj = new Date(`${fecha}T00:00:00`);
+  const d = new Date(Number(ts));
+  if (Number.isNaN(d.getTime())) return "-";
+
+  return d.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: BUSINESS_TIME_ZONE,
+  });
+}
+
+function formatFechaHora(fecha, horaInicio, horaFin) {
+  const fechaObj = fecha ? new Date(`${fecha}T00:00:00`) : null;
+  const fechaValida = fechaObj && !Number.isNaN(fechaObj.getTime());
+
+  const horaInicioTexto = formatHour(horaInicio);
+  const horaFinTexto = formatHour(horaFin);
+
+  const rangoHorario =
+    horaInicioTexto !== "-" && horaFinTexto !== "-"
+      ? `${horaInicioTexto} - ${horaFinTexto}`
+      : horaInicioTexto !== "-"
+        ? horaInicioTexto
+        : "-";
 
   return {
-    fechaTexto: fechaObj.toLocaleDateString("es-AR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }),
-    horaTexto: d.toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
+    fechaTexto: fechaValida
+      ? fechaObj.toLocaleDateString("es-AR", {
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          timeZone: BUSINESS_TIME_ZONE,
+        })
+      : "-",
+    horaTexto: rangoHorario,
   };
 }
 
-function buildRow(label, value) {
-  return `<p><b>${esc(label)}:</b> ${esc(value)}</p>`;
+function buildDetailItem(label, value) {
+  return `
+    <tr>
+      <td style="padding:8px 0;color:#6b7280;font-size:13px;vertical-align:top;width:140px;">${esc(label)}</td>
+      <td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600;vertical-align:top;">${esc(value)}</td>
+    </tr>
+  `;
 }
 
 function buildMailHtml({ asunto, turnoId, turno, estadoTurno, fechaTexto, horaTexto }) {
-  const rows = [
-    buildRow("Servicio", turno.nombreServicio),
-    buildRow("Cliente", turno.nombreCliente),
-    buildRow("Telefono", turno.telefonoCliente),
-    buildRow("Fecha", fechaTexto),
-    buildRow("Hora", horaTexto),
-    buildRow("Gabinete", turno.nombreGabinete),
-    buildRow("Estado", estadoTurno),
-    buildRow("Total", `$${formatMoney(turno.precioTotal || turno.montoTotal || 0)}`),
-    buildRow("Anticipo", `$${formatMoney(turno.montoAnticipo || 0)}`),
-    buildRow("ID turno", turnoId),
+  const estadoLabel = getEstadoLabel(estadoTurno);
+  const badge = getEstadoBadgeColors(estadoTurno);
+
+  const details = [
+    buildDetailItem("Servicio", turno.nombreServicio),
+    buildDetailItem("Cliente", turno.nombreCliente),
+    buildDetailItem("Telefono", turno.telefonoCliente),
+    buildDetailItem("Fecha", fechaTexto),
+    buildDetailItem("Horario", horaTexto),
+    buildDetailItem("Gabinete", turno.nombreGabinete),
+    buildDetailItem("Total", `$${formatMoney(turno.precioTotal || turno.montoTotal || 0)}`),
+    buildDetailItem("Anticipo", `$${formatMoney(turno.montoAnticipo || 0)}`),
+    buildDetailItem("ID turno", turnoId),
   ].join("");
 
   return `
-    <div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;">
-      <h2 style="margin-bottom:16px;">${esc(asunto)}</h2>
-      ${rows}
-    </div>
+  <div style="margin:0;padding:28px;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
+      <tr>
+        <td style="padding:22px 26px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);">
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1;margin-bottom:8px;">Turnos App</div>
+          <div style="font-size:22px;line-height:1.3;font-weight:700;color:#ffffff;">${esc(asunto)}</div>
+          <div style="margin-top:12px;display:inline-block;padding:6px 12px;border-radius:999px;background:${badge.bg};border:1px solid ${badge.border};color:${badge.fg};font-size:12px;font-weight:700;">${esc(estadoLabel)}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 26px 18px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            ${details}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 26px 22px;border-top:1px solid #f1f5f9;color:#64748b;font-size:12px;">
+          Notificacion automatica generada al crear o confirmar un turno.
+        </td>
+      </tr>
+    </table>
+  </div>
   `;
 }
 
@@ -117,6 +184,7 @@ exports.notificarAdminNuevoTurno = onDocumentCreated(
     const { fechaTexto, horaTexto } = formatFechaHora(
       turno.fecha,
       turno.horaInicio,
+      turno.horaFin,
     );
 
     const asunto = getAsunto(estadoTurno);

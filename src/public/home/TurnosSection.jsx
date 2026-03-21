@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useServicios } from "../../context/ServiciosContext";
 import TurnosPanel from "../../components/turnos/TurnosPanel";
-import { calcularMontosTurno } from "../../config/comisiones.js";
+import { calcularMontosTurno, parseAmount } from "../../config/comisiones.js";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../Firebase";
 
@@ -13,8 +13,8 @@ function normalizarTexto(str = "") {
 }
 
 function getPrecioEfectivo(servicio) {
-  const precio = Number(servicio?.precio || 0);
-  const precioEfectivo = Number(servicio?.precioEfectivo || 0);
+  const precio = parseAmount(servicio?.precio || 0);
+  const precioEfectivo = parseAmount(servicio?.precioEfectivo || 0);
 
   if (precioEfectivo > 0 && precioEfectivo < precio) {
     return precioEfectivo;
@@ -26,9 +26,9 @@ function getPrecioEfectivo(servicio) {
 function getPrecioOnlineServicio(servicio) {
   return Number(
     calcularMontosTurno({
-      precioServicio: Number(servicio?.precio || 0),
+      precioServicio: parseAmount(servicio?.precio || 0),
       porcentajeAnticipo: servicio?.pedirAnticipo
-        ? Number(servicio?.porcentajeAnticipo || 0)
+        ? parseAmount(servicio?.porcentajeAnticipo || 0)
         : 0,
       cobrarComision: true,
     }).montoTotal || 0,
@@ -90,17 +90,27 @@ function ServicioVariante({
   etiquetaPrecio = "Precio",
 }) {
   const pricingTurno = calcularMontosTurno({
-    precioServicio: Number(servicio.precio || 0),
+    precioServicio: parseAmount(servicio.precio || 0),
     porcentajeAnticipo: servicio.pedirAnticipo
-      ? Number(servicio.porcentajeAnticipo || 0)
+      ? parseAmount(servicio.porcentajeAnticipo || 0)
       : 0,
     cobrarComision: true,
   });
 
   const precioOnline = Number(pricingTurno.montoTotal || 0);
   const precioEfectivo = getPrecioEfectivo(servicio);
-  const ahorroEfectivo = Math.max(0, precioOnline - precioEfectivo);
   const comisionTurno = Number(pricingTurno.comisionTurno || 0);
+  const totalEfectivoComparable =
+    precioEfectivo > 0
+      ? precioEfectivo + (comisionTurno > 0 ? comisionTurno : 0)
+      : 0;
+  const ahorroEfectivo = Math.max(0, precioOnline - totalEfectivoComparable);
+  const porcentajeAnticipo = servicio.pedirAnticipo
+    ? parseAmount(servicio.porcentajeAnticipo || 0)
+    : 0;
+  const muestraAhorroEfectivo =
+    precioEfectivo > 0 &&
+    !(servicio.pedirAnticipo && porcentajeAnticipo >= 100);
   const servicioImageUrl = getServicioImageUrl(servicio);
 
   const contenido = (
@@ -136,14 +146,29 @@ function ServicioVariante({
           <span className="servicio-descripcion">{servicio.descripcion}</span>
         ) : null}
 
-        {precioEfectivo > 0 ? (
+        {muestraAhorroEfectivo && porcentajeAnticipo == 0 ? (
           <div className="servicio-efectivo">
             Pagando en efectivo abonas
             {ahorroEfectivo > 0 ? (
               <span>
                 {" "}
-                ${precioEfectivo.toLocaleString("es-AR")} y ahorrás{" "}
-                <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong>
+                ${totalEfectivoComparable.toLocaleString("es-AR")} (
+                <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong> de
+                ahorro)
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {muestraAhorroEfectivo && porcentajeAnticipo != 0 ? (
+          <div className="servicio-efectivo">
+            Pagándo lo restante en efectivo en total vas a abonar:
+            {ahorroEfectivo > 0 ? (
+              <span>
+                {" "}
+                ${totalEfectivoComparable.toLocaleString("es-AR")} (
+                <strong>${ahorroEfectivo.toLocaleString("es-AR")}</strong> de
+                ahorro)
               </span>
             ) : null}
           </div>
@@ -358,8 +383,10 @@ export default function TurnosSection({
         </div>
       )}
 
-      {!loadingServicios && !categoriaSeleccionada && !servicioSeleccionado && (
-        busqueda?.trim() && grupos.length === 0 ? (
+      {!loadingServicios &&
+        !categoriaSeleccionada &&
+        !servicioSeleccionado &&
+        (busqueda?.trim() && grupos.length === 0 ? (
           <div className="servicios-empty-state">
             No se encontraron resultados para: "{busqueda.trim()}"
           </div>
@@ -384,12 +411,14 @@ export default function TurnosSection({
 
                       if (!precios.length) return null;
 
-                      const hayPrecioVariable = data.servicios.some((servicio) =>
-                        servicioTienePrecioVariableActivo(servicio),
+                      const hayPrecioVariable = data.servicios.some(
+                        (servicio) =>
+                          servicioTienePrecioVariableActivo(servicio),
                       );
 
                       const hayMasDeUnPrecio =
-                        new Set(precios.map((precio) => Number(precio))).size > 1;
+                        new Set(precios.map((precio) => Number(precio))).size >
+                        1;
 
                       return (
                         <div className="servicio-precio">
@@ -431,8 +460,7 @@ export default function TurnosSection({
               </div>
             ))}
           </div>
-        )
-      )}
+        ))}
 
       {!loadingServicios && categoriaSeleccionada && !servicioSeleccionado && (
         <>
