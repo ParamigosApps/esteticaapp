@@ -16,7 +16,7 @@ const TERMS_SECTIONS = [
   {
     title: "3. Reservas, cambios y cancelaciones",
     paragraphs: [
-      "Las reservas quedan sujetas a disponibilidad real de agenda y a la correcta confirmacion del proceso correspondiente. En algunos servicios puede requerirse una seña o pago parcial para asegurar el turno.",
+      "Las reservas quedan sujetas a disponibilidad real de agenda y a la correcta confirmación del proceso correspondiente. En algunos servicios puede requerirse una seña o pago parcial para asegurar el turno.",
       "Los cambios, reprogramaciones o cancelaciones pueden depender de la anticipacion con la que se soliciten y de las condiciones especificas informadas durante la reserva.",
     ],
   },

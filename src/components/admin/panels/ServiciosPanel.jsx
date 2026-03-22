@@ -2342,6 +2342,8 @@ export default function ServiciosPanel() {
   const [seleccionados, setSeleccionados] = useState([]);
   const [nuevoServicioAbierto, setNuevoServicioAbierto] = useState(false);
   const [abierto, setAbierto] = useState(true);
+  const [categoriaServiciosAbierta, setCategoriaServiciosAbierta] =
+    useState("");
 
   // Categorías (catálogo)
   useEffect(() => {
@@ -2693,6 +2695,35 @@ export default function ServiciosPanel() {
       filtroServiciosNormalizado,
     );
   });
+  const serviciosPorCategoria = Object.entries(
+    serviciosFiltrados.reduce((acc, servicio) => {
+      const categoria = getCategoriaLabel(servicio);
+      if (!acc[categoria]) acc[categoria] = [];
+      acc[categoria].push(servicio);
+      return acc;
+    }, {}),
+  ).sort(([a], [b]) => a.localeCompare(b));
+
+  useEffect(() => {
+    if (!serviciosPorCategoria.length) {
+      setCategoriaServiciosAbierta("");
+      return;
+    }
+
+    if (!categoriaServiciosAbierta) return;
+
+    const categoriaSigueVisible = serviciosPorCategoria.some(
+      ([categoria]) => categoria === categoriaServiciosAbierta,
+    );
+
+    if (!categoriaSigueVisible) {
+      setCategoriaServiciosAbierta(serviciosPorCategoria[0][0]);
+    }
+  }, [serviciosPorCategoria, categoriaServiciosAbierta]);
+
+  function toggleCategoriaServicios(categoria) {
+    setCategoriaServiciosAbierta((prev) => (prev === categoria ? "" : categoria));
+  }
 
   return (
     <div className="admin-panel servicios-admin-page">
@@ -3125,43 +3156,48 @@ export default function ServiciosPanel() {
                   </div>
 
                   <div className="">
-                    {Object.entries(
-                      serviciosFiltrados.reduce((acc, servicio) => {
-                        const categoria = getCategoriaLabel(servicio);
-                        if (!acc[categoria]) acc[categoria] = [];
-                        acc[categoria].push(servicio);
-                        return acc;
-                      }, {}),
-                    )
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([categoria, items]) => (
+                    {serviciosPorCategoria.map(([categoria, items]) => {
+                      const categoriaAbierta = categoriaServiciosAbierta === categoria;
+                      return (
                         <div
                           key={categoria}
                           className="servicios-categoria-bloque"
                         >
-                          <div className="servicios-categoria-header">
+                          <button
+                            type="button"
+                            className="servicios-categoria-header servicios-categoria-header-btn"
+                            onClick={() => toggleCategoriaServicios(categoria)}
+                            aria-expanded={categoriaAbierta}
+                          >
                             <h6 className="fw-bold mb-0">{categoria}</h6>
-                            <span className="servicios-categoria-count">
-                              {items.length}
-                            </span>
-                          </div>
-                          {items
-                            .sort((a, b) =>
-                              (a.nombreServicio || "").localeCompare(
-                                b.nombreServicio || "",
-                              ),
-                            )
-                            .map((s) => (
-                              <ServicioItem
-                                key={s.id}
-                                servicio={s}
-                                servicios={servicios}
-                                gabinetes={gabinetes}
-                                empleados={empleados}
-                              />
-                            ))}
+                            <div className="servicios-categoria-header-meta">
+                              <span className="servicios-categoria-count">
+                                {items.length}
+                              </span>
+                              <span className="servicios-categoria-toggle-icon">
+                                {categoriaAbierta ? "\u25BE" : "\u25B8"}
+                              </span>
+                            </div>
+                          </button>
+                          {categoriaAbierta &&
+                            items
+                              .sort((a, b) =>
+                                (a.nombreServicio || "").localeCompare(
+                                  b.nombreServicio || "",
+                                ),
+                              )
+                              .map((s) => (
+                                <ServicioItem
+                                  key={s.id}
+                                  servicio={s}
+                                  servicios={servicios}
+                                  gabinetes={gabinetes}
+                                  empleados={empleados}
+                                />
+                              ))}
                         </div>
-                      ))}
+                      );
+                    })}
 
                     {!serviciosFiltrados.length && (
                       <div className="servicios-empty-state">

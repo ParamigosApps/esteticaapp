@@ -25,12 +25,12 @@ function resolveEstadoTurno(turno = {}) {
 
 function getAsunto(estadoTurno) {
   return estadoTurno === "pendiente_aprobacion"
-    ? "Nueva reserva pendiente de aprobacion"
+    ? "Nueva reserva pendiente de aprobación"
     : "Nuevo turno confirmado";
 }
 
 function getEstadoLabel(estadoTurno) {
-  if (estadoTurno === "pendiente_aprobacion") return "Pendiente de aprobacion";
+  if (estadoTurno === "pendiente_aprobacion") return "Pendiente de aprobación";
   if (estadoTurno === "confirmado") return "Confirmado";
   return estadoTurno || PLACEHOLDER;
 }
@@ -137,7 +137,7 @@ function buildMailHtml({ asunto, turnoId, turno, estadoTurno, fechaTexto, horaTe
       </tr>
       <tr>
         <td style="padding:14px 26px 22px;border-top:1px solid #f1f5f9;color:#64748b;font-size:12px;">
-          Notificacion automatica generada al crear o confirmar un turno.
+          Notificación automatica generada al recibir una solicitud o confirmar un turno.
         </td>
       </tr>
     </table>

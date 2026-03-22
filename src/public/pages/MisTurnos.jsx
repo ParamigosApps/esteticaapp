@@ -26,7 +26,7 @@ const functions = getFunctions(undefined, "us-central1");
 const ESTADO_TURNO_LABEL = {
   confirmado: "Confirmado",
   pendiente: "Pendiente",
-  pendiente_aprobacion: "Pendiente de aprobaciÃ³n",
+  pendiente_aprobacion: "Pendiente de aprobación",
   cancelado: "Cancelado por usuario",
   rechazado: "Rechazado",
   perdido: "Perdido",
@@ -921,7 +921,7 @@ export default function MisTurnos() {
                 }`}
               >
                 {requiereGestion
-                  ? "Pendiente de confirmacion o pago"
+                  ? "Pendiente de confirmación o pago"
                   : "Turno confirmado"}
               </div>
             )}
@@ -1044,7 +1044,7 @@ export default function MisTurnos() {
     return (
       <div className="container py-4">
         <h4>Mis turnos</h4>
-        <p className="text-muted">IniciÃƒÂ¡ sesiÃƒÂ³n para ver tus turnos.</p>
+        <p className="text-muted">Inicia sesión para ver tus turnos.</p>
       </div>
     );
   }
@@ -1092,7 +1092,7 @@ export default function MisTurnos() {
         </div>
 
         {proximos.length === 0 ? (
-          <div className="turnos-empty-state">No tenÃ©s turnos prÃ³ximos.</div>
+          <div className="turnos-empty-state">No tenés turnos próximos.</div>
         ) : (
           <div className="turnos-card-list">
             {proximos.map((t) => (
@@ -1105,9 +1105,9 @@ export default function MisTurnos() {
       <section className="turnos-section">
         <div className="turnos-section-head turnos-section-head-pending">
           <div>
-            <h2>Pendientes de confirmacion o pago</h2>
+            <h2>Pendientes de confirmación o pago</h2>
             <p>
-              Turnos activos que todavia esperan aprobaciÃ³n, confirmacion o un
+              Turnos activos que todavia esperan aprobación, confirmación o un
               pago.
             </p>
           </div>
@@ -1118,7 +1118,7 @@ export default function MisTurnos() {
 
         {pendientes.length === 0 ? (
           <div className="turnos-empty-state">
-            No tenes turnos pendientes de confirmacion o pago.
+            No tenes turnos pendientes de confirmación o pago.
           </div>
         ) : (
           <div className="turnos-card-list">
@@ -1142,7 +1142,7 @@ export default function MisTurnos() {
 
         {historial.length === 0 ? (
           <div className="turnos-empty-state">
-            TodavÃ­a no tenÃ©s turnos en el historial.
+            Todaví­a no tenés turnos en el historial.
           </div>
         ) : (
           <div className="turnos-card-list">

@@ -76,6 +76,13 @@ export default function LoginPanel() {
     return () => clearInterval(i);
   }, [bloqueoEnvioSms]);
 
+  const nombreMostrado = String(
+    firebaseUser?.apodo ||
+      firebaseUser?.nombre ||
+      firebaseUser?.displayName ||
+      (firebaseUser?.email ? firebaseUser.email.split("@")[0] : ""),
+  ).trim();
+
   return (
     <>
       {loading && (
@@ -271,10 +278,10 @@ export default function LoginPanel() {
       )}
 
       {/* 👤 USUARIO LOGUEADO */}
-      {(firebaseUser?.nombre || firebaseUser?.displayName) && !loading && (
+      {firebaseUser && !loading && (
         <div className="d-flex flex-column align-items-center">
           <p className="saludoLogin fs-5 mb-0">
-            Hola, {firebaseUser.apodo || firebaseUser.nombre}
+            Hola, {nombreMostrado ? `me llamo ${nombreMostrado}` : ""}!
             {puedeEditarPerfil(firebaseUser) && (
               <span
                 style={{ cursor: "pointer" }}

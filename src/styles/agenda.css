@@ -641,17 +641,17 @@ body::-webkit-scrollbar-corner,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   margin: 0 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(206, 192, 229, 0.95);
-  color: #5e457f;
-  font-size: 1rem;
-  font-weight: 800;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 239, 255, 0.92));
+  border: 1px solid rgba(196, 177, 224, 0.95);
+  color: #4f3a6d;
+  font-size: 1.15rem;
+  font-weight: 700;
   line-height: 1;
-  transform: scaleX(1.2);
+  transform: translateY(-0.5px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
@@ -674,8 +674,9 @@ body::-webkit-scrollbar-corner,
 }
 
 .agenda-panel .btn.btn-outline-secondary.btn-sm:hover:not(:disabled) .agenda-month-btn-arrow {
-  background: linear-gradient(180deg, #fff8ff, #f2e8ff);
-  border-color: rgba(170, 118, 228, 0.7);
+  background: linear-gradient(180deg, #fff9ff, #efe1ff);
+  border-color: rgba(160, 108, 219, 0.75);
+  color: #473361;
 }
 
 .agenda-panel .btn.btn-outline-secondary.btn-sm:disabled {
@@ -1087,6 +1088,52 @@ body::-webkit-scrollbar-corner,
   transform: translateY(-3px);
   box-shadow: 0 16px 32px rgba(63, 44, 86, 0.10);
   border-color: rgba(199, 125, 255, 0.42);
+}
+
+.servicio-card-categoria {
+  cursor: default;
+}
+
+.servicio-card-header-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.servicio-card-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 199, 235, 0.95);
+  background: rgba(247, 241, 255, 0.95);
+  color: #6f538f;
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.servicio-card-chevron.open {
+  transform: rotate(180deg);
+}
+
+.servicio-card-body {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(236, 229, 245, 0.9);
+}
+
+.servicio-card-categoria-lista {
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.servicio-card-inner {
+  cursor: default;
 }
 
 .servicio-card-header {
@@ -1647,10 +1694,10 @@ body::-webkit-scrollbar-corner,
   }
 
   .agenda-month-btn-arrow {
-    width: 26px;
-    height: 26px;
-    font-size: 0.9rem;
-    transform: scaleX(1.15);
+    width: 24px;
+    height: 24px;
+    font-size: 1.05rem;
+    transform: translateY(-0.5px);
   }
 
   .agenda-panel .d-flex.justify-content-between.align-items-center.mb-3.mt-4 > div[style] {

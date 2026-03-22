@@ -1035,7 +1035,7 @@ export default function TurnosPanel({ servicio }) {
                 saldoPendiente > 0
                   ? `
                     <div class="swal-reserva-ok-note">
-                      Espera la confirmacion por WhatsApp antes de transferir la seña. Una vez confirmado, el saldo restante se abona el dia del turno.
+                      Espera la confirmación por WhatsApp antes de transferir la seña. Una vez confirmado, el saldo restante se abona el dia del turno.
                     </div>
                   `
                   : ""
@@ -1110,13 +1110,18 @@ export default function TurnosPanel({ servicio }) {
     const data = await reservarTurno("manual");
     if (!data?.turnoId) return;
 
+    const nombreUsuario = String(
+      user?.apodo || user?.nombre || user?.displayName || "",
+    ).trim();
+    const saludo = nombreUsuario ? `Hola, soy ${nombreUsuario}.` : "Hola!";
+
     const mensaje = `
-Hola! Me gustaria reservar el siguiente turno:
+${saludo}
+Me gustaria reservar el siguiente turno:
 
 Servicio: ${servicio.nombreServicio}
 Fecha: ${fechaFormateada}
 Horario: ${horaInicioFormateada} - ${horaFinFormateada}
-Turno ID: ${data.turnoId.slice(0, 8)}
 `;
 
     const whatsappUrl = getWhatsappUrl(socialConfig?.whatsappContacto, mensaje);
@@ -1828,17 +1833,6 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                         .
                       </div>
                     )}
-                    {/* {saldoServicioTransferencia > 0 && (
-                    <div>
-                      {saldoServicioEfectivo > 0
-                        ? "Si prefieres transferencia, el saldo es: "
-                        : "Saldo del servicio por transferencia: "}
-                      <strong>
-                        ${saldoServicioTransferencia.toLocaleString("es-AR")}
-                      </strong>
-                      .
-                    </div>
-                  )} */}
                   </>
                 )}
               </div>
@@ -1875,7 +1869,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           disabled={!puedeIrMesAnterior}
         >
           <span className="agenda-month-btn-arrow" aria-hidden="true">
-            {"←"}
+            {"‹"}
           </span>
           <span>Mes anterior</span>
         </button>
@@ -1895,7 +1889,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         >
           <span>Mes siguiente</span>
           <span className="agenda-month-btn-arrow" aria-hidden="true">
-            {"→"}
+            {"›"}
           </span>
         </button>
       </div>
@@ -2023,7 +2017,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           </div>
           {mostrarResumenCompletoTurno ? (
             <div className="resumen-turno-row">
-              <strong>Duracion:</strong> {servicio.duracionMin} min
+              <strong>Duración:</strong> {servicio.duracionMin} min
             </div>
           ) : (
             <div className="resumen-turno-meta-muted">

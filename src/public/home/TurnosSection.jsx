@@ -176,7 +176,7 @@ function ServicioVariante({
 
         <div className="servicio-meta-line">
           <span className="servicio-duracion">
-            Duracion: <b>{servicio.duracionMin} min</b>
+            Duración: <b>{servicio.duracionMin} min</b>
           </span>
 
           <span className="servicio-tipo">Tipo:</span>
@@ -253,6 +253,7 @@ export default function TurnosSection({
 }) {
   const { servicios, loadingServicios } = useServicios();
   const [categorias, setCategorias] = useState([]);
+  const [categoriaAbiertaId, setCategoriaAbiertaId] = useState(null);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
   const turnosTopRef = useRef(null);
 
@@ -365,6 +366,26 @@ export default function TurnosSection({
     scrollToTurnosTop();
   }, [categoriaSeleccionada, servicioSeleccionado]);
 
+  useEffect(() => {
+    if (!grupos.length) {
+      setCategoriaAbiertaId(null);
+      return;
+    }
+
+    const existeAbierta = grupos.some(([categoriaId]) => categoriaId === categoriaAbiertaId);
+    if (!existeAbierta) {
+      setCategoriaAbiertaId(grupos[0][0]);
+    }
+  }, [grupos, busqueda]);
+
+  const categoriasById = useMemo(() => {
+    const map = {};
+    (categorias || []).forEach((item) => {
+      if (item?.id) map[item.id] = item;
+    });
+    return map;
+  }, [categorias]);
+
   const gruposServiciosCategoria = useMemo(
     () => agruparServiciosPorNombre(serviciosCategoria),
     [serviciosCategoria],
@@ -394,11 +415,16 @@ export default function TurnosSection({
           <div className="servicios-lista">
             {grupos.map(([categoriaId, data]) => (
               <div
-                className="servicio-card"
+                className={`servicio-card servicio-card-categoria ${
+                  categoriaAbiertaId === categoriaId ? "is-open" : ""
+                }`}
                 key={categoriaId}
-                onClick={() => setCategoriaSeleccionada(categoriaId)}
               >
-                <div className="servicio-card-header">
+                <button
+                  type="button"
+                  className="servicio-card-header servicio-card-header-toggle"
+                  onClick={() => setCategoriaAbiertaId(categoriaId)}
+                >
                   <h6 className="servicio-titulo">{data.nombre}</h6>
                   <div className="servicio-card-header-meta">
                     <div className="servicio-card-count">
@@ -429,34 +455,97 @@ export default function TurnosSection({
                         </div>
                       );
                     })()}
+                    <span
+                      className={`servicio-card-chevron ${
+                        categoriaAbiertaId === categoriaId ? "open" : ""
+                      }`}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
                   </div>
-                </div>
+                </button>
 
-                <div className="servicio-sub mb-1">
-                  <div className="servicio-sub-listado">
-                    {data.servicios.slice(0, 5).map((s) => (
-                      <span
-                        key={`${categoriaId}-${s.id}`}
-                        className="servicio-sub-pill"
-                      >
-                        <strong>{s.nombreServicio}</strong>
-                        {s.nombreProfesional ? (
-                          <span className="servicio-sub-profesional">
-                            <span className="servicio-sub-separator">-</span>
-                            <span className="servicio-sub-profesional-name">
-                              {s.nombreProfesional}
-                            </span>
+                {categoriaAbiertaId === categoriaId ? (
+                  <div className="servicio-card-body">
+                    {categoriasById[categoriaId]?.descripcion ? (
+                      <p className="servicios-categoria-descripcion mb-2">
+                        {categoriasById[categoriaId].descripcion}
+                      </p>
+                    ) : null}
+
+                    <div className="servicio-sub mb-1">
+                      <div className="servicio-sub-listado">
+                        {data.servicios.slice(0, 8).map((s) => (
+                          <span
+                            key={`${categoriaId}-${s.id}`}
+                            className="servicio-sub-pill"
+                          >
+                            <strong>{s.nombreServicio}</strong>
+                            {s.nombreProfesional ? (
+                              <span className="servicio-sub-profesional">
+                                <span className="servicio-sub-separator">-</span>
+                                <span className="servicio-sub-profesional-name">
+                                  {s.nombreProfesional}
+                                </span>
+                              </span>
+                            ) : null}
+                          </span>
+                        ))}
+                        {data.servicios.length > 8 ? (
+                          <span className="servicio-sub-more">
+                            +{data.servicios.length - 8} mas
                           </span>
                         ) : null}
-                      </span>
-                    ))}
-                    {data.servicios.length > 5 ? (
-                      <span className="servicio-sub-more">
-                        +{data.servicios.length - 5} mas
-                      </span>
-                    ) : null}
+                      </div>
+                    </div>
+
+                    <div className="servicios-lista servicio-card-categoria-lista">
+                      {agruparServiciosPorNombre(data.servicios).map((grupo) => {
+                        const servicioBase = grupo[0];
+                        const apilado = grupo.length > 1;
+
+                        return (
+                          <div
+                            key={`${categoriaId}-${servicioBase.id}`}
+                            className="servicio-card servicio-card-inner"
+                          >
+                            <div className="servicio-card-header">
+                              <h6 className="servicio-titulo">
+                                {servicioBase.nombreServicio}
+                              </h6>
+                              {apilado ? (
+                                <div className="servicio-card-count">
+                                  {grupo.length} profesionales
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {apilado ? (
+                              <div className="servicio-stack">
+                                {grupo.map((servicio) => (
+                                  <ServicioVariante
+                                    key={servicio.id}
+                                    servicio={servicio}
+                                    compact
+                                    onSelect={setServicioSeleccionado}
+                                    etiquetaPrecio="Desde"
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <ServicioVariante
+                                servicio={servicioBase}
+                                onSelect={setServicioSeleccionado}
+                                etiquetaPrecio="Precio"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             ))}
           </div>

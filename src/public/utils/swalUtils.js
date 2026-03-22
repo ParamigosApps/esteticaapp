@@ -591,8 +591,8 @@ export function swalResumenTurno({
           ${
             esManual
               ? `
-              ⚠️ Este turno requiere confirmación manual. 
-              Un administrador verificará disponibilidad y te responderá por WhatsApp.
+              Este turno requiere confirmación manual. 
+              Un administrador verificará disponibilidad y te confirmará el turno por WhatsApp.
               `
               : `
               Serás redirigido a MercadoPago para completar el pago y confirmar el turno.\n              El horario quedara reservado por <strong>10 minutos</strong>. Si no se acredita el pago en ese plazo, la reserva se libera automaticamente.
