@@ -1875,7 +1875,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           disabled={!puedeIrMesAnterior}
         >
           <span className="agenda-month-btn-arrow" aria-hidden="true">
-            {"<-"}
+            {"←"}
           </span>
           <span>Mes anterior</span>
         </button>
@@ -1895,7 +1895,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
         >
           <span>Mes siguiente</span>
           <span className="agenda-month-btn-arrow" aria-hidden="true">
-            {"->"}
+            {"→"}
           </span>
         </button>
       </div>

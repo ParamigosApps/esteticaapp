@@ -641,14 +641,17 @@ body::-webkit-scrollbar-corner,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  margin: 0 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(206, 192, 229, 0.95);
   color: #5e457f;
-  font-size: 0.82rem;
+  font-size: 1rem;
+  font-weight: 800;
   line-height: 1;
+  transform: scaleX(1.2);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
@@ -1644,9 +1647,10 @@ body::-webkit-scrollbar-corner,
   }
 
   .agenda-month-btn-arrow {
-    width: 22px;
-    height: 22px;
-    font-size: 0.75rem;
+    width: 26px;
+    height: 26px;
+    font-size: 0.9rem;
+    transform: scaleX(1.15);
   }
 
   .agenda-panel .d-flex.justify-content-between.align-items-center.mb-3.mt-4 > div[style] {
