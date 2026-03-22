@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
 import { db } from "../../Firebase";
@@ -26,7 +26,7 @@ const functions = getFunctions(undefined, "us-central1");
 const ESTADO_TURNO_LABEL = {
   confirmado: "Confirmado",
   pendiente: "Pendiente",
-  pendiente_aprobacion: "Pendiente de aprobación",
+  pendiente_aprobacion: "Pendiente de aprobaciÃ³n",
   cancelado: "Cancelado por usuario",
   rechazado: "Rechazado",
   perdido: "Perdido",
@@ -56,7 +56,7 @@ function getEstadoTurno(turno) {
       return "pendiente";
     case "pendiente_aprobacion":
       return "pendiente_aprobacion";
-    case "señado":
+    case "seÃ±ado":
     case "confirmado":
       return "confirmado";
     case "cancelado":
@@ -80,7 +80,7 @@ function getEstadoPago(turno) {
       return "pendiente";
     case "pendiente_aprobacion":
       return "pendiente_aprobacion";
-    case "señado":
+    case "seÃ±ado":
       return "parcial";
     case "confirmado": {
       const total = Number(
@@ -107,13 +107,18 @@ function getMontos(turno) {
   );
 
   const anticipo = Number(
-    turno?.montoAnticipo ?? turno?.montoSena ?? turno?.seña ?? turno?.sena ?? 0,
+    turno?.montoAnticipo ??
+      turno?.montoSena ??
+      turno?.["seña"] ??
+      turno?.["seÃ±a"] ??
+      turno?.sena ??
+      0,
   );
 
   let pagado = Number(turno?.montoPagado ?? turno?.pagadoTotal ?? 0);
 
   if (!pagado) {
-    if (turno?.estado === "señado") {
+    if (turno?.estado === "seÃ±ado") {
       pagado = anticipo;
     } else if (getEstadoPago(turno) === "abonado" && total > 0) {
       pagado = total;
@@ -231,29 +236,59 @@ function canCancelTurno(turno) {
 }
 
 function canReprogramTurno(turno, reservasConfig = {}) {
-  if (!turno) return false;
-  if (reservasConfig?.permitirReprogramacionUsuario === false) return false;
+  return !getReprogramBlockedReason(turno, reservasConfig);
+}
+
+function getReprogramBlockedReason(turno, reservasConfig = {}) {
+  if (!turno) return "Turno invalido.";
+  if (reservasConfig?.permitirReprogramacionUsuario === false) {
+    return "La reprogramacion por parte del usuario esta desactivada.";
+  }
+
   const maxReprogramaciones = Math.max(
     0,
     Number(reservasConfig?.maxReprogramacionesUsuario ?? 1),
   );
-  if (maxReprogramaciones < 1) return false;
+  if (maxReprogramaciones < 1) {
+    return "La reprogramacion por parte del usuario esta desactivada.";
+  }
 
   const estadoTurno = getEstadoTurno(turno);
   if (
     ["cancelado", "rechazado", "perdido", "finalizado"].includes(estadoTurno)
   ) {
-    return false;
+    return `No se puede reprogramar un turno en estado ${estadoTurno}.`;
+  }
+
+  if (estadoTurno !== "confirmado") {
+    return "Solo se pueden reprogramar turnos confirmados.";
+  }
+
+  const metodoEsperado = String(
+    turno?.metodoPagoEsperado || turno?.metodoPago || "sin_pago",
+  ).toLowerCase();
+  const estadoPago = getEstadoPago(turno);
+  if (
+    metodoEsperado === "mercadopago" &&
+    !["parcial", "abonado"].includes(estadoPago)
+  ) {
+    return "Para reprogramar, primero debe estar registrado el pago de la reserva.";
   }
 
   const start = Number(turno.horaInicio || 0);
-  if (!start) return false;
+  if (!start) return "No se encontro la fecha del turno.";
 
   const diffH = (start - Date.now()) / 3600000;
-  if (diffH < HORA_CANCELACION_MINIMA) return false;
+  if (diffH < HORA_CANCELACION_MINIMA) {
+    return `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion.`;
+  }
 
   const count = Number(turno.reprogramacionesCount || 0);
-  return count < maxReprogramaciones;
+  if (count >= maxReprogramaciones) {
+    return `Ya alcanzaste el maximo de ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "reprogramacion" : "reprogramaciones"} para este turno.`;
+  }
+
+  return "";
 }
 
 function getTurnoTone(estadoTurno) {
@@ -411,48 +446,82 @@ export default function MisTurnos() {
     }
 
     const { anticipo } = getMontos(turno);
+    const pagoId = String(turno?.pagoId || "").trim();
+    const turnosMismoPack = pagoId
+      ? turnos.filter((item) => {
+          if (String(item?.pagoId || "").trim() !== pagoId) return false;
+          const estado = getEstadoTurno(item);
+          return !["cancelado", "rechazado", "perdido", "finalizado"].includes(
+            estado,
+          );
+        })
+      : [];
+    const esPackCancelable =
+      Number(turno?.pagoTurnosCount || 0) > 1 || turnosMismoPack.length > 1;
 
     const res = await Swal.fire({
       icon: "question",
-      title: "¿Cancelar turno?",
+      title: esPackCancelable ? "Cancelar pack o sesion" : "¿Cancelar turno?",
       html: `
         <div style="text-align:left;font-size:14px;">
           <div><b>Servicio:</b> ${turno.nombreServicio || "-"}</div>
           <div><b>Fecha:</b> ${formatFechaISO(turno.fecha)}</div>
           <div><b>Hora:</b> ${formatHora(turno.horaInicio)}</div>
           ${
+            esPackCancelable
+              ? `<div style="margin-top:8px;color:#4b4258;"><b>Pack detectado:</b> ${turnosMismoPack.length} sesiones activas vinculadas.</div>`
+              : ""
+          }
+          ${
             anticipo > 0
-              ? `<div style="margin-top:8px;color:#b02a37;"><b>Importante:</b> si cancelás, perdés la seña de $${anticipo.toLocaleString("es-AR")}.</div>`
+              ? `<div style="margin-top:8px;color:#b02a37;"><b>Importante:</b> si cancelas, perdes la seña de $${anticipo.toLocaleString("es-AR")}.</div>`
               : ""
           }
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: "Si, cancelar",
+      showDenyButton: esPackCancelable,
+      confirmButtonText: esPackCancelable
+        ? `Cancelar pack (${turnosMismoPack.length})`
+        : "Si, cancelar",
+      denyButtonText: "Solo este turno",
       cancelButtonText: "Volver",
+      reverseButtons: true,
       customClass: {
         confirmButton: "swal-btn-confirm",
+        denyButton: "swal-btn-cancel",
         cancelButton: "swal-btn-cancel",
       },
     });
 
-    if (!res.isConfirmed) return;
+    if (!res.isConfirmed && !res.isDenied) return;
 
-    await updateDoc(doc(db, "turnos", turno.id), {
-      estadoTurno: "cancelado",
-      canceladoAt: serverTimestamp(),
-      canceladoEn: serverTimestamp(),
-      canceladoPor: "cliente",
-      motivoCancelacion: "cancelacion_cliente",
-      anticipoPerdido: anticipo > 0,
-      montoAnticipoPerdido: anticipo,
-      updatedAt: serverTimestamp(),
-    });
+    const turnosACancelar =
+      esPackCancelable && res.isConfirmed ? turnosMismoPack : [turno];
+
+    await Promise.all(
+      turnosACancelar.map(async (item) => {
+        const { anticipo: anticipoTurno } = getMontos(item);
+        return updateDoc(doc(db, "turnos", item.id), {
+          estadoTurno: "cancelado",
+          canceladoAt: serverTimestamp(),
+          canceladoEn: serverTimestamp(),
+          canceladoPor: "cliente",
+          motivoCancelacion: "cancelacion_cliente",
+          anticipoPerdido: anticipoTurno > 0,
+          montoAnticipoPerdido: anticipoTurno,
+          updatedAt: serverTimestamp(),
+        });
+      }),
+    );
 
     Swal.fire({
       icon: "success",
-      title: "Turno cancelado",
-      text: "Listo. Tu turno fue cancelado correctamente.",
+      title: turnosACancelar.length > 1 ? "Pack cancelado" : "Turno cancelado",
+      text:
+        turnosACancelar.length > 1
+          ? `Listo. Se cancelaron ${turnosACancelar.length} sesiones del pack.`
+          : "Listo. Tu turno fue cancelado correctamente.",
       confirmButtonText: "Ok",
       customClass: { confirmButton: "swal-btn-confirm" },
     });
@@ -462,14 +531,11 @@ export default function MisTurnos() {
     if (!turno?.id || !turno?.servicioId) return;
 
     if (!canReprogramTurno(turno, reservasConfig)) {
-      const maxReprogramaciones = getMaxReprogramacionesUsuario(reservasConfig);
+      const motivoBloqueo = getReprogramBlockedReason(turno, reservasConfig);
       Swal.fire({
         icon: "warning",
         title: "No se puede reprogramar",
-        text:
-          reservasConfig?.permitirReprogramacionUsuario === false
-            ? "La reprogramacion por parte del usuario esta desactivada."
-            : `Solo se puede reprogramar con al menos ${HORA_CANCELACION_MINIMA} horas de anticipacion y hasta ${maxReprogramaciones} ${maxReprogramaciones === 1 ? "vez" : "veces"} por turno.`,
+        text: motivoBloqueo,
         confirmButtonText: "Entendido",
         customClass: { confirmButton: "swal-btn-confirm" },
       });
@@ -767,11 +833,11 @@ export default function MisTurnos() {
 
     const msg = [
       "Hola! Queria consultar por mi turno:",
-      `• Servicio: ${turno?.nombreServicio || "-"}`,
-      `• Fecha: ${formatFechaISO(turno?.fecha)}`,
-      `• Hora: ${formatHora(turno?.horaInicio)}`,
-      `• Estado turno: ${ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}`,
-      `• Estado pago: ${ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}`,
+      `â€¢ Servicio: ${turno?.nombreServicio || "-"}`,
+      `â€¢ Fecha: ${formatFechaISO(turno?.fecha)}`,
+      `â€¢ Hora: ${formatHora(turno?.horaInicio)}`,
+      `â€¢ Estado turno: ${ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}`,
+      `â€¢ Estado pago: ${ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}`,
     ].join("\n");
 
     const url = `https://wa.me/54${nro}?text=${encodeURIComponent(msg)}`;
@@ -823,6 +889,8 @@ export default function MisTurnos() {
       total > 0 &&
       saldoPendiente > 0 &&
       !["cancelado", "rechazado", "expirado"].includes(estadoPago);
+    const motivoNoReprogramar = getReprogramBlockedReason(t, reservasConfig);
+    const puedeReprogramar = !motivoNoReprogramar;
 
     return (
       <article
@@ -909,7 +977,7 @@ export default function MisTurnos() {
             </div>
             {anticipo > 0 && (
               <div className="turno-stat">
-                <span>Seña</span>
+                <span>SeÃ±a</span>
                 <strong>${anticipo.toLocaleString("es-AR")}</strong>
                 <small>Reserva solicitada para este servicio</small>
               </div>
@@ -931,14 +999,8 @@ export default function MisTurnos() {
                   type="button"
                   className="btn turno-action-btn info"
                   onClick={() => reprogramarTurno(t)}
-                  disabled={!canReprogramTurno(t, reservasConfig)}
-                  title={
-                    canReprogramTurno(t, reservasConfig)
-                      ? ""
-                      : reservasConfig?.permitirReprogramacionUsuario === false
-                        ? "La reprogramacion por parte del usuario esta desactivada"
-                        : `Se permiten ${getMaxReprogramacionesUsuario(reservasConfig)} ${getMaxReprogramacionesUsuario(reservasConfig) === 1 ? "reprogramacion" : "reprogramaciones"} por turno con ${HORA_CANCELACION_MINIMA}h de anticipacion`
-                  }
+                  disabled={!puedeReprogramar}
+                  title={puedeReprogramar ? "" : motivoNoReprogramar}
                 >
                   Reprogramar
                 </button>
@@ -982,7 +1044,7 @@ export default function MisTurnos() {
     return (
       <div className="container py-4">
         <h4>Mis turnos</h4>
-        <p className="text-muted">IniciÃ¡ sesiÃ³n para ver tus turnos.</p>
+        <p className="text-muted">IniciÃƒÂ¡ sesiÃƒÂ³n para ver tus turnos.</p>
       </div>
     );
   }
@@ -994,8 +1056,8 @@ export default function MisTurnos() {
           <p className="profile-eyebrow">Agenda personal</p>
           <h1 className="profile-title">Mis turnos</h1>
           <p className="profile-subtitle">
-            Tené a mano próximos turnos, historial y acciones rápidas desde una
-            vista más ordenada.
+            Ten a mano tus próximos turnos, historial y acciones rápidas desde
+            una vista más ordenada.
           </p>
         </div>
 
@@ -1030,7 +1092,7 @@ export default function MisTurnos() {
         </div>
 
         {proximos.length === 0 ? (
-          <div className="turnos-empty-state">No tenés turnos próximos.</div>
+          <div className="turnos-empty-state">No tenÃ©s turnos prÃ³ximos.</div>
         ) : (
           <div className="turnos-card-list">
             {proximos.map((t) => (
@@ -1045,7 +1107,7 @@ export default function MisTurnos() {
           <div>
             <h2>Pendientes de confirmacion o pago</h2>
             <p>
-              Turnos activos que todavia esperan aprobación, confirmacion o un
+              Turnos activos que todavia esperan aprobaciÃ³n, confirmacion o un
               pago.
             </p>
           </div>
@@ -1080,7 +1142,7 @@ export default function MisTurnos() {
 
         {historial.length === 0 ? (
           <div className="turnos-empty-state">
-            Todavía no tenés turnos en el historial.
+            TodavÃ­a no tenÃ©s turnos en el historial.
           </div>
         ) : (
           <div className="turnos-card-list">

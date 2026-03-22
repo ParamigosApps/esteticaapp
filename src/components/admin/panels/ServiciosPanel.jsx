@@ -2113,8 +2113,9 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                         }
                       />
                       <small className="text-muted">
-                        Para frecuencia de {packFrecuenciaDias} dia(s), sugerimos
-                        una agenda de al menos {agendaMinimaSugeridaPack} dias.
+                        Para frecuencia de {packFrecuenciaDias} día
+                        {packFrecuenciaDias > 1 ? "s" : ""}, sugerimos una
+                        agenda de al menos {agendaMinimaSugeridaPack} días.
                       </small>
                     </div>
 
@@ -2131,7 +2132,8 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                       />
                       <small className="text-muted">
                         Ejemplo: pack de {packCantidadTurnos} turnos cada{" "}
-                        {packFrecuenciaDias} dia(s).
+                        {packFrecuenciaDias} día
+                        {packFrecuenciaDias > 1 ? "s" : ""}.
                       </small>
                     </div>
                   </>
@@ -2195,29 +2197,29 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
                 <div className="service-editor-fields service-editor-fields-1 service-agenda-maxdias">
                   <div className="field-group service-field-sm">
                     <label>Anticipación máxima (días)</label>
-	                    <input
-	                      type="number"
-	                      className="admin-input"
-	                      value={agendaMaxDias}
-	                      onChange={(e) => setAgendaMaxDias(e.target.value)}
-	                      min={1}
-	                      max={180}
-	                    />
-	                    {tipoServicioReserva === "pack" && (
-	                      <small
-	                        className={
-	                          packAgendaSugeridaInsuficiente
-	                            ? "text-danger"
-	                            : "text-muted"
-	                        }
-	                      >
-	                        Agenda sugerida para este pack: al menos{" "}
-	                        {agendaMinimaSugeridaPack} dias.
-	                      </small>
-	                    )}
-	                  </div>
-	                </div>
-	              )}
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={agendaMaxDias}
+                      onChange={(e) => setAgendaMaxDias(e.target.value)}
+                      min={1}
+                      max={180}
+                    />
+                    {tipoServicioReserva === "pack" && (
+                      <small
+                        className={
+                          packAgendaSugeridaInsuficiente
+                            ? "text-danger"
+                            : "text-muted"
+                        }
+                      >
+                        Agenda sugerida para este pack: al menos{" "}
+                        {agendaMinimaSugeridaPack} dias.
+                      </small>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <AgendaServicioEditor
                 agendaTipo={agendaTipo}
@@ -2915,45 +2917,42 @@ export default function ServiciosPanel() {
 
                     {tipoServicioReserva === "pack" && (
                       <>
-	                        <div className="form-field">
-	                          <label>Cantidad de turnos del pack</label>
-	                          <input
-	                            type="number"
+                        <div className="form-field">
+                          <label>Cantidad de turnos del pack</label>
+                          <input
+                            type="number"
                             min={2}
                             className="admin-input"
                             value={packCantidadTurnos}
                             onChange={(e) =>
-                              setPackCantidadTurnos(
-                                Number(e.target.value || 2),
-	                              )
-	                            }
-	                          />
-	                          <small className="text-muted">
-	                            Sugerencia de agenda para esta configuracion: al
-	                            menos {agendaMinimaSugeridaPack} dias.
-	                          </small>
-	                        </div>
+                              setPackCantidadTurnos(Number(e.target.value || 2))
+                            }
+                          />
+                          <small className="text-muted">
+                            Sugerencia de agenda para esta configuracion: al
+                            menos {agendaMinimaSugeridaPack} dias.
+                          </small>
+                        </div>
 
-	                        <div className="form-field">
-	                          <label>Frecuencia entre turnos (dias)</label>
-	                          <input
+                        <div className="form-field">
+                          <label>Frecuencia entre turnos (dias)</label>
+                          <input
                             type="number"
                             min={1}
                             className="admin-input"
                             value={packFrecuenciaDias}
                             onChange={(e) =>
-                              setPackFrecuenciaDias(
-                                Number(e.target.value || 1),
-	                              )
-	                            }
-	                          />
-	                          <small className="text-muted">
-	                            Ejemplo: pack de {packCantidadTurnos} turnos cada{" "}
-	                            {packFrecuenciaDias} dia(s).
-	                          </small>
-	                        </div>
-	                      </>
-	                    )}
+                              setPackFrecuenciaDias(Number(e.target.value || 1))
+                            }
+                          />
+                          <small className="text-muted">
+                            Ejemplo: pack de {packCantidadTurnos} turnos cada{" "}
+                            {packFrecuenciaDias} día
+                            {packFrecuenciaDias !== 1 ? "s" : ""}.
+                          </small>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -3015,27 +3014,27 @@ export default function ServiciosPanel() {
                   {agendaTipo !== "mensual" && (
                     <div className="form-field servicios-agenda-maxdias">
                       <label>Anticipación máxima (días)</label>
-	                      <input
-	                        className="admin-input"
-	                        type="number"
-	                        value={agendaMaxDias}
-	                        onChange={(e) => setAgendaMaxDias(e.target.value)}
-	                        min={1}
-	                        max={180}
-	                      />
-	                      {tipoServicioReserva === "pack" && (
-	                        <small
-	                          className={
-	                            packAgendaSugeridaInsuficiente
-	                              ? "text-danger"
-	                              : "text-muted"
-	                          }
-	                        >
-	                          Agenda sugerida para este pack: al menos{" "}
-	                          {agendaMinimaSugeridaPack} dias.
-	                        </small>
-	                      )}
-	                    </div>
+                      <input
+                        className="admin-input"
+                        type="number"
+                        value={agendaMaxDias}
+                        onChange={(e) => setAgendaMaxDias(e.target.value)}
+                        min={1}
+                        max={180}
+                      />
+                      {tipoServicioReserva === "pack" && (
+                        <small
+                          className={
+                            packAgendaSugeridaInsuficiente
+                              ? "text-danger"
+                              : "text-muted"
+                          }
+                        >
+                          Agenda sugerida para este pack: al menos{" "}
+                          {agendaMinimaSugeridaPack} dias.
+                        </small>
+                      )}
+                    </div>
                   )}
 
                   <AgendaServicioEditor

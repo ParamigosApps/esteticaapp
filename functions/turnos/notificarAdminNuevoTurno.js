@@ -114,7 +114,7 @@ function buildMailHtml({ asunto, turnoId, turno, estadoTurno, fechaTexto, horaTe
     buildDetailItem("Horario", horaTexto),
     buildDetailItem("Gabinete", turno.nombreGabinete),
     buildDetailItem("Total", `$${formatMoney(turno.precioTotal || turno.montoTotal || 0)}`),
-    buildDetailItem("Anticipo", `$${formatMoney(turno.montoAnticipo || 0)}`),
+    buildDetailItem("Anticipo sugerido", `$${formatMoney(turno.montoAnticipo || 0)}`),
     buildDetailItem("ID turno", turnoId),
   ].join("");
 

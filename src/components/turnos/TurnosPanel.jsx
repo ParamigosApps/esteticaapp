@@ -206,6 +206,26 @@ function slotDentroDeVentanaAgenda(slot, limiteReservableMs) {
   return Number(slot?.inicio) <= Number(limiteReservableMs);
 }
 
+function formatearSlotPackLabel(horaInicioMs) {
+  const fechaObj = new Date(Number(horaInicioMs || 0));
+  if (Number.isNaN(fechaObj.getTime())) return "-";
+
+  const dia = fechaObj.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  });
+  const hora = fechaObj.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const horaCompacta = hora.endsWith(":00")
+    ? `${hora.slice(0, 2)}hs`
+    : `${hora}hs`;
+  return `${dia.replace(".", "")} - ${horaCompacta}`;
+}
+
 function getReservasConfigDefault() {
   return {
     bloquearTurnosMananaSin12h: false,
@@ -446,12 +466,6 @@ export default function TurnosPanel({ servicio }) {
     0,
     precioEfectivo - montoAnticipoServicio,
   );
-  const usaCargoReservaOnline =
-    tieneComisionTurno && (servicio?.tipoAnticipo || "online") === "online";
-  const totalFinalEfectivo = Math.max(
-    0,
-    precioEfectivo + (usaCargoReservaOnline ? comisionTurno : 0),
-  );
   const saldoServicioTransferencia = Math.max(
     0,
     precioServicio - montoAnticipoServicio,
@@ -464,11 +478,13 @@ export default function TurnosPanel({ servicio }) {
   const packFrecuenciaDias = esPackServicio
     ? Math.max(1, Number(servicio?.packFrecuenciaDias || 7))
     : 0;
+  const usaCargoReservaOnline =
+    tieneComisionTurno && (servicio?.tipoAnticipo || "online") === "online";
   const porcentajeAnticipoServicio = servicio?.pedirAnticipo
     ? parseAmount(servicio?.porcentajeAnticipo || 0)
     : 0;
-  const anticipoEsTotal = Boolean(servicio?.pedirAnticipo) &&
-    porcentajeAnticipoServicio >= 100;
+  const anticipoEsTotal =
+    Boolean(servicio?.pedirAnticipo) && porcentajeAnticipoServicio >= 100;
 
   const requierePagoOnline = usaCargoReservaOnline && !esReservaManual;
   const valorTotalAbonandoEfectivo =
@@ -914,57 +930,6 @@ export default function TurnosPanel({ servicio }) {
     setAgenda(resultAgenda.data || null);
   }
 
-  async function verificarDisponibilidadActualPack(turnosPackOrdenados = []) {
-    if (!Array.isArray(turnosPackOrdenados) || !turnosPackOrdenados.length) {
-      return [];
-    }
-
-    const gabineteIds = (servicio?.gabinetes || [])
-      .map((g) => (typeof g === "string" ? g : g?.id))
-      .filter((id) => typeof id === "string" && id.trim() !== "");
-    if (!gabineteIds.length) return turnosPackOrdenados;
-
-    const fechasPack = turnosPackOrdenados.map((turno) => {
-      if (turno?.fecha) return String(turno.fecha);
-      return toISODateLocal(new Date(Number(turno?.horaInicio || 0)));
-    });
-
-    const fechaDesde = [...fechasPack].sort()[0];
-    const fechaHasta = [...fechasPack].sort().slice(-1)[0];
-
-    const getAgendaFn = httpsCallable(getFunctions(), "getAgendaGabinete");
-    const resultAgenda = await getAgendaFn({
-      gabineteIds,
-      fechaDesde,
-      fechaHasta,
-    });
-    const agendaActual = resultAgenda?.data || null;
-    if (!agendaActual) return turnosPackOrdenados;
-
-    const ocupados = [];
-    for (const turnoPack of turnosPackOrdenados) {
-      const fechaIso =
-        turnoPack?.fecha ||
-        toISODateLocal(new Date(Number(turnoPack?.horaInicio || 0)));
-      const [y, m, d] = String(fechaIso).split("-").map(Number);
-      const fechaObj = new Date(y, (m || 1) - 1, d || 1);
-      fechaObj.setHours(0, 0, 0, 0);
-
-      const slotsDelDia = generarSlotsDia(agendaActual, servicio, fechaObj);
-      const coincide = slotsDelDia.find(
-        (slot) =>
-          Number(slot?.inicio || 0) === Number(turnoPack?.horaInicio || 0) &&
-          Number(slot?.fin || 0) === Number(turnoPack?.horaFin || 0),
-      );
-
-      if (!coincide || coincide.ocupado) {
-        ocupados.push(turnoPack);
-      }
-    }
-
-    return ocupados;
-  }
-
   async function reservarTurno(metodoPagoSolicitado = null, options = {}) {
     const slotObjetivo = options?.slot || slotSeleccionado;
     if (!slotObjetivo) return null;
@@ -1119,6 +1084,9 @@ export default function TurnosPanel({ servicio }) {
       return res?.data;
     } catch (err) {
       console.error("Error reservando turno:", err);
+      if (!mostrarMensajes) {
+        throw err;
+      }
       const alertConfig = getReservaErrorAlert(err);
       hideLoading();
 
@@ -1211,75 +1179,6 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       return;
     }
 
-    const turnosOcupados = await verificarDisponibilidadActualPack(
-      turnosPackOrdenados,
-    );
-    if (turnosOcupados.length > 0) {
-      const clavesOcupadas = new Set(
-        turnosOcupados.map(
-          (t) => `${Number(t?.horaInicio || 0)}-${Number(t?.horaFin || 0)}`,
-        ),
-      );
-
-      const turnosRestantes = turnosPackSeleccionados.filter((t) => {
-        const key = `${Number(t?.horaInicio || 0)}-${Number(t?.horaFin || 0)}`;
-        return !clavesOcupadas.has(key);
-      });
-
-      setTurnosPackSeleccionados(ordenarTurnosPack(turnosRestantes));
-      setSlotSeleccionado(null);
-
-      const primerOcupado = turnosOcupados[0];
-      if (primerOcupado?.horaInicio) {
-        const fechaOcupada = startOfDay(
-          new Date(Number(primerOcupado.horaInicio)),
-        );
-        if (!Number.isNaN(fechaOcupada.getTime())) {
-          setFechaSeleccionada(fechaOcupada);
-        }
-      }
-
-      const listado = turnosOcupados
-        .map((t) => {
-          const fecha = new Date(Number(t?.horaInicio || 0)).toLocaleDateString(
-            "es-AR",
-            {
-              weekday: "short",
-              day: "2-digit",
-              month: "2-digit",
-            },
-          );
-          const hora = new Date(Number(t?.horaInicio || 0)).toLocaleTimeString(
-            "es-AR",
-            {
-              hour: "2-digit",
-              minute: "2-digit",
-            },
-          );
-          return `• ${fecha} ${hora}`;
-        })
-        .join("<br/>");
-
-      await Swal.fire({
-        icon: "warning",
-        title: "Algunos turnos ya no estan disponibles",
-        html: `
-          <div style="text-align:left">
-            <p>Mientras armabas el pack, estos horarios se ocuparon:</p>
-            <p>${listado}</p>
-            <p>Los removimos del pack para que elijas reemplazos.</p>
-          </div>
-        `,
-        confirmButtonText: "Entendido",
-        customClass: {
-          popup: "swal-popup-custom",
-          confirmButton: "swal-btn-confirm",
-        },
-        buttonsStyling: false,
-      });
-      return;
-    }
-
     try {
       showLoading({
         title: "Reservando pack",
@@ -1296,13 +1195,80 @@ Turno ID: ${data.turnoId.slice(0, 8)}
               ? "manual"
               : null;
 
-        const reservado = await reservarTurno(metodo, {
-          slot: turnoPack,
-          fecha: turnoPack.fecha,
-          mostrarMensajes: false,
-          limpiarSeleccion: false,
-          refrescarAgenda: false,
-        });
+        let reservado = null;
+        try {
+          reservado = await reservarTurno(metodo, {
+            slot: turnoPack,
+            fecha: turnoPack.fecha,
+            mostrarMensajes: false,
+            limpiarSeleccion: false,
+            refrescarAgenda: false,
+          });
+        } catch (err) {
+          const fechaOcupada = startOfDay(
+            new Date(Number(turnoPack?.horaInicio || 0)),
+          );
+          let sugerido = null;
+          if (!Number.isNaN(fechaOcupada.getTime())) {
+            setFechaSeleccionada(fechaOcupada);
+            sugerido = getPrimerSlotDisponible(fechaOcupada);
+            setSlotSeleccionado(sugerido);
+          } else {
+            setSlotSeleccionado(null);
+          }
+
+          setTurnosPackSeleccionados((prev) =>
+            ordenarTurnosPack(
+              prev.filter(
+                (t) =>
+                  !(
+                    Number(t?.horaInicio || 0) ===
+                      Number(turnoPack?.horaInicio || 0) &&
+                    Number(t?.horaFin || 0) === Number(turnoPack?.horaFin || 0)
+                  ),
+              ),
+            ),
+          );
+
+          const horarioAReemplazar = formatearSlotPackLabel(
+            turnoPack?.horaInicio,
+          );
+          const sugerenciaHorario = sugerido
+            ? formatearSlotPackLabel(sugerido.horaInicio)
+            : "Sin horarios libres ese dia";
+          const detalle = getReservaErrorMessage(err);
+
+          await Swal.fire({
+            icon: "warning",
+            title: "Horario no disponible",
+            html: `
+              <div class="swal-pack-conflict">
+                <div class="swal-pack-conflict-head">
+                  <span class="swal-pack-conflict-pill">Ajuste de agenda</span>
+                  <p>Este horario se ocupo mientras confirmabas el pack.</p>
+                </div>
+                <div class="swal-pack-conflict-grid">
+                  <div class="swal-pack-conflict-item">
+                    <span>Horario a reemplazar</span>
+                    <strong>${horarioAReemplazar}</strong>
+                  </div>
+                  <div class="swal-pack-conflict-item">
+                    <span>Sugerido</span>
+                    <strong>${sugerenciaHorario}</strong>
+                  </div>
+                </div>
+                <div class="swal-pack-conflict-note">${detalle}</div>
+              </div>
+            `,
+            confirmButtonText: "Elegir nuevo horario",
+            customClass: {
+              popup: "swal-popup-custom",
+              confirmButton: "swal-btn-confirm",
+            },
+            buttonsStyling: false,
+          });
+          return;
+        }
 
         if (!reservado?.turnoId) {
           throw new Error("No se pudo confirmar una de las sesiones del pack.");
@@ -1746,7 +1712,8 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           <div className="agenda-pack-hint-top">
             <span className="agenda-pack-chip">PACK</span>
             <strong>
-              {packCantidadTurnos} sesiones cada {packFrecuenciaDias} dia(s)
+              {packCantidadTurnos} sesiones cada {packFrecuenciaDias} día
+              {packFrecuenciaDias > 1 ? "s" : ""}
             </strong>
             <span className="agenda-pack-progress-label">
               {packTurnosSeleccionados}/{packCantidadTurnos}
@@ -1774,7 +1741,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
           </div>
           {fechasPackAnadidasTexto ? (
             <div className="agenda-pack-hint-sub">
-              Fechas anadidas: <b>{fechasPackAnadidasTexto}</b>
+              Fechas agregadas: <b>{fechasPackAnadidasTexto}</b>
             </div>
           ) : null}
           {!packCompleto && proximaSugerenciaPackTexto ? (
@@ -1830,40 +1797,38 @@ Turno ID: ${data.turnoId.slice(0, 8)}
       {precioEfectivo > 0 &&
         (!esPackServicio || packCompleto) &&
         !(requierePagoOnline && anticipoEsTotal) && (
-        <div className="agenda-cash-note">
-          {requierePagoOnline ? (
-            <div className="agenda-cash-copy">
-              {saldoServicioEfectivo <= 0 && saldoServicioTransferencia <= 0 ? (
-                <div>Se abona completamente al momento de la reserva.</div>
-              ) : (
-                <>
-                  <div>
-                    Seña para confirmar el turno:{" "}
-                    <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
-                  </div>
-                  {saldoServicioEfectivo > 0 && (
+          <div className="agenda-cash-note">
+            {requierePagoOnline ? (
+              <div className="agenda-cash-copy">
+                {saldoServicioEfectivo <= 0 &&
+                saldoServicioTransferencia <= 0 ? (
+                  <div>Se abona completamente al momento de la reserva.</div>
+                ) : (
+                  <>
                     <div>
-                      Del total en efectivo (
-                      <strong>${totalFinalEfectivo.toLocaleString("es-AR")}</strong>
-                      ), ya pagaste{" "}
+                      Seña para confirmar el turno:{" "}
                       <strong>${montoAnticipo.toLocaleString("es-AR")}</strong>.
-                      Te resta abonar en efectivo{" "}
-                      <strong>
-                        ${saldoServicioEfectivo.toLocaleString("es-AR")}
-                      </strong>{" "}
-                      {ahorroEfectivo > 0 ? (
-                        <>
-                          (
-                          <strong>
-                            ${ahorroEfectivo.toLocaleString("es-AR")}
-                          </strong>{" "}
-                          de ahorro)
-                        </>
-                      ) : null}
-                      .
                     </div>
-                  )}
-                  {/* {saldoServicioTransferencia > 0 && (
+                    {saldoServicioEfectivo > 0 && (
+                      <div>
+                        El día del turno podes abonar lo restante en efectivo
+                        por{" "}
+                        <strong>
+                          ${saldoServicioEfectivo.toLocaleString("es-AR")}
+                        </strong>{" "}
+                        {ahorroEfectivo > 0 ? (
+                          <>
+                            (
+                            <strong>
+                              ${ahorroEfectivo.toLocaleString("es-AR")}
+                            </strong>{" "}
+                            de ahorro)
+                          </>
+                        ) : null}
+                        .
+                      </div>
+                    )}
+                    {/* {saldoServicioTransferencia > 0 && (
                     <div>
                       {saldoServicioEfectivo > 0
                         ? "Si prefieres transferencia, el saldo es: "
@@ -1874,32 +1839,32 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                       .
                     </div>
                   )} */}
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="agenda-cash-copy">
-              <div>
-                Precio total abonando en efectivo:{" "}
-                <strong>
-                  ${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
-                </strong>
-                {ahorroTotalEfectivo > 0 ? (
-                  <>
-                    {" "}
-                    (
-                    <strong>
-                      ${ahorroTotalEfectivo.toLocaleString("es-AR")}
-                    </strong>{" "}
-                    de ahorro)
                   </>
-                ) : null}
-                .
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            ) : (
+              <div className="agenda-cash-copy">
+                <div>
+                  Precio total abonando en efectivo:{" "}
+                  <strong>
+                    ${valorTotalAbonandoEfectivo.toLocaleString("es-AR")}
+                  </strong>
+                  {ahorroTotalEfectivo > 0 ? (
+                    <>
+                      {" "}
+                      (
+                      <strong>
+                        ${ahorroTotalEfectivo.toLocaleString("es-AR")}
+                      </strong>{" "}
+                      de ahorro)
+                    </>
+                  ) : null}
+                  .
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       <div className="agenda-month-nav d-flex justify-content-between align-items-center mb-3 mt-4">
         <div className="text-center mb-2"></div>
@@ -2221,7 +2186,7 @@ Turno ID: ${data.turnoId.slice(0, 8)}
                   className="resumen-pack-remove"
                   onClick={() => quitarSesionPack(index)}
                 >
-                  Quitar
+                  X
                 </button>
               </div>
             ))}
