@@ -2,7 +2,7 @@
 
 export const COMISION_DEFAULT_ENTRADA = 1
 export const COMISION_DEFAULT_CATALOGO = 0
-export const COMISION_FIJA_TURNO = 2
+export const COMISION_FIJA_TURNO = 300
 
 // --------------------------------------------------
 // ENTRADAS

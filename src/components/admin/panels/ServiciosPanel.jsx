@@ -2722,7 +2722,9 @@ export default function ServiciosPanel() {
   }, [serviciosPorCategoria, categoriaServiciosAbierta]);
 
   function toggleCategoriaServicios(categoria) {
-    setCategoriaServiciosAbierta((prev) => (prev === categoria ? "" : categoria));
+    setCategoriaServiciosAbierta((prev) =>
+      prev === categoria ? "" : categoria,
+    );
   }
 
   return (
@@ -2743,7 +2745,7 @@ export default function ServiciosPanel() {
               aria-expanded={nuevoServicioAbierto}
             >
               <div>
-                <h5 className="fw-bold mb-1">Crear un servicio</h5>
+                <h6 className="fw-bold mb-1">CREAR UN SERVICIO</h6>
                 <p className="servicios-section-desc mb-0">
                   Configurá categoría, datos, seña, agenda y gabinetes.
                 </p>
@@ -3157,7 +3159,8 @@ export default function ServiciosPanel() {
 
                   <div className="">
                     {serviciosPorCategoria.map(([categoria, items]) => {
-                      const categoriaAbierta = categoriaServiciosAbierta === categoria;
+                      const categoriaAbierta =
+                        categoriaServiciosAbierta === categoria;
                       return (
                         <div
                           key={categoria}

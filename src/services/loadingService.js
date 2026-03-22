@@ -54,5 +54,10 @@ export function showLoading({
 }
 
 export function hideLoading() {
+  if (!Swal.isVisible()) return;
+
+  const popup = Swal.getPopup();
+  if (!popup?.classList?.contains("swal-loading-popup")) return;
+
   Swal.close();
 }

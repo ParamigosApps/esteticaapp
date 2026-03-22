@@ -709,6 +709,7 @@ export async function reprogramarTurnoAdmin(turno) {
 
     await swalSuccess({
       title: "Turno reprogramado",
+      text: "Recorda notificar al cliente la reprogramacion.",
       confirmText: "Aceptar",
       timer: 2200,
     });

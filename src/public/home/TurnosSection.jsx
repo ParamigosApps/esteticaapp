@@ -366,20 +366,6 @@ export default function TurnosSection({
     scrollToTurnosTop();
   }, [categoriaSeleccionada, servicioSeleccionado]);
 
-  useEffect(() => {
-    if (!grupos.length) {
-      setCategoriaAbiertaId(null);
-      return;
-    }
-
-    const existeAbierta = grupos.some(
-      ([categoriaId]) => categoriaId === categoriaAbiertaId,
-    );
-    if (!existeAbierta) {
-      setCategoriaAbiertaId(grupos[0][0]);
-    }
-  }, [grupos, busqueda]);
-
   const categoriasById = useMemo(() => {
     const map = {};
     (categorias || []).forEach((item) => {
@@ -425,7 +411,11 @@ export default function TurnosSection({
                 <button
                   type="button"
                   className="servicio-card-header servicio-card-header-toggle"
-                  onClick={() => setCategoriaAbiertaId(categoriaId)}
+                  onClick={() =>
+                    setCategoriaAbiertaId((prev) =>
+                      prev === categoriaId ? null : categoriaId,
+                    )
+                  }
                 >
                   <h6 className="servicio-titulo">{data.nombre}</h6>
                   <div className="servicio-card-header-meta">
@@ -457,14 +447,6 @@ export default function TurnosSection({
                         </div>
                       );
                     })()}
-                    <span
-                      className={`servicio-card-chevron ${
-                        categoriaAbiertaId === categoriaId ? "open" : ""
-                      }`}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
                   </div>
                 </button>
 
@@ -486,9 +468,7 @@ export default function TurnosSection({
                             <strong>{s.nombreServicio}</strong>
                             {s.nombreProfesional ? (
                               <span className="servicio-sub-profesional">
-                                <span className="servicio-sub-separator">
-                                  -
-                                </span>
+                                <span className="servicio-sub-separator">-</span>
                                 <span className="servicio-sub-profesional-name">
                                   {s.nombreProfesional}
                                 </span>
@@ -505,50 +485,48 @@ export default function TurnosSection({
                     </div>
 
                     <div className="servicios-lista servicio-card-categoria-lista">
-                      {agruparServiciosPorNombre(data.servicios).map(
-                        (grupo) => {
-                          const servicioBase = grupo[0];
-                          const apilado = grupo.length > 1;
+                      {agruparServiciosPorNombre(data.servicios).map((grupo) => {
+                        const servicioBase = grupo[0];
+                        const apilado = grupo.length > 1;
 
-                          return (
-                            <div
-                              key={`${categoriaId}-${servicioBase.id}`}
-                              className="servicio-card servicio-card-inner"
-                            >
-                              <div className="servicio-card-header">
-                                <h6 className="servicio-titulo">
-                                  {servicioBase.nombreServicio}
-                                </h6>
-                                {apilado ? (
-                                  <div className="servicio-card-count">
-                                    {grupo.length} profesionales
-                                  </div>
-                                ) : null}
-                              </div>
-
+                        return (
+                          <div
+                            key={`${categoriaId}-${servicioBase.id}`}
+                            className="servicio-card servicio-card-inner"
+                          >
+                            <div className="servicio-card-header">
+                              <h6 className="servicio-titulo">
+                                {servicioBase.nombreServicio}
+                              </h6>
                               {apilado ? (
-                                <div className="servicio-stack">
-                                  {grupo.map((servicio) => (
-                                    <ServicioVariante
-                                      key={servicio.id}
-                                      servicio={servicio}
-                                      compact
-                                      onSelect={setServicioSeleccionado}
-                                      etiquetaPrecio="Desde"
-                                    />
-                                  ))}
+                                <div className="servicio-card-count">
+                                  {grupo.length} profesionales
                                 </div>
-                              ) : (
-                                <ServicioVariante
-                                  servicio={servicioBase}
-                                  onSelect={setServicioSeleccionado}
-                                  etiquetaPrecio="Precio"
-                                />
-                              )}
+                              ) : null}
                             </div>
-                          );
-                        },
-                      )}
+
+                            {apilado ? (
+                              <div className="servicio-stack">
+                                {grupo.map((servicio) => (
+                                  <ServicioVariante
+                                    key={servicio.id}
+                                    servicio={servicio}
+                                    compact
+                                    onSelect={setServicioSeleccionado}
+                                    etiquetaPrecio="Desde"
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <ServicioVariante
+                                servicio={servicioBase}
+                                onSelect={setServicioSeleccionado}
+                                etiquetaPrecio="Precio"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}
@@ -561,7 +539,10 @@ export default function TurnosSection({
         <>
           <button
             className="btn btn-sm btn-outline-secondary mb-2 servicios-back-btn"
-            onClick={() => setCategoriaSeleccionada(null)}
+            onClick={() => {
+              setCategoriaSeleccionada(null);
+              setCategoriaAbiertaId(null);
+            }}
           >
             ← Volver
           </button>
@@ -627,7 +608,10 @@ export default function TurnosSection({
         <>
           <button
             className="btn btn-sm btn-outline-secondary mb-2 servicios-back-btn"
-            onClick={() => setServicioSeleccionado(null)}
+            onClick={() => {
+              setServicioSeleccionado(null);
+              setCategoriaAbiertaId(null);
+            }}
           >
             ← Volver
           </button>
@@ -641,3 +625,7 @@ export default function TurnosSection({
     </>
   );
 }
+
+
+
+

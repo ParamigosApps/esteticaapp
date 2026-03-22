@@ -944,7 +944,16 @@ input[type="time"]:focus {
 }
 
 .categorias-create-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
   margin-bottom: 0;
+}
+
+.categorias-create-toggle > div {
+  text-align: left;
 }
 
 .categorias-create-copy {
