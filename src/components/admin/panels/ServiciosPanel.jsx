@@ -35,6 +35,14 @@ function normalizarFechaAgendaDesde(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
+function formatearFechaAgendaDesde(value) {
+  const text = normalizarFechaAgendaDesde(value);
+  if (!text) return "";
+
+  const [year, month, day] = text.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function obtenerCategoriaServicio(valor) {
   const categoria = (valor || "").trim();
   return categoria || "General";
@@ -377,6 +385,14 @@ function getMesAgendaLabel(mesOffset = 0) {
   return String(fecha.getMonth() + 1).padStart(2, "0");
 }
 
+function getMesAgendaLabelConAnio(mesOffset = 0) {
+  const fecha = new Date();
+  fecha.setMonth(fecha.getMonth() + Number(mesOffset || 0));
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const anio = String(fecha.getFullYear());
+  return `${mes}/${anio}`;
+}
+
 function getMesAgendaNombre(mesOffset = 0) {
   const fecha = new Date();
   fecha.setMonth(fecha.getMonth() + Number(mesOffset || 0));
@@ -414,7 +430,7 @@ function servicioMensualSinFechasPendientes(servicio = {}) {
 function formatDiaMesLabel(diaMes, repetirMesSiguiente = false, mesOffset = 0) {
   return repetirMesSiguiente
     ? `${diaMes} de cada mes`
-    : `${diaMes} / ${getMesAgendaLabel(mesOffset)}`;
+    : `${diaMes}/${getMesAgendaLabel(mesOffset)}`;
 }
 
 function compactarDiasMes(dias = []) {
@@ -465,7 +481,7 @@ function getResumenAgendaServicio(servicio = {}) {
     return Array.from(gruposPorRango.entries())
       .map(([rango, dias]) => {
         const [desde, hasta] = rango.split("-");
-        return `Dias ${compactarDiasMes(dias)} / ${getMesAgendaLabel(mesOffset)} ${desde}-${hasta}`;
+        return `Días ${compactarDiasMes(dias)}/${getMesAgendaLabel(mesOffset)} ${desde}-${hasta}`;
       })
       .join(" · ");
   }
@@ -1862,14 +1878,17 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
           <strong>
             {getAgendaTipoServicio(servicio) === "mensual"
               ? getAgendaMensualRepiteMesSiguiente(servicio)
-                ? `Mes ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio))} + ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio) + 1)}`
-                : `Solo ${getMesAgendaLabel(getAgendaMensualMesOffset(servicio))}`
+                ? `Mes ${getMesAgendaLabelConAnio(getAgendaMensualMesOffset(servicio))} + ${getMesAgendaLabelConAnio(getAgendaMensualMesOffset(servicio) + 1)}`
+                : `Solo ${getMesAgendaLabelConAnio(getAgendaMensualMesOffset(servicio))}`
               : "Semanal"}
           </strong>
         </span>
         {servicio.agendaDisponibleDesde && (
           <span>
-            Disponible desde: <strong>{servicio.agendaDisponibleDesde}</strong>
+            Disponible desde:{" "}
+            <strong>
+              {formatearFechaAgendaDesde(servicio.agendaDisponibleDesde)}
+            </strong>
           </span>
         )}
         <span title={getResumenAgendaServicio(servicio)}>
