@@ -104,7 +104,7 @@ exports.iniciarPagoTurnoMP = onCall(
       if (!turno.pedirAnticipo || !Number(turno.montoAnticipo)) {
         throw new HttpsError(
           "failed-precondition",
-          "Uno de los turnos no requiere sena",
+          "Uno de los turnos no requiere seña",
         );
       }
 
@@ -215,8 +215,8 @@ exports.iniciarPagoTurnoMP = onCall(
           ? `Pago total pack - ${turnoBase.nombreServicio || "Servicio"}`
           : `Pago total turno - ${turnoBase.nombreServicio || "Servicio"}`
         : esPagoPack
-          ? `Sena pack - ${turnoBase.nombreServicio || "Servicio"}`
-          : `Sena turno - ${turnoBase.nombreServicio || "Servicio"}`;
+          ? `Seña pack - ${turnoBase.nombreServicio || "Servicio"}`
+          : `Seña turno - ${turnoBase.nombreServicio || "Servicio"}`;
 
     const expiraEn = turnosDocs.reduce((acc, { turno }) => {
       const vence = Number(turno?.venceEn || 0);
