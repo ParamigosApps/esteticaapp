@@ -4,11 +4,14 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { db } from "../../../Firebase";
 import TimeRangeSelector from "../../common/TimeRangeSelector";
@@ -96,6 +99,34 @@ function GabineteItem({ gabinete, gabinetes, editando, onToggleEditar }) {
 
       await swalError({
         text: `Ya existe ese horario (${desde} a ${hasta}) para: ${diasTexto}.`,
+      });
+      return;
+    }
+
+    const diasDuplicadosEnFirestore = [];
+
+    for (const dia of dias) {
+      const existeDuplicadoQuery = query(
+        collection(db, "gabinetes", gabinete.id, "horarios"),
+        where("diaSemana", "==", dia),
+        where("desde", "==", desde),
+        where("hasta", "==", hasta),
+        limit(1),
+      );
+
+      const existeDuplicadoSnap = await getDocs(existeDuplicadoQuery);
+      if (!existeDuplicadoSnap.empty) {
+        diasDuplicadosEnFirestore.push(dia);
+      }
+    }
+
+    if (diasDuplicadosEnFirestore.length > 0) {
+      const diasTexto = [...new Set(diasDuplicadosEnFirestore)]
+        .map((dia) => DIAS[dia] || `Dia ${dia}`)
+        .join(", ");
+
+      await swalError({
+        text: `Ese horario ya existe para: ${diasTexto}.`,
       });
       return;
     }
