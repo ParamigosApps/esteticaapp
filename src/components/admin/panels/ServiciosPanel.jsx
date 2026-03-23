@@ -198,11 +198,26 @@ function getAgendaMinimaSugeridaPack(cantidadTurnos = 2, frecuenciaDias = 7) {
   return frecuencia * (cantidad + 1);
 }
 
-function getServicioDupKey({ nombreServicio, categoriaId, profesionalId }) {
+function getServicioProfesionalKey({ profesionalId, nombreProfesional }) {
+  const profesionalIdNormalizado = String(profesionalId || "").trim();
+  if (profesionalIdNormalizado) return `id:${profesionalIdNormalizado}`;
+
+  const nombreProfesionalNormalizado = normalizar(nombreProfesional || "");
+  if (nombreProfesionalNormalizado) return `nombre:${nombreProfesionalNormalizado}`;
+
+  return "sin-profesional";
+}
+
+function getServicioDupKey({
+  nombreServicio,
+  categoriaId,
+  profesionalId,
+  nombreProfesional,
+}) {
   return [
     normalizar(nombreServicio || ""),
     String(categoriaId || "").trim(),
-    String(profesionalId || "").trim(),
+    getServicioProfesionalKey({ profesionalId, nombreProfesional }),
   ].join("::");
 }
 
@@ -1490,6 +1505,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
             nombreServicio,
             categoriaId,
             profesionalId,
+            nombreProfesional,
           }),
     );
 
@@ -2520,6 +2536,7 @@ export default function ServiciosPanel() {
             nombreServicio,
             categoriaId,
             profesionalId,
+            nombreProfesional,
           }),
     );
 
