@@ -80,6 +80,26 @@ function GabineteItem({ gabinete, gabinetes, editando, onToggleEditar }) {
       }
     }
 
+    const diasDuplicados = dias.filter((dia) =>
+      horarios.some(
+        (horario) =>
+          Number(horario.diaSemana) === dia &&
+          String(horario.desde || "").trim() === desde &&
+          String(horario.hasta || "").trim() === hasta,
+      ),
+    );
+
+    if (diasDuplicados.length > 0) {
+      const diasTexto = [...new Set(diasDuplicados)]
+        .map((dia) => DIAS[dia] || `Dia ${dia}`)
+        .join(", ");
+
+      await swalError({
+        text: `Ya existe ese horario (${desde} a ${hasta}) para: ${diasTexto}.`,
+      });
+      return;
+    }
+
     for (const dia of dias) {
       await addDoc(collection(db, "gabinetes", gabinete.id, "horarios"), {
         gabineteId: gabinete.id,
