@@ -1,6 +1,10 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
 const { getAdmin } = require("../_lib/firebaseAdmin");
+const { WHATSAPP_TOKEN } = require("../turnos/whatsapp");
+const {
+  enviarWhatsAppConfirmacionTurno,
+} = require("../turnos/enviarWhatsAppConfirmacionTurno");
 const {
   resolveEstadoTurno,
   resolverProfesionalDesdeRequest,
@@ -8,7 +12,7 @@ const {
 } = require("./profesionalTurnosShared");
 
 exports.aprobarTurnoProfesional = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", secrets: [WHATSAPP_TOKEN] },
   async (request) => {
     const profesional = await resolverProfesionalDesdeRequest(request);
     const { turnoId } = request.data || {};
@@ -20,7 +24,7 @@ exports.aprobarTurnoProfesional = onCall(
     const db = getAdmin().firestore();
     const turnoRef = db.collection("turnos").doc(turnoId);
 
-    return db.runTransaction(async (tx) => {
+    const result = await db.runTransaction(async (tx) => {
       const turnoSnap = await tx.get(turnoRef);
       if (!turnoSnap.exists) {
         throw new HttpsError("not-found", "Turno no encontrado");
@@ -48,7 +52,20 @@ exports.aprobarTurnoProfesional = onCall(
         updatedBy: request.auth.uid,
       });
 
-      return { ok: true, estadoTurno: "confirmado" };
+      return { ok: true, estadoTurno: "confirmado", turnoId };
     });
+
+    if (result?.estadoTurno === "confirmado" && result?.turnoId) {
+      try {
+        await enviarWhatsAppConfirmacionTurno({
+          db,
+          turnoId: result.turnoId,
+        });
+      } catch (error) {
+        console.error("No se pudo enviar WhatsApp de confirmacion", error);
+      }
+    }
+
+    return result;
   },
 );

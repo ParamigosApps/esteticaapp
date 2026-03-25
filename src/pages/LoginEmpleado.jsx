@@ -8,7 +8,10 @@ import { useAuth } from "../context/AuthContext.jsx";
 async function validarEmpleadoPanel(user) {
   if (!user?.uid) throw new Error("NO_AUTH");
 
-  const activarEmpleadoGoogle = httpsCallable(functions, "activarEmpleadoGoogle");
+  const activarEmpleadoGoogle = httpsCallable(
+    functions,
+    "activarEmpleadoGoogle",
+  );
 
   for (let i = 0; i < 3; i++) {
     await user.getIdToken(true);
@@ -31,7 +34,10 @@ async function validarEmpleadoPanel(user) {
       return nivelActivado;
     }
   } catch (err) {
-    console.warn("No se pudo activar empleado por Google:", err?.message || err);
+    console.warn(
+      "No se pudo activar empleado por Google:",
+      err?.message || err,
+    );
   }
 
   for (let i = 0; i < 3; i++) {
@@ -71,7 +77,9 @@ export default function LoginEmpleado() {
     validarEmpleadoPanel(auth.currentUser)
       .then((nivelAcceso) => {
         if (!active) return;
-        navigate(nivelAcceso >= 3 ? "/admin" : "/profesional", { replace: true });
+        navigate(nivelAcceso >= 3 ? "/admin" : "/profesional", {
+          replace: true,
+        });
       })
       .catch(async () => {
         if (!active) return;
@@ -79,7 +87,10 @@ export default function LoginEmpleado() {
         try {
           await auth.signOut();
         } catch (signOutError) {
-          console.warn("No se pudo cerrar sesion tras validar acceso:", signOutError);
+          console.warn(
+            "No se pudo cerrar sesion tras validar acceso:",
+            signOutError,
+          );
         }
 
         setCheckingSession(false);
@@ -122,7 +133,7 @@ export default function LoginEmpleado() {
       } else if (err.code === "auth/popup-closed-by-user") {
         setError("Inicio de sesion cancelado.");
       } else {
-        setError("No se pudo iniciar sesion con Google.");
+        setError("No se pudo iniciar sesión con Google.");
       }
     } finally {
       setLoggingIn(false);
@@ -145,7 +156,9 @@ export default function LoginEmpleado() {
         <div>Accede con tu cuenta autorizada de Google</div>
         <div className="bar-divider mb-3"></div>
 
-        {error ? <div className="text-danger text-center small mb-3">{error}</div> : null}
+        {error ? (
+          <div className="text-danger text-center small mb-3">{error}</div>
+        ) : null}
 
         <button
           className="btn btn-dark w-100"

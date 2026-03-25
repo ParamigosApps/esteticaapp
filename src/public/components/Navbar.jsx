@@ -48,7 +48,7 @@ export default function Navbar() {
 
       {!user && !loginEnProceso && (
         <button className="nav-login" onClick={() => setLoginOpen(true)}>
-          Iniciar sesion
+          Iniciar sesión
         </button>
       )}
 
@@ -98,23 +98,27 @@ export default function Navbar() {
               ) : null}
 
               <div className="dropdown-menu-group">
-              <Link
-                className="dropdown-item"
-                to="/mis-turnos"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="dropdown-item-title">Mis turnos</span>
-                <span className="dropdown-item-copy">Ver reservas y estados</span>
-              </Link>
+                <Link
+                  className="dropdown-item"
+                  to="/mis-turnos"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="dropdown-item-title">Mis turnos</span>
+                  <span className="dropdown-item-copy">
+                    Ver reservas y estados
+                  </span>
+                </Link>
 
-              <Link
-                className="dropdown-item"
-                to="/mi-perfil"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="dropdown-item-title">Mi perfil</span>
-                <span className="dropdown-item-copy">Editar datos personales</span>
-              </Link>
+                <Link
+                  className="dropdown-item"
+                  to="/mi-perfil"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="dropdown-item-title">Mi perfil</span>
+                  <span className="dropdown-item-copy">
+                    Editar datos personales
+                  </span>
+                </Link>
               </div>
 
               <div className="dropdown-divider" />

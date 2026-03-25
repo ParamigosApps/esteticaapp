@@ -130,17 +130,37 @@ export function AuthProvider({ children }) {
         const esPrimerLogin = !snap.exists();
 
         let nombre = snap.exists() ? snap.data().nombre : "";
+        let telefono = snap.exists() ? snap.data().telefono || "" : "";
 
         if (esPrimerLogin) {
           const datos = await pedirNombreYEmail({
             nombreActual: "",
             emailActual: u.email,
-            titulo: "👤 Completá tu perfil",
+            titulo: "Completá tu perfil",
+            mostrarEmail: false,
+            pedirTelefono: true,
+            telefonoObligatorio: true,
           });
 
-          if (!datos) return;
+          if (!datos) {
+            hideLoading();
+            return;
+          }
 
           nombre = datos.nombre;
+          telefono = datos.telefono || "";
+        } else if (!telefono) {
+          telefono = await pedirTelefono({
+            titulo: "Completá tu perfil",
+            subtitulo:
+              "Ingresá tu celular para enviarte recordatorios y confirmaciones de turnos.",
+            obligatorio: true,
+          });
+
+          if (!telefono) {
+            hideLoading();
+            return;
+          }
         }
 
         await setDoc(
@@ -149,6 +169,7 @@ export function AuthProvider({ children }) {
             uid: u.uid,
             email: u.email,
             nombre,
+            ...(telefono ? { telefono } : {}),
 
             ...(esPrimerLogin ? { creadoEn: fsServerTimestamp() } : {}),
           },
@@ -722,7 +743,7 @@ export function AuthProvider({ children }) {
       Swal.fire({
         icon: "success",
         title: "Link enviado",
-        text: "Revisá la carpeta de SPAM o Promociones.",
+        html: `Revisá la carpeta de <strong>SPAM o Promociones</strong>.`,
         confirmButtonText: "Revisaré mi mail",
         buttonsStyling: false,
         customClass: {
@@ -902,25 +923,35 @@ export function AuthProvider({ children }) {
     emailActual = "",
     titulo = "👤 Datos de tu cuenta",
     emailObligatorio = false,
+    mostrarEmail = true,
+    pedirTelefono = false,
+    telefonoObligatorio = false,
     showCancel = true,
   }) {
-    const emailPlaceholder = emailObligatorio
-      ? "tu@email.com"
-      : "Email (opcional)";
-    const emailRequiredText = emailObligatorio
-      ? ""
-      : `<p style="font-size:12px;color:#777">El email es opcional, pero te permite recibir tus entradas por correo.</p>`;
+    const emailPlaceholder =
+      mostrarEmail && emailObligatorio ? "tu@email.com" : "Email (opcional)";
+    const emailRequiredText =
+      mostrarEmail && !emailObligatorio
+        ? `<p style="font-size:12px;color:#777">El email es opcional, pero te permite recibir tus entradas por correo.</p>`
+        : "";
+    const emailInput = mostrarEmail
+      ? `<input id="swal-email" class="swal2-input" placeholder="${emailPlaceholder}" value="${emailActual}" type="email">`
+      : "";
+    const telefonoInput = pedirTelefono
+      ? `<input id="swal-telefono" class="swal2-input" placeholder="Tu celular (Ej: 11 1234 5678)" type="tel" inputmode="tel" autocomplete="tel">`
+      : "";
 
     const { value, isConfirmed } = await Swal.fire({
       title: titulo,
       html: `
       <input id="swal-nombre" class="swal2-input" placeholder="Tu nombre" value="${nombreActual}">
-      <input id="swal-email" class="swal2-input" placeholder="${emailPlaceholder}" value="${emailActual}" type="email">
+      ${emailInput}
+      ${telefonoInput}
       ${emailRequiredText}
     `,
       focusConfirm: false,
       confirmButtonText: "Guardar",
-      showCancelButton: false,
+      showCancelButton: showCancel,
       allowOutsideClick: false,
       allowEscapeKey: false,
       customClass: {
@@ -928,7 +959,12 @@ export function AuthProvider({ children }) {
       },
       preConfirm: () => {
         const nombre = document.getElementById("swal-nombre").value.trim();
-        const email = document.getElementById("swal-email").value.trim();
+        const email = mostrarEmail
+          ? document.getElementById("swal-email").value.trim()
+          : "";
+        const telefono = pedirTelefono
+          ? document.getElementById("swal-telefono").value.trim()
+          : "";
 
         if (!nombre || nombre.length < 2) {
           Swal.showValidationMessage("Ingresá un nombre válido");
@@ -945,9 +981,25 @@ export function AuthProvider({ children }) {
           return false;
         }
 
+        if (pedirTelefono) {
+          if (telefonoObligatorio && !telefono) {
+            Swal.showValidationMessage("Ingresá tu número de teléfono");
+            return false;
+          }
+
+          if (telefono) {
+            const digits = telefono.replace(/\D/g, "");
+            if (digits.length < 10 || digits.length > 15) {
+              Swal.showValidationMessage("Número de teléfono inválido");
+              return false;
+            }
+          }
+        }
+
         return {
           nombre,
           email: email || null,
+          telefono: telefono || null,
         };
       },
     });
@@ -960,6 +1012,7 @@ export function AuthProvider({ children }) {
     const {
       titulo = "Tu teléfono",
       subtitulo = "Solo se utilizará para enviarte recordatorios y confirmaciones de turnos.",
+      obligatorio = false,
     } = options;
     const { value, isConfirmed } = await Swal.fire({
       icon: "info",
@@ -979,10 +1032,10 @@ export function AuthProvider({ children }) {
       `,
       focusConfirm: false,
       confirmButtonText: "Guardar",
-      showCloseButton: true,
+      showCloseButton: !obligatorio,
       showCancelButton: false,
       allowOutsideClick: false,
-      allowEscapeKey: true,
+      allowEscapeKey: !obligatorio,
       customClass: {
         popup: "swal-popup-custom swal-phone-popup",
         title: "swal-title-custom",

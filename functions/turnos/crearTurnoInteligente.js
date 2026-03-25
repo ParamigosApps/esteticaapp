@@ -266,6 +266,7 @@ function getReservasConfigDefault() {
     whatsappPhoneNumberId: "",
     whatsappTemplateIdioma: "es_AR",
     whatsappTemplateSolicitud: "",
+    whatsappTemplateConfirmacion: "confirmacion_turno",
     whatsappTemplateRecordatorio: "",
   };
 }
@@ -784,40 +785,51 @@ const {
     if (
       resultado?.turnoId &&
       telefonoCliente &&
-      reservasConfig.whatsappHabilitado &&
-      reservasConfig.enviarWhatsappPendienteTest
+      reservasConfig.whatsappHabilitado
     ) {
       try {
+        const ubicacionSnap = await db
+          .collection("configuracion")
+          .doc("ubicacion")
+          .get();
+        const ubicacion = ubicacionSnap.exists ? ubicacionSnap.data() || {} : {};
+        const horarioTurno =
+          horaFin != null
+            ? `${formatHora(horaInicio)} - ${formatHora(horaFin)}`
+            : formatHora(horaInicio);
+
         await enviarWhatsApp({
           telefono: telefonoCliente,
-          texto: buildMensajeSolicitud({
-            estadoTurnoInicial: resultado.estadoTurnoInicial,
-            nombreServicioFinal,
-            fecha,
-            horaInicio,
-          }),
           phoneNumberId: reservasConfig.whatsappPhoneNumberId,
-          templateName: reservasConfig.whatsappTemplateSolicitud,
+          templateName:
+            String(
+              reservasConfig.whatsappTemplateConfirmacion ||
+                "confirmacion_turno",
+            ).trim() || "confirmacion_turno",
           languageCode: reservasConfig.whatsappTemplateIdioma,
           bodyParameters: [
             nombreCliente || "Cliente",
             nombreServicioFinal,
             formatFecha(fecha),
-            formatHora(horaInicio),
-            resultado.estadoTurnoInicial === "confirmado"
-              ? "confirmado"
-              : "pendiente",
+            horarioTurno,
+            servicio.nombreProfesional || "Profesional",
+            ubicacion.mapsDireccion || "Sin dirección",
           ],
           countryCode: reservasConfig.whatsappCodigoPais,
         });
 
         await db.collection("turnos").doc(resultado.turnoId).update({
-          whatsappSolicitudEnviadaAt:
+          whatsappConfirmacionEnviadaAt:
             getAdmin().firestore.FieldValue.serverTimestamp(),
-          whatsappSolicitudTelefonoUsado: telefonoCliente,
+          whatsappConfirmacionTelefonoUsado: telefonoCliente,
+          whatsappConfirmacionTemplate:
+            String(
+              reservasConfig.whatsappTemplateConfirmacion ||
+                "confirmacion_turno",
+            ).trim() || "confirmacion_turno",
         });
       } catch (error) {
-        console.error("No se pudo enviar WhatsApp de solicitud", error);
+        console.error("No se pudo enviar WhatsApp de confirmacion", error);
       }
     }
 

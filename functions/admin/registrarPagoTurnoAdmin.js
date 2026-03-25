@@ -3,6 +3,10 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { assertAdmin, resolveEstadoTurno } = require("./adminTurnosShared");
 const { desglosarPagoTurno, normalizarMontosTurno } = require("../config/comisiones");
+const { WHATSAPP_TOKEN } = require("../turnos/whatsapp");
+const {
+  enviarWhatsAppConfirmacionTurno,
+} = require("../turnos/enviarWhatsAppConfirmacionTurno");
 
 function resolveMetodoPago(turno) {
   if (turno?.metodoPagoUsado) return turno.metodoPagoUsado;
@@ -25,7 +29,7 @@ function resolveTipoPago(turno, montoRegistrado, montoPagadoFinal) {
 }
 
 exports.registrarPagoTurnoAdmin = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", secrets: [WHATSAPP_TOKEN] },
   async (request) => {
     assertAdmin(request);
 
@@ -51,7 +55,7 @@ exports.registrarPagoTurnoAdmin = onCall(
     const admin = getAdmin();
     const db = admin.firestore();
 
-    return db.runTransaction(async (tx) => {
+    const result = await db.runTransaction(async (tx) => {
       const turnoRef = db.collection("turnos").doc(turnoId);
       const turnoSnap = await tx.get(turnoRef);
 
@@ -218,10 +222,24 @@ exports.registrarPagoTurnoAdmin = onCall(
         ok: true,
         turnoId,
         pagoId,
+        estadoTurno: "confirmado",
         estadoPago,
         montoPagado: montoPagadoFinal,
         saldoPendiente,
       };
     });
+
+    if (result?.estadoTurno === "confirmado" && result?.turnoId) {
+      try {
+        await enviarWhatsAppConfirmacionTurno({
+          db,
+          turnoId: result.turnoId,
+        });
+      } catch (error) {
+        console.error("No se pudo enviar WhatsApp de confirmacion", error);
+      }
+    }
+
+    return result;
   },
 );

@@ -48,6 +48,16 @@ function formatTipo(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function isPagoMercadoPagoConSplit(pago = {}) {
+  const metodo = String(pago?.metodo || "").toLowerCase();
+  if (metodo !== "mercadopago") return false;
+
+  const fee = Number(pago?.mpMarketplaceFee || 0);
+  const tokenSource = String(pago?.mpTokenSource || "").toLowerCase();
+
+  return fee > 0 || tokenSource.startsWith("oauth");
+}
+
 function buildLiquidacionPdf(liquidacion) {
   const doc = new jsPDF();
   const pagosDetalle = [...(liquidacion.pagosLiquidacion || [])].sort(
@@ -174,6 +184,23 @@ export default function LiquidacionesPanel() {
   const pagosConDetalle = useMemo(() => {
     return pagos.map((pago) => {
       const turno = turnos[pago.turnoId] || {};
+      const monto = Number(pago.monto || 0);
+      const montoComisionOriginal = Number(pago.montoComision || 0);
+      const tieneSplitMP = isPagoMercadoPagoConSplit({
+        ...pago,
+        metodo:
+          pago.metodo ||
+          turno.metodoPagoUsado ||
+          turno.metodoPagoEsperado ||
+          "-",
+      });
+
+      const montoComision = tieneSplitMP ? 0 : montoComisionOriginal;
+      const montoLiquidable = tieneSplitMP
+        ? monto
+        : Number(
+            pago.montoLiquidable ?? Number(monto || 0) - montoComisionOriginal,
+          );
 
       return {
         ...pago,
@@ -191,11 +218,9 @@ export default function LiquidacionesPanel() {
           turno.metodoPagoUsado ||
           turno.metodoPagoEsperado ||
           "-",
-        montoComision: Number(pago.montoComision || 0),
-        montoLiquidable: Number(
-          pago.montoLiquidable ??
-            Number(pago.monto || 0) - Number(pago.montoComision || 0),
-        ),
+        montoComision,
+        montoLiquidable,
+        comisionDiscriminadaSplitMP: tieneSplitMP,
       };
     });
   }, [pagos, turnos]);
@@ -784,6 +809,9 @@ export default function LiquidacionesPanel() {
                 </td>
                 <td className="liquidaciones-money-cell liquidaciones-money-cell-muted">
                   {formatMoney(pago.montoComision)}
+                  {pago.comisionDiscriminadaSplitMP ? (
+                    <div className="liquidaciones-cell-sub">Split MP</div>
+                  ) : null}
                 </td>
                 <td className="liquidaciones-money-cell liquidaciones-money-cell-strong">
                   {formatMoney(pago.montoLiquidable)}
@@ -968,7 +996,10 @@ export default function LiquidacionesPanel() {
 
                     <div className="liquidaciones-detail-money">
                       <strong>{formatMoney(pago.montoLiquidable)}</strong>
-                      <span>Comision {formatMoney(pago.montoComision)}</span>
+                      <span>
+                        Comision {formatMoney(pago.montoComision)}
+                        {pago.comisionDiscriminadaSplitMP ? " (Split MP)" : ""}
+                      </span>
                     </div>
                   </article>
                 ))}

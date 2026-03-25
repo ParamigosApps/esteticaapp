@@ -32,7 +32,7 @@ export default function LoginModal({ open, onClose }) {
           X
         </button>
 
-        <h4 className="text-center mb-3">Iniciar sesion</h4>
+        <h4 className="text-center mb-3">Iniciar sesión</h4>
 
         <LoginPanel />
 

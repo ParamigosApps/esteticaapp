@@ -150,7 +150,7 @@ export function swalConfirmWarning({
 export async function swalRequiereLogin(contexto = null) {
   const result = await Swal.fire({
     title: "Debes iniciar sesión",
-    text: "Inicia sesión para comprar.",
+    text: "Inicia sesión para agendar.",
     icon: "warning",
     confirmButtonText: "Iniciar sesión",
     allowOutsideClick: true,
@@ -301,7 +301,7 @@ export function swalLoginEmail({
         autocomplete="email"
       />
       <p style="font-size:12px;color:#777">
-        Te enviaremos un enlace para iniciar sesión.
+        Te enviaremos un enlace para iniciar sesión. Si no recibís el email, <strong>revisá tu carpeta de spam</strong> o intentá con otro correo.
       </p>
     `,
     width,

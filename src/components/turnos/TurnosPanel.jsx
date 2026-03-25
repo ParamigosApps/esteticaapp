@@ -1117,7 +1117,7 @@ export default function TurnosPanel({ servicio }) {
 
     const mensaje = `
 ${saludo}
-Me gustaria reservar el siguiente turno:
+Solicite el siguiente turno por la pagina web y espero su confirmacion:
 
 Servicio: ${servicio.nombreServicio}
 Fecha: ${fechaFormateada}

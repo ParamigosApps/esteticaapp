@@ -11,6 +11,37 @@ function sumarPorClave(items, key) {
   }, {});
 }
 
+function isPagoMercadoPagoConSplit(pago = {}) {
+  const metodo = String(pago?.metodo || "").toLowerCase();
+  if (metodo !== "mercadopago") return false;
+
+  const fee = Number(pago?.mpMarketplaceFee || 0);
+  const tokenSource = String(pago?.mpTokenSource || "").toLowerCase();
+
+  return fee > 0 || tokenSource.startsWith("oauth");
+}
+
+function normalizarPagoParaLiquidacion(pago = {}) {
+  const monto = Number(pago?.monto || 0);
+  const comisionOriginal = Number(pago?.montoComision || 0);
+  const tieneSplitMP = isPagoMercadoPagoConSplit(pago);
+
+  const montoComision = tieneSplitMP ? 0 : comisionOriginal;
+  const montoLiquidable = tieneSplitMP
+    ? monto
+    : Number(
+        pago?.montoLiquidable ??
+          (Number(pago?.monto || 0) - Number(pago?.montoComision || 0)),
+      );
+
+  return {
+    ...pago,
+    monto,
+    montoComision,
+    montoLiquidable,
+  };
+}
+
 exports.crearLiquidacionAdmin = onCall(
   { region: "us-central1" },
   async (request) => {
@@ -55,18 +86,26 @@ exports.crearLiquidacionAdmin = onCall(
       );
     }
 
-    const total = pagos.reduce((acc, pago) => acc + Number(pago.monto || 0), 0);
-    const totalComisiones = pagos.reduce(
+    const pagosNormalizados = pagos.map(normalizarPagoParaLiquidacion);
+
+    const total = pagosNormalizados.reduce(
+      (acc, pago) => acc + Number(pago.monto || 0),
+      0,
+    );
+    const totalComisiones = pagosNormalizados.reduce(
       (acc, pago) => acc + Number(pago.montoComision || 0),
       0,
     );
-    const totalLiquidable = pagos.reduce(
+    const totalLiquidable = pagosNormalizados.reduce(
       (acc, pago) =>
         acc + Number(pago.montoLiquidable ?? (Number(pago.monto || 0) - Number(pago.montoComision || 0))),
       0,
     );
-    const totalPorMetodo = sumarPorClave(pagos, "metodo");
-    const totalPorProfesional = sumarPorClave(pagos, "profesionalNombre");
+    const totalPorMetodo = sumarPorClave(pagosNormalizados, "metodo");
+    const totalPorProfesional = sumarPorClave(
+      pagosNormalizados,
+      "profesionalNombre",
+    );
 
     const liquidacionRef = db.collection("liquidaciones").doc();
     const liquidacionId = liquidacionRef.id;

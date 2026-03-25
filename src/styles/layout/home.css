@@ -306,6 +306,36 @@
 
 .home-turnos-panel {
   padding: 18px;
+  border-color: rgba(215, 197, 236, 0.96);
+  background:
+    radial-gradient(circle at top right, rgba(247, 143, 179, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(249, 242, 253, 0.98));
+  box-shadow: 0 26px 56px rgba(63, 41, 89, 0.12);
+}
+
+.home-turnos-panel::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 0;
+  height: 4px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, #a965dd, #d878a8);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.home-turnos-panel .home-section-chip {
+  background: linear-gradient(135deg, rgba(173, 108, 224, 0.22), rgba(247, 143, 179, 0.2));
+  border: 1px solid rgba(190, 147, 235, 0.72);
+  color: #6d3f97;
+}
+
+.home-turnos-panel .home-section-heading h2 {
+  color: #231a2e;
+  font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
 .home-hero-media {
@@ -950,10 +980,35 @@
     border-radius: 22px;
   }
 
+  .categorias-container {
+    border-color: rgba(226, 214, 241, 0.86);
+    box-shadow: 0 14px 30px rgba(56, 39, 78, 0.07);
+  }
+
   .home-negocio,
   .categorias-container,
   .home-turnos-panel {
     padding: 14px;
+  }
+
+  .home-turnos-panel {
+    border-color: rgba(203, 177, 233, 0.95);
+    box-shadow: 0 22px 44px rgba(63, 41, 89, 0.15);
+  }
+
+  .home-turnos-panel .home-section-heading {
+    margin-bottom: 14px;
+  }
+
+  .home-turnos-panel .home-section-chip {
+    padding: 7px 13px;
+    font-size: 0.75rem;
+    letter-spacing: 0.09em;
+  }
+
+  .home-turnos-panel .home-section-heading h2 {
+    font-size: clamp(1.35rem, 6.2vw, 1.65rem);
+    line-height: 1.15;
   }
 
   .home-foto {
@@ -1043,7 +1098,7 @@
   .home-grid,
   .home-grid-mid {
     padding: 10px;
-    gap: 14px;
+    gap: 28px;
   }
 
   .home-reviews {
@@ -1073,6 +1128,17 @@
   .categorias-container,
   .home-turnos-panel {
     padding: 12px;
+  }
+
+  .home-turnos-panel {
+    border-width: 1.4px;
+    box-shadow: 0 20px 38px rgba(60, 40, 85, 0.16);
+  }
+
+  .home-turnos-panel::before {
+    left: 12px;
+    right: 12px;
+    height: 3px;
   }
 
   .home-reviews-inline {

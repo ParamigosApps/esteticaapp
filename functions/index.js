@@ -32,6 +32,10 @@ const { setAdminClaimHandler } = require('./setAdminClaim')
 // ======================================================
 const MP_ACCESS_TOKEN = defineSecret('MP_ACCESS_TOKEN')
 const MP_COLLECTOR_ID = defineSecret('MP_COLLECTOR_ID')
+const WHATSAPP_TOKEN = defineSecret('WHATSAPP_TOKEN')
+const {
+  enviarWhatsAppConfirmacionTurno,
+} = require('./turnos/enviarWhatsAppConfirmacionTurno')
 
 // ======================================================
 // WEBHOOK MP
@@ -378,6 +382,21 @@ async function aplicarPagoAprobadoEnTurno({
   }
 
   await turnoRef.update(updateData)
+
+  if (estadoTurnoFinal === 'confirmado') {
+    try {
+      await enviarWhatsAppConfirmacionTurno({
+        db,
+        turnoId,
+        turnoData: {
+          ...turno,
+          ...updateData,
+        },
+      })
+    } catch (error) {
+      console.error('No se pudo enviar WhatsApp de confirmacion', error)
+    }
+  }
 }
 
 function getTurnoIdsFromPago(pago = {}) {
@@ -458,7 +477,7 @@ async function aplicarPagoAprobadoEnTurnos({
 exports.processWebhookEvent = onDocumentWritten(
   {
     document: 'webhook_events/{id}',
-    secrets: [MP_ACCESS_TOKEN, MP_COLLECTOR_ID],
+    secrets: [MP_ACCESS_TOKEN, MP_COLLECTOR_ID, WHATSAPP_TOKEN],
   },
   async (event) => {
 
@@ -674,7 +693,7 @@ exports.reconciliarPagosPendientes = onSchedule(
   {
     schedule: 'every 2 minutes',
     timeZone: 'America/Argentina/Buenos_Aires',
-    secrets: [MP_ACCESS_TOKEN],
+    secrets: [MP_ACCESS_TOKEN, WHATSAPP_TOKEN],
   },
   async () => {
 
