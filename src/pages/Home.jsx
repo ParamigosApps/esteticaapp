@@ -320,19 +320,28 @@ export default function Home() {
       case "turno_pendiente":
         Swal.fire({
           icon: "warning",
-          title: "Pago en verificacion",
+          title: "Verificación en proceso",
           html: `
             <p style="text-align:center;">
-              Tu turno quedo reservado temporalmente.
+              ¡No te preocupes! Si realizaste el pago revisá en 'Mis turnos'. En caso contrario, el turno se cancelará.
             </p>
             <p style="font-size:14px;color:#555;text-align:center;">
-              Te avisaremos cuando se confirme.
+             Ante cualquier duda, contactanos por WhatsApp.
             </p>
           `,
-          confirmButtonText: "Entendido",
+          showCancelButton: true,
+          confirmButtonText: "Ir a Mis turnos",
+          cancelButtonText: "Volver al inicio",
           customClass: {
             confirmButton: "swal-btn-confirm",
+            cancelButton: "swal-btn-cancel",
           },
+          buttonsStyling: false,
+          reverseButtons: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.assign("/mis-turnos");
+          }
         });
         break;
 
