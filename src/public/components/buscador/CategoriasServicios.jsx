@@ -63,11 +63,14 @@ export default function CategoriasServicios({
             <div className="categoria-card-top">
               <div className="categoria-card-top-left">
                 <span className="categoria-icon" aria-hidden="true">
-                  {String(c.nombre || "?").trim().charAt(0).toUpperCase() || "C"}
+                  {String(c.nombre || "?")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase() || "C"}
                 </span>
                 <div className="categoria-card-kicker-wrap">
                   <span className="categoria-pill">
-                    {activa ? "Activa" : "Categoria"}
+                    {activa ? "Activa" : "Categoría"}
                   </span>
                   <span className="categoria-count">
                     {c.cantidad} servicio{c.cantidad === 1 ? "" : "s"}
@@ -90,7 +93,7 @@ export default function CategoriasServicios({
             </div>
             <div className="categoria-card-footer">
               <span className="categoria-footer-copy">
-                {activa ? "Categoria abierta" : "Ver opciones"}
+                {activa ? "Categoría abierta" : "Ver opciones"}
               </span>
             </div>
           </div>

@@ -2609,13 +2609,13 @@ export default function ServiciosPanel() {
     }
 
     const cat = categorias.find((c) => c.id === categoriaId);
-    if (!cat) return showError("Categoria invalida");
+    if (!cat) return showError("Categoría invalida");
     const categoriaNombre = (cat.nombre || "").trim();
 
     try {
       showLoading({
         title: "Creando servicio",
-        text: "Guardando configuracion y agenda...",
+        text: "Guardando configuración y agenda...",
       });
 
       const imagenServicioUrl = imagenFile

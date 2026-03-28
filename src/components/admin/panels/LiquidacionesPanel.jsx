@@ -58,6 +58,12 @@ function isPagoMercadoPagoConSplit(pago = {}) {
   return fee > 0 || tokenSource.startsWith("oauth");
 }
 
+function getComisionCobrada(pago = {}, fallback = 0) {
+  const fee = Number(pago?.mpMarketplaceFee || 0);
+  if (fee > 0) return fee;
+  return Number(fallback || 0);
+}
+
 function buildLiquidacionPdf(liquidacion) {
   const doc = new jsPDF();
   const pagosDetalle = [...(liquidacion.pagosLiquidacion || [])].sort(
@@ -65,6 +71,15 @@ function buildLiquidacionPdf(liquidacion) {
       getTimestampMs(b.aprobadoEn || b.creadoEn || b.createdAt) -
       getTimestampMs(a.aprobadoEn || a.creadoEn || a.createdAt),
   );
+  const totalComisionPendiente = pagosDetalle.reduce(
+    (acc, pago) => acc + Number(pago?.montoComision || 0),
+    0,
+  );
+  const totalComisionAutoSplit = pagosDetalle.reduce(
+    (acc, pago) => acc + Number(pago?.montoComisionAutomatica || 0),
+    0,
+  );
+  const tieneSplitConComision = totalComisionAutoSplit > 0;
 
   doc.setFontSize(18);
   doc.text("Liquidacion", 14, 18);
@@ -85,11 +100,20 @@ function buildLiquidacionPdf(liquidacion) {
     120,
     26,
   );
-  doc.text(`Comision: ${formatMoney(liquidacion.totalComisiones)}`, 120, 32);
-  doc.text(`Neto: ${formatMoney(liquidacion.totalLiquidable)}`, 120, 38);
+  doc.text(`Comision pendiente: ${formatMoney(totalComisionPendiente)}`, 120, 32);
+  if (tieneSplitConComision) {
+    doc.text(
+      `Comision ya cobrada (Split MP): ${formatMoney(totalComisionAutoSplit)}`,
+      120,
+      38,
+    );
+    doc.text(`Neto: ${formatMoney(liquidacion.totalLiquidable)}`, 120, 44);
+  } else {
+    doc.text(`Neto: ${formatMoney(liquidacion.totalLiquidable)}`, 120, 38);
+  }
 
   autoTable(doc, {
-    startY: 46,
+    startY: tieneSplitConComision ? 52 : 46,
     head: [
       ["Fecha", "Cliente", "Servicio", "Metodo", "Bruto", "Comision", "Neto"],
     ],
@@ -99,7 +123,7 @@ function buildLiquidacionPdf(liquidacion) {
       pago.nombreServicio,
       formatMetodo(pago.metodo),
       formatMoney(pago.monto),
-      formatMoney(pago.montoComision),
+      formatMoney(pago.montoComisionCobrada ?? pago.montoComision),
       formatMoney(pago.montoLiquidable),
     ]),
     styles: {
@@ -111,8 +135,21 @@ function buildLiquidacionPdf(liquidacion) {
     },
   });
 
+  if (tieneSplitConComision) {
+    const splitNoteY = (doc.lastAutoTable?.finalY || 54) + 8;
+    doc.setFontSize(8.5);
+    doc.setTextColor(90, 90, 90);
+    doc.text(
+      "* Las comisiones de Split MP ya fueron cobradas automaticamente y no se suman a la comision pendiente.",
+      14,
+      splitNoteY,
+      { maxWidth: 182 },
+    );
+    doc.setTextColor(0, 0, 0);
+  }
+
   if (liquidacion.notas) {
-    const finalY = doc.lastAutoTable?.finalY || 54;
+    const finalY = (doc.lastAutoTable?.finalY || 54) + (tieneSplitConComision ? 10 : 0);
     doc.setFontSize(10);
     doc.text("Notas", 14, finalY + 10);
     doc.setFontSize(9);
@@ -184,23 +221,57 @@ export default function LiquidacionesPanel() {
   const pagosConDetalle = useMemo(() => {
     return pagos.map((pago) => {
       const turno = turnos[pago.turnoId] || {};
-      const monto = Number(pago.monto || 0);
+      const montoOriginal = Number(pago.monto || 0);
       const montoComisionOriginal = Number(pago.montoComision || 0);
-      const tieneSplitMP = isPagoMercadoPagoConSplit({
-        ...pago,
-        metodo:
-          pago.metodo ||
+      const metodoNormalizado = String(
+        pago.metodo ||
           turno.metodoPagoUsado ||
           turno.metodoPagoEsperado ||
           "-",
+      ).toLowerCase();
+      const esReembolso =
+        String(pago.estado || "").toLowerCase() === "reembolsado" ||
+        String(turno.estadoPago || "").toLowerCase() === "reembolsado";
+      const tieneSplitMP = isPagoMercadoPagoConSplit({
+        ...pago,
+        metodo: metodoNormalizado,
       });
+      const esMercadoPago = metodoNormalizado === "mercadopago";
+      const comisionCobradaPorMP = getComisionCobrada(
+        pago,
+        montoComisionOriginal,
+      );
 
-      const montoComision = tieneSplitMP ? 0 : montoComisionOriginal;
-      const montoLiquidable = tieneSplitMP
+      let monto = montoOriginal;
+      let montoComision = tieneSplitMP ? 0 : montoComisionOriginal;
+      let montoComisionCobrada = tieneSplitMP
+        ? comisionCobradaPorMP
+        : montoComisionOriginal;
+      let montoComisionAutomatica = tieneSplitMP ? montoComisionCobrada : 0;
+      let montoLiquidable = tieneSplitMP
         ? monto
         : Number(
-            pago.montoLiquidable ?? Number(monto || 0) - montoComisionOriginal,
+            pago.montoLiquidable ??
+              Number(montoOriginal || 0) - montoComisionOriginal,
           );
+
+      if (esReembolso) {
+        monto = 0;
+        montoLiquidable = 0;
+
+        if (esMercadoPago) {
+          montoComision = 0;
+          montoComisionCobrada = comisionCobradaPorMP;
+          montoComisionAutomatica = comisionCobradaPorMP;
+        } else {
+          montoComision = montoComisionOriginal;
+          montoComisionCobrada = montoComisionOriginal;
+          montoComisionAutomatica = 0;
+        }
+      }
+
+      const comisionCobradaAutomaticamente =
+        Number(montoComisionAutomatica || 0) > 0;
 
       return {
         ...pago,
@@ -218,7 +289,11 @@ export default function LiquidacionesPanel() {
           turno.metodoPagoUsado ||
           turno.metodoPagoEsperado ||
           "-",
+        esReembolso,
         montoComision,
+        montoComisionCobrada,
+        montoComisionAutomatica,
+        comisionCobradaAutomaticamente,
         montoLiquidable,
         comisionDiscriminadaSplitMP: tieneSplitMP,
       };
@@ -246,9 +321,6 @@ export default function LiquidacionesPanel() {
         return false;
       if (desdeMs && creadoMs < desdeMs) return false;
       if (hastaMs && creadoMs > hastaMs) return false;
-      if (pago.estado === "reembolsado" || turno.estadoPago === "reembolsado") {
-        return false;
-      }
 
       if (texto) {
         const blob = `
@@ -263,7 +335,8 @@ export default function LiquidacionesPanel() {
         if (!blob.includes(texto)) return false;
       }
 
-      return pago.estado === "aprobado";
+      const estadoPago = String(pago.estado || "").toLowerCase();
+      return ["aprobado", "reembolsado"].includes(estadoPago);
     });
   }, [
     pagosConDetalle,
@@ -343,12 +416,17 @@ export default function LiquidacionesPanel() {
     [pagosFiltrados],
   );
 
-  const totalComisionPendiente = useMemo(
+  const totalComisionNoCobradaPendiente = useMemo(
     () =>
       pagosFiltrados
         .filter((pago) => !pago.liquidado)
         .reduce((acc, pago) => acc + Number(pago.montoComision || 0), 0),
     [pagosFiltrados],
+  );
+
+  const totalComisionPendiente = useMemo(
+    () => totalComisionNoCobradaPendiente,
+    [totalComisionNoCobradaPendiente],
   );
 
   const totalNetoPendiente = useMemo(
@@ -544,11 +622,11 @@ export default function LiquidacionesPanel() {
 
           <div className="liquidaciones-hero-meta">
             <div className="liquidaciones-hero-pill">
-              <span>Neto pendiente</span>
+              <span>Neto pendiente liquidar</span>
               <strong>{formatMoney(totalNetoPendiente)}</strong>
             </div>
             <div className="liquidaciones-hero-pill">
-              <span>Comision retenida</span>
+              <span>Comision pendiente abonar</span>
               <strong>{formatMoney(totalComisionPendiente)}</strong>
             </div>
             <div className="liquidaciones-hero-pill">
@@ -685,16 +763,15 @@ export default function LiquidacionesPanel() {
 
           <div className="liquidaciones-resumen">
             <div className="liquidaciones-card liquidaciones-card-strong">
-              <span>Neto pendiente</span>
+              <span>Neto pendiente liquidar</span>
               <strong>{formatMoney(totalNetoPendiente)}</strong>
-              <small>Disponible para liquidar</small>
             </div>
             <div className="liquidaciones-card">
               <span>Pendiente bruto</span>
               <strong>{formatMoney(totalPendiente)}</strong>
             </div>
             <div className="liquidaciones-card liquidaciones-card-muted">
-              <span>Comision retenida</span>
+              <span>Comision pendiente abonar</span>
               <strong>{formatMoney(totalComisionPendiente)}</strong>
             </div>
             <div className="liquidaciones-card">
@@ -808,9 +885,15 @@ export default function LiquidacionesPanel() {
                   {formatMoney(pago.monto)}
                 </td>
                 <td className="liquidaciones-money-cell liquidaciones-money-cell-muted">
-                  {formatMoney(pago.montoComision)}
+                  {formatMoney(pago.montoComisionCobrada)}
                   {pago.comisionDiscriminadaSplitMP ? (
                     <div className="liquidaciones-cell-sub">Split MP</div>
+                  ) : pago.esReembolso ? (
+                    <div className="liquidaciones-cell-sub">
+                      {pago.comisionCobradaAutomaticamente
+                        ? "Reembolso (comision ya cobrada)"
+                        : "Reembolso (comision pendiente)"}
+                    </div>
                   ) : null}
                 </td>
                 <td className="liquidaciones-money-cell liquidaciones-money-cell-strong">
@@ -877,7 +960,10 @@ export default function LiquidacionesPanel() {
                   <span>
                     {formatDate(liquidacion.createdAt || liquidacion.updatedAt)}
                   </span>
-                  <small>Bruto {formatMoney(liquidacion.totalBruto ?? liquidacion.total)}</small>
+                  <small>
+                    Bruto{" "}
+                    {formatMoney(liquidacion.totalBruto ?? liquidacion.total)}
+                  </small>
                 </div>
                 <div className="liquidaciones-history-amounts">
                   <span>{formatMoney(liquidacion.totalLiquidable)}</span>
@@ -997,8 +1083,15 @@ export default function LiquidacionesPanel() {
                     <div className="liquidaciones-detail-money">
                       <strong>{formatMoney(pago.montoLiquidable)}</strong>
                       <span>
-                        Comision {formatMoney(pago.montoComision)}
-                        {pago.comisionDiscriminadaSplitMP ? " (Split MP)" : ""}
+                        Comision{" "}
+                        {formatMoney(
+                          pago.montoComisionCobrada ?? pago.montoComision,
+                        )}
+                        {pago.comisionDiscriminadaSplitMP
+                          ? " - cobrada automaticamente (Split MP)"
+                          : pago.comisionCobradaAutomaticamente
+                            ? " - cobrada automaticamente"
+                            : " - pendiente de cobro"}
                       </span>
                     </div>
                   </article>

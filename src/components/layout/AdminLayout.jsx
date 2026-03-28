@@ -71,7 +71,7 @@ const NAV_GROUPS = [
       {
         to: "/admin/configuracion",
         key: "configuracion",
-        title: "Configuracion",
+        title: "Configuración",
         subtitle: "Sistema y visuales",
         icon: FiSettings,
       },

@@ -3,12 +3,14 @@ import Swal from "sweetalert2";
 import { Timestamp, doc, getDoc } from "firebase/firestore";
 
 import { db } from "../Firebase";
+import { useAuth } from "../context/AuthContext";
 import BuscadorServicios from "../public/components/buscador/BuscadorServicios";
 import TurnosSection from "../public/home/TurnosSection.jsx";
 import InfoContactoPanel from "../public/components/contacto/InfoContactoPanel.jsx";
 import { swalTurnoConfirmado } from "../public/utils/swalUtils.js";
 
 import imgPrincipal from "../assets/img/local.jpg";
+import imgPlaceholder from "../assets/img/placeholder.png";
 import imgSecundaria from "../assets/img/secundaria.png";
 import whatsappIcon from "../assets/icons/whatsapp.png";
 
@@ -173,6 +175,7 @@ function GoogleReviewsInline({ reviewsUrl, reviewsData, updatedAt }) {
   );
 }
 export default function Home() {
+  const { user, loading: authLoading, loginEnProceso } = useAuth();
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [whatsapp, setWhatsapp] = useState(null);
@@ -198,6 +201,20 @@ export default function Home() {
   const reviewsData = getReviewsState(homeVisuales);
   const reviewsUpdatedAt = formatUpdatedAt(homeVisuales.googleReviewsUpdatedAt);
   const showReviews = homeVisuales.reviewsEnabled !== false;
+  const imgPrincipalConfig = String(homeVisuales.imgPrincipalHome || "").trim();
+  const [heroImageSrc, setHeroImageSrc] = useState(imgPrincipal);
+  const [heroImageLoading, setHeroImageLoading] = useState(false);
+
+  useEffect(() => {
+    if (!imgPrincipalConfig) {
+      setHeroImageSrc(imgPrincipal);
+      setHeroImageLoading(false);
+      return;
+    }
+
+    setHeroImageLoading(true);
+    setHeroImageSrc(imgPrincipalConfig);
+  }, [imgPrincipalConfig]);
 
   function scrollToAgendaResultados() {
     if (typeof window === "undefined") return;
@@ -210,6 +227,59 @@ export default function Home() {
       });
     }, 120);
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    if (authLoading || loginEnProceso || user) return undefined;
+    if (localStorage.getItem("avisoPostPago")) return undefined;
+
+    const inviteKey = "homeLoginInviteShown";
+    if (window.sessionStorage.getItem(inviteKey) === "1") return undefined;
+
+    window.sessionStorage.setItem(inviteKey, "1");
+
+    const timer = window.setTimeout(() => {
+      void Swal.fire({
+        title: "",
+        imageUrl: homeVisuales.imgSecundariaHome || imgSecundaria,
+        imageAlt: "PIEL & CEJAS",
+        imageWidth: 132,
+        width: 500,
+        padding: "1.2rem 1.2rem 1.1rem",
+        html: `
+          <div class="swal-home-login-copy">
+            <h3 class="swal-home-login-heading">BIENVENIDOS</h3>
+            <div class="swal-home-login-kicker">
+              Nueva agenda
+            </div>
+            <p>
+              Registrate para agendar turnos.<br />Solo te tomará unos instantes.
+            </p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Iniciar sesión",
+        cancelButtonText: "Más tarde",
+        reverseButtons: true,
+        buttonsStyling: false,
+        customClass: {
+          popup: "swal-popup-custom swal-home-login-popup",
+          title: "swal-home-login-title",
+          htmlContainer: "swal-home-login-html",
+          actions: "swal-home-login-actions",
+          image: "swal-home-login-image",
+          confirmButton: "swal-btn-confirm",
+          cancelButton: "swal-btn-cancel",
+        },
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.dispatchEvent(new CustomEvent("open-login-modal"));
+        }
+      });
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [authLoading, homeVisuales.imgSecundariaHome, loginEnProceso, user]);
 
   useEffect(() => {
     const aviso = localStorage.getItem("avisoPostPago");
@@ -318,10 +388,36 @@ export default function Home() {
         <div className="home-grid">
           <div className="home-negocio">
             <div className="home-hero-media">
+              {heroImageLoading ? (
+                <div
+                  className="home-hero-image-loader"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span
+                    className="spinner-border home-panel-spinner"
+                    aria-hidden="true"
+                  />
+                </div>
+              ) : null}
               <img
-                src={homeVisuales.imgPrincipalHome || imgPrincipal}
+                src={heroImageSrc}
                 className="home-foto"
                 alt="Cabina principal del centro estetico"
+                onLoad={() => setHeroImageLoading(false)}
+                onError={() => {
+                  if (heroImageSrc !== imgPrincipal) {
+                    setHeroImageSrc(imgPrincipal);
+                    setHeroImageLoading(false);
+                    return;
+                  }
+                  if (heroImageSrc !== imgPlaceholder) {
+                    setHeroImageSrc(imgPlaceholder);
+                    setHeroImageLoading(true);
+                    return;
+                  }
+                  setHeroImageLoading(false);
+                }}
               />
 
               <div className="home-hero-overlay">
@@ -392,8 +488,8 @@ export default function Home() {
         <div className="home-grid-mid">
           <div className="categorias-container">
             <div className="home-section-heading">
-              <span className="home-section-chip">Explora</span>
-              <h2>Encontra tu servicio ideal</h2>
+              <span className="home-section-chip">Explorá</span>
+              <h2>Encontrá tu servicio ideal</h2>
               <p>
                 Busca por nombre o navega por categorias para ver todas las
                 opciones disponibles.
@@ -412,7 +508,7 @@ export default function Home() {
           <div className="home-turnos-panel" ref={agendaRef}>
             <div className="home-section-heading home-section-heading-inline">
               <span className="home-section-chip">Agenda online</span>
-              <h2>Reserva tu proximo turno</h2>
+              <h2>Reserva tu próximo turno</h2>
             </div>
 
             <TurnosSection

@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { getAdmin } = require("../_lib/firebaseAdmin");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -145,23 +145,33 @@ function buildMailHtml({ asunto, turnoId, turno, estadoTurno, fechaTexto, horaTe
   `;
 }
 
-exports.notificarAdminNuevoTurno = onDocumentCreated(
+exports.notificarAdminNuevoTurno = onDocumentWritten(
   {
     document: "turnos/{turnoId}",
     region: "us-central1",
     secrets: [RESEND_API_KEY, ADMIN_EMAIL, FROM_EMAIL],
   },
   async (event) => {
-    const snap = event.data;
-    if (!snap) return;
+    const afterSnap = event.data?.after;
+    if (!afterSnap?.exists) return;
 
-    const turno = snap.data();
-    const turnoId = snap.id;
-
-    if (!turno) return;
+    const beforeSnap = event.data?.before;
+    const beforeTurno = beforeSnap?.exists ? beforeSnap.data() || {} : null;
+    const turno = afterSnap.data() || {};
+    const turnoId = afterSnap.id;
 
     const estadoTurno = resolveEstadoTurno(turno);
     if (!ESTADOS_NOTIFICABLES.has(estadoTurno)) {
+      return;
+    }
+
+    const estadoPrevio = beforeTurno ? resolveEstadoTurno(beforeTurno) : null;
+    const cambioAEstadoNotificable =
+      beforeTurno == null ||
+      !ESTADOS_NOTIFICABLES.has(estadoPrevio) ||
+      estadoPrevio !== estadoTurno;
+
+    if (!cambioAEstadoNotificable) {
       return;
     }
 

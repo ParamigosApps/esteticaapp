@@ -62,7 +62,7 @@ function resolvePageTitle(pathname) {
     return "Liquidaciones | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/configuracion")) {
-    return "Configuracion | Admin | PIEL Y CEJAS";
+    return "Configuración | Admin | PIEL Y CEJAS";
   }
   if (pathname.startsWith("/admin/servicios")) {
     return "Servicios | Admin | PIEL Y CEJAS";
@@ -156,14 +156,8 @@ export default function App() {
             <Route path="/mis-turnos" element={<MisTurnos />} />
             <Route path="/mi-perfil" element={<MiPerfil />} />
             <Route path="/pago-resultado" element={<PagoResultado />} />
-            <Route
-              path="/politica-de-privacidad"
-              element={<PrivacyPolicy />}
-            />
-            <Route
-              path="/terminos-de-servicio"
-              element={<TermsOfService />}
-            />
+            <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
+            <Route path="/terminos-de-servicio" element={<TermsOfService />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

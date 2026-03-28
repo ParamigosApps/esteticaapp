@@ -13,7 +13,11 @@ import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { db, functions as firebaseFunctions, storage } from "../../../Firebase.js";
+import {
+  db,
+  functions as firebaseFunctions,
+  storage,
+} from "../../../Firebase.js";
 import {
   swalConfirmDanger,
   swalError,
@@ -74,13 +78,11 @@ function formatConfigJson(value) {
 
 function normalizeManualReviews(items = []) {
   const safeItems = Array.isArray(items) ? items : [];
-  const next = safeItems
-    .slice(0, 2)
-    .map((item) => ({
-      autor: toStr(item?.autor),
-      fecha: toStr(item?.fecha),
-      texto: toStr(item?.texto),
-    }));
+  const next = safeItems.slice(0, 2).map((item) => ({
+    autor: toStr(item?.autor),
+    fecha: toStr(item?.fecha),
+    texto: toStr(item?.texto),
+  }));
 
   while (next.length < 2) {
     next.push({ autor: "", fecha: "", texto: "" });
@@ -552,9 +554,7 @@ export default function AdminConfiguracion() {
       const reason = params.get("reason");
       swalError({
         title: "No se pudo conectar Mercado Pago",
-        text: reason
-          ? `Detalle: ${reason}`
-          : "Volvé a intentar la conexión.",
+        text: reason ? `Detalle: ${reason}` : "Volvé a intentar la conexión.",
       });
     }
 
@@ -591,7 +591,7 @@ export default function AdminConfiguracion() {
     );
     swalSuccess({
       title: "Metodos de inicio de sesion",
-      text: "Configuracion actualizada correctamente",
+      text: "Configuración actualizada correctamente",
     });
   }
 
@@ -615,7 +615,7 @@ export default function AdminConfiguracion() {
 
     swalSuccess({
       title: "Reglas de reserva",
-      text: "Configuracion actualizada correctamente",
+      text: "Configuración actualizada correctamente",
     });
   }
 
@@ -636,15 +636,32 @@ export default function AdminConfiguracion() {
     }
 
     try {
-      const callable = httpsCallable(firebaseFunctions, "validarWhatsAppConfig");
+      const callable = httpsCallable(
+        firebaseFunctions,
+        "validarWhatsAppConfig",
+      );
       const response = await callable({
         phoneNumberId: reservasConfig.whatsappPhoneNumberId,
       });
 
       const data = response?.data || {};
+      const verifiedName = String(data?.verifiedName || "").trim();
+      const displayPhoneNumber = String(data?.displayPhoneNumber || "").trim();
+      const isTestNumber =
+        /test number/i.test(verifiedName) ||
+        /^\+?1\s*555/.test(displayPhoneNumber.replace(/\u00A0/g, " "));
       const detalles = [data.verifiedName, data.displayPhoneNumber]
         .filter(Boolean)
         .join(" - ");
+
+      if (isTestNumber) {
+        setWhatsappEstado({
+          status: "error",
+          message:
+            "Token valido, pero el Phone Number ID es de prueba (Test Number). Cambia al numero de produccion.",
+        });
+        return;
+      }
 
       setWhatsappEstado({
         status: "ok",
@@ -654,8 +671,7 @@ export default function AdminConfiguracion() {
       });
     } catch (error) {
       const message =
-        error?.message?.replace("FirebaseError: ", "") ||
-        "Token incorrecto";
+        error?.message?.replace("FirebaseError: ", "") || "Token incorrecto";
 
       setWhatsappEstado({
         status: "error",
@@ -941,7 +957,7 @@ export default function AdminConfiguracion() {
       },
     );
     swalSuccess({
-      title: "Ubicacion",
+      title: "Ubicación",
       text: "Datos actualizados correctamente",
     });
   }
@@ -1082,8 +1098,8 @@ export default function AdminConfiguracion() {
     swalSuccess({
       title: "Visuales del home",
       text: homeVisuales.googlePlaceId
-        ? "La configuracion fue actualizada. Si las reseñas no cambian, revisa el estado de sincronizacion."
-        : "La configuracion fue actualizada correctamente",
+        ? "La configuración fue actualizada. Si las reseñas no cambian, revisa el estado de sincronizacion."
+        : "La configuración fue actualizada correctamente",
     });
   }
 
@@ -1106,8 +1122,8 @@ export default function AdminConfiguracion() {
   ).length;
   const homeVisualesCompleto = Boolean(
     homeVisuales.imgPrincipalHome &&
-      homeVisuales.imgSecundariaHome &&
-      homeVisuales.faviconUrl,
+    homeVisuales.imgSecundariaHome &&
+    homeVisuales.faviconUrl,
   );
 
   return (
@@ -1115,7 +1131,7 @@ export default function AdminConfiguracion() {
       <section className="config-admin-hero">
         <div className="config-admin-hero-copy">
           <p className="config-admin-eyebrow">Panel de administracion</p>
-          <h2 className="config-admin-title">Configuracion del sistema</h2>
+          <h2 className="config-admin-title">Configuración del sistema</h2>
           <p className="config-admin-subtitle">
             Ajusta accesos, datos del negocio, presencia digital y equipo desde
             una vista ordenada para desktop y mobile.
@@ -1191,7 +1207,7 @@ export default function AdminConfiguracion() {
               className="btn swal-btn-confirm"
               onClick={guardarAuthConfig}
             >
-              Guardar configuracion
+              Guardar configuración
             </button>
           </div>
         </Seccion>
@@ -1266,7 +1282,9 @@ export default function AdminConfiguracion() {
                     ),
                   }))
                 }
-                disabled={!Boolean(reservasConfig.permitirReprogramacionUsuario)}
+                disabled={
+                  !Boolean(reservasConfig.permitirReprogramacionUsuario)
+                }
               />
             </label>
 
@@ -1409,7 +1427,6 @@ export default function AdminConfiguracion() {
             pruebas.
           </div>
 
-
           <div className="config-actions config-actions-inline">
             <button
               className="btn btn-outline-secondary"
@@ -1465,7 +1482,9 @@ export default function AdminConfiguracion() {
               className="btn btn-outline-secondary"
               type="button"
               onClick={() => conectarMercadoPago()}
-              disabled={mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+              disabled={
+                mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting
+              }
             >
               {mpOauth.connecting ? "Conectando..." : "Conectar Mercado Pago"}
             </button>
@@ -1474,7 +1493,9 @@ export default function AdminConfiguracion() {
               className="btn btn-outline-secondary"
               type="button"
               onClick={() => cargarMpOauthEstado()}
-              disabled={mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+              disabled={
+                mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting
+              }
             >
               {mpOauth.loading ? "Consultando..." : "Actualizar estado"}
             </button>
@@ -1483,7 +1504,12 @@ export default function AdminConfiguracion() {
               className="btn btn-outline-danger"
               type="button"
               onClick={() => desconectarMercadoPago()}
-              disabled={!mpOauth.connected || mpOauth.loading || mpOauth.connecting || mpOauth.disconnecting}
+              disabled={
+                !mpOauth.connected ||
+                mpOauth.loading ||
+                mpOauth.connecting ||
+                mpOauth.disconnecting
+              }
               title="Desconectar Mercado Pago"
               aria-label="Desconectar Mercado Pago"
             >
@@ -1621,31 +1647,35 @@ export default function AdminConfiguracion() {
                   <div className="config-prof-preview-empty">Sin imagen</div>
                 )}
               </div>
-            </div>
 
-            <div className="config-actions config-actions-inline">
-              <button
-                className="btn swal-btn-confirm"
-                onClick={
-                  profesionalEditandoId
-                    ? guardarEdicionProfesional
-                    : agregarProfesional
-                }
-              >
-                {profesionalEditandoId
-                  ? "Guardar cambios"
-                  : "Agregar profesional"}
-              </button>
-              {profesionalEditandoId && (
+              <div className="config-actions config-actions-inline config-prof-form-actions">
                 <button
-                  className="btn swal-btn-cancel"
-                  onClick={resetProfesionalForm}
+                  className="btn swal-btn-confirm"
+                  onClick={
+                    profesionalEditandoId
+                      ? guardarEdicionProfesional
+                      : agregarProfesional
+                  }
                 >
-                  Cancelar edicion
+                  {profesionalEditandoId
+                    ? "Guardar cambios"
+                    : "Agregar profesional"}
                 </button>
-              )}
+                {profesionalEditandoId && (
+                  <button
+                    className="btn swal-btn-cancel"
+                    onClick={resetProfesionalForm}
+                  >
+                    Cancelar edicion
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          <h4 className="config-subsection-title mt-5">
+            Profesionales agregados:
+          </h4>
 
           <div className="config-prof-grid">
             {profesionales.length ? (
@@ -1804,9 +1834,7 @@ export default function AdminConfiguracion() {
                     <div className="config-home-favicon-empty">
                       <div className="config-home-favicon-empty-icon">ICO</div>
                       <strong>Sin favicon cargado</strong>
-                      <span>
-                        Cuando subas uno, se va a previsualizar aca.
-                      </span>
+                      <span>Cuando subas uno, se va a previsualizar aca.</span>
                     </div>
                   )}
                 </div>
@@ -1885,12 +1913,14 @@ export default function AdminConfiguracion() {
               </label>
 
               <small className="config-field-help">
-                Si lo completas, las reseñas se sincronizan automáticamente desde Google.
+                Si lo completas, las reseñas se sincronizan automáticamente
+                desde Google.
               </small>
 
               {homeVisuales.googleReviewsUpdatedAt ? (
                 <small className="config-field-help">
-                  Ultima sincronizacion: {formatConfigDate(homeVisuales.googleReviewsUpdatedAt)}
+                  Ultima sincronizacion:{" "}
+                  {formatConfigDate(homeVisuales.googleReviewsUpdatedAt)}
                 </small>
               ) : null}
 
@@ -1902,13 +1932,18 @@ export default function AdminConfiguracion() {
 
               <div className="config-google-debug">
                 <small className="config-field-help">
-                  Rating sincronizado: {Number(homeVisuales.googleReviewsRating || 0) || 0}
+                  Rating sincronizado:{" "}
+                  {Number(homeVisuales.googleReviewsRating || 0) || 0}
                 </small>
                 <small className="config-field-help">
-                  Total sincronizado: {Number(homeVisuales.googleReviewsTotal || 0) || 0}
+                  Total sincronizado:{" "}
+                  {Number(homeVisuales.googleReviewsTotal || 0) || 0}
                 </small>
                 <small className="config-field-help">
-                  Reviews sincronizadas: {Array.isArray(homeVisuales.googleReviewsItems) ? homeVisuales.googleReviewsItems.length : 0}
+                  Reviews sincronizadas:{" "}
+                  {Array.isArray(homeVisuales.googleReviewsItems)
+                    ? homeVisuales.googleReviewsItems.length
+                    : 0}
                 </small>
 
                 {Array.isArray(homeVisuales.googleReviewsItems) &&
@@ -2220,7 +2255,7 @@ export default function AdminConfiguracion() {
                   className="btn swal-btn-confirm"
                   onClick={guardarUbicacion}
                 >
-                  Guardar ubicacion
+                  Guardar ubicación
                 </button>
               </div>
             </div>

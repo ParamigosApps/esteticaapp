@@ -39,7 +39,8 @@ function formatDateShort(value) {
   if (!value) return "-";
   if (typeof value === "string") {
     const parsed = new Date(`${value}T00:00:00`);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleDateString("es-AR");
+    if (!Number.isNaN(parsed.getTime()))
+      return parsed.toLocaleDateString("es-AR");
   }
 
   const ms = getTimestampMs(value);
@@ -91,11 +92,17 @@ export default function ClientesAdminPanel() {
               id: docItem.id,
               ...docItem.data(),
             }))
-            .filter((usuario) => !usuario.esEmpleado && Number(usuario.nivel || 0) < 3),
+            .filter(
+              (usuario) =>
+                !usuario.esEmpleado && Number(usuario.nivel || 0) < 3,
+            ),
         );
       },
       (error) => {
-        console.error("Error leyendo collection(usuarios) en ClientesAdminPanel", error);
+        console.error(
+          "Error leyendo collection(usuarios) en ClientesAdminPanel",
+          error,
+        );
         setClientes([]);
       },
     );
@@ -113,7 +120,10 @@ export default function ClientesAdminPanel() {
         );
       },
       (error) => {
-        console.error("Error leyendo collection(turnos) en ClientesAdminPanel", error);
+        console.error(
+          "Error leyendo collection(turnos) en ClientesAdminPanel",
+          error,
+        );
         setTurnos([]);
       },
     );
@@ -131,7 +141,10 @@ export default function ClientesAdminPanel() {
         );
       },
       (error) => {
-        console.error("Error leyendo collection(pagos) en ClientesAdminPanel", error);
+        console.error(
+          "Error leyendo collection(pagos) en ClientesAdminPanel",
+          error,
+        );
         setPagos([]);
       },
     );
@@ -149,7 +162,10 @@ export default function ClientesAdminPanel() {
         );
       },
       (error) => {
-        console.error("Error leyendo collection(servicios) en ClientesAdminPanel", error);
+        console.error(
+          "Error leyendo collection(servicios) en ClientesAdminPanel",
+          error,
+        );
         setServicios([]);
       },
     );
@@ -333,7 +349,9 @@ export default function ClientesAdminPanel() {
       categoriaNombre: turno.categoriaNombre || prev.categoriaNombre,
       nombreServicio: turno.nombreServicio || prev.nombreServicio,
       fechaRegistro:
-        turno.fecha || prev.fechaRegistro || new Date().toISOString().slice(0, 10),
+        turno.fecha ||
+        prev.fechaRegistro ||
+        new Date().toISOString().slice(0, 10),
     }));
   }
 
@@ -450,7 +468,13 @@ export default function ClientesAdminPanel() {
 
     try {
       await deleteDoc(
-        doc(db, "usuarios", clienteSeleccionadoId, "historial_clinico", fichaId),
+        doc(
+          db,
+          "usuarios",
+          clienteSeleccionadoId,
+          "historial_clinico",
+          fichaId,
+        ),
       );
 
       await swalSuccess({
@@ -501,7 +525,9 @@ export default function ClientesAdminPanel() {
           <div className="clientes-admin-head">
             <div>
               <h3>Listado</h3>
-              <p>Busca un cliente y selecciona para ver su historial completo.</p>
+              <p>
+                Busca un cliente y selecciona para ver su historial completo.
+              </p>
             </div>
 
             <input
@@ -549,7 +575,9 @@ export default function ClientesAdminPanel() {
             <>
               <div className="clientes-detail-hero">
                 <div>
-                  <span className="clientes-detail-kicker">Cliente seleccionado</span>
+                  <span className="clientes-detail-kicker">
+                    Cliente seleccionado
+                  </span>
                   <h3>{clienteSeleccionado.nombre || "Sin nombre"}</h3>
                   <p>
                     {clienteSeleccionado.email || "Sin email"} |{" "}
@@ -560,7 +588,10 @@ export default function ClientesAdminPanel() {
                 <div className="clientes-detail-stats">
                   <span>{clienteSeleccionado.resumen.totalTurnos} turnos</span>
                   <span>{clienteSeleccionado.resumen.proximos} proximos</span>
-                  <span>{formatMoney(clienteSeleccionado.resumen.totalPagado)} pagado</span>
+                  <span>
+                    {formatMoney(clienteSeleccionado.resumen.totalPagado)}{" "}
+                    pagado
+                  </span>
                 </div>
               </div>
 
@@ -611,10 +642,15 @@ export default function ClientesAdminPanel() {
                           ),
                       )
                       .map((pago) => (
-                        <article key={pago.id} className="clientes-history-item">
+                        <article
+                          key={pago.id}
+                          className="clientes-history-item"
+                        >
                           <div>
                             <strong>{formatMoney(pago.monto)}</strong>
-                            <span>{pago.nombreServicio || pago.turnoId || "Pago"}</span>
+                            <span>
+                              {pago.nombreServicio || pago.turnoId || "Pago"}
+                            </span>
                           </div>
                           <div className="clientes-history-meta">
                             <span>{getEstadoPago(pago)}</span>
@@ -637,8 +673,9 @@ export default function ClientesAdminPanel() {
                   <div>
                     <h4>Historial clinico</h4>
                     <p>
-                      Registra motivo, observaciones, evolucion e indicaciones por
-                      cliente, asociando categoria o servicio cuando haga falta.
+                      Registra motivo, observaciones, evolucion e indicaciones
+                      por cliente, asociando categoria o servicio cuando haga
+                      falta.
                     </p>
                   </div>
                   <span>{historialClinico.length}</span>
@@ -680,11 +717,11 @@ export default function ClientesAdminPanel() {
                     </div>
 
                     <div className="turnos-filtro-item">
-                      <label>Categoria</label>
+                      <label>Categoría</label>
                       <input
                         className="turnos-filtro-control"
                         type="text"
-                        placeholder="Categoria o area"
+                        placeholder="Categoría o area"
                         value={historialForm.categoriaNombre}
                         onChange={(e) =>
                           updateHistorialForm("categoriaNombre", e.target.value)
@@ -767,7 +804,9 @@ export default function ClientesAdminPanel() {
                       onClick={guardarFichaClinica}
                       disabled={guardandoFicha}
                     >
-                      {guardandoFicha ? "Guardando..." : "Guardar ficha clinica"}
+                      {guardandoFicha
+                        ? "Guardando..."
+                        : "Guardar ficha clinica"}
                     </button>
                   </div>
                 </div>
@@ -833,14 +872,17 @@ export default function ClientesAdminPanel() {
 
                       <div className="clientes-clinico-meta">
                         <span>Creado {formatDateTime(ficha.createdAt)}</span>
-                        {ficha.turnoId ? <small>Turno {ficha.turnoId}</small> : null}
+                        {ficha.turnoId ? (
+                          <small>Turno {ficha.turnoId}</small>
+                        ) : null}
                       </div>
                     </article>
                   ))}
 
                   {!historialClinico.length ? (
                     <div className="clientes-admin-empty">
-                      Este cliente todavia no tiene registros en el historial clinico.
+                      Este cliente todavia no tiene registros en el historial
+                      clinico.
                     </div>
                   ) : null}
                 </div>

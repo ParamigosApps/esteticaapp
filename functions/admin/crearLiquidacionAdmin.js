@@ -22,17 +22,30 @@ function isPagoMercadoPagoConSplit(pago = {}) {
 }
 
 function normalizarPagoParaLiquidacion(pago = {}) {
-  const monto = Number(pago?.monto || 0);
+  const montoOriginal = Number(pago?.monto || 0);
   const comisionOriginal = Number(pago?.montoComision || 0);
   const tieneSplitMP = isPagoMercadoPagoConSplit(pago);
+  const estado = String(pago?.estado || "").toLowerCase();
+  const esReembolsado =
+    estado === "reembolsado" ||
+    String(pago?.estadoPagoTurno || "").toLowerCase() === "reembolsado";
+  const metodo = String(pago?.metodo || "").toLowerCase();
+  const esMercadoPago = metodo === "mercadopago";
 
-  const montoComision = tieneSplitMP ? 0 : comisionOriginal;
-  const montoLiquidable = tieneSplitMP
-    ? monto
+  let monto = montoOriginal;
+  let montoComision = tieneSplitMP ? 0 : comisionOriginal;
+  let montoLiquidable = tieneSplitMP
+    ? montoOriginal
     : Number(
         pago?.montoLiquidable ??
           (Number(pago?.monto || 0) - Number(pago?.montoComision || 0)),
       );
+
+  if (esReembolsado) {
+    monto = 0;
+    montoLiquidable = 0;
+    montoComision = esMercadoPago ? 0 : comisionOriginal;
+  }
 
   return {
     ...pago,
@@ -71,13 +84,12 @@ exports.crearLiquidacionAdmin = onCall(
       return { id: snap.id, ...snap.data() };
     });
 
-    const invalidos = pagos.filter(
-      (p) =>
-        p.estado !== "aprobado" ||
-        p.liquidado === true ||
-        p.estado === "reembolsado" ||
-        p.estadoPagoTurno === "reembolsado",
-    );
+    const invalidos = pagos.filter((p) => {
+      const estado = String(p?.estado || "").toLowerCase();
+      return (
+        !["aprobado", "reembolsado"].includes(estado) || p.liquidado === true
+      );
+    });
 
     if (invalidos.length) {
       throw new HttpsError(

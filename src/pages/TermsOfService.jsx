@@ -2,7 +2,7 @@ const TERMS_SECTIONS = [
   {
     title: "1. Alcance del servicio",
     paragraphs: [
-      "Este sitio permite conocer servicios disponibles, consultar informacion general, gestionar turnos, acceder al perfil del usuario y, en determinados casos, realizar pagos o senas vinculadas a una reserva.",
+      "Este sitio permite conocer servicios disponibles, consultar informacion general, gestionar turnos, acceder al perfil del usuario y, en determinados casos, realizar pagos o señas vinculadas a una reserva.",
       "La disponibilidad, duracion, precios, condiciones de cada servicio y profesionales asignados pueden variar segun la configuracion operativa vigente.",
     ],
   },
@@ -21,10 +21,12 @@ const TERMS_SECTIONS = [
     ],
   },
   {
-    title: "4. Pagos y senas",
+    title: "4. Pagos y señas",
     paragraphs: [
       "Cuando la plataforma ofrezca pagos online, estos podran procesarse mediante terceros especializados. La aprobación, observacion o rechazo de una operacion depende tanto de las validaciones internas como de la pasarela de pago utilizada.",
-      "Las senas abonadas se imputan a la reserva correspondiente segun las condiciones indicadas al momento de confirmar el turno.",
+      "Las señas abonadas se imputan a la reserva correspondiente segun las condiciones indicadas al momento de confirmar el turno.",
+      "Toda solicitud de reembolso sera considerada y evaluada por el administrador de la pagina segun el caso concreto.",
+      "En caso de aprobarse un reembolso, el costo del servicio no sera devuelto.",
     ],
   },
   {
@@ -61,7 +63,7 @@ export default function TermsOfService() {
             plataforma digital.
           </p>
           <div className="legal-page-meta">
-            <span>Ultima actualizacion: 17/03/2026</span>
+            <span>Ultima actualizacion: 25/03/2026</span>
             <span>Condiciones generales de uso del servicio</span>
           </div>
         </header>
@@ -86,3 +88,7 @@ export default function TermsOfService() {
     </section>
   );
 }
+
+
+
+

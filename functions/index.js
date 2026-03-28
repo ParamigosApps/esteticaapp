@@ -495,7 +495,6 @@ exports.processWebhookEvent = onDocumentWritten(
 
     const mpToken = MP_ACCESS_TOKEN.value()
     const collectorId = Number(MP_COLLECTOR_ID.value() || 0)
-
     const admin = getAdmin()
     const db = admin.firestore()
     const now = FieldValue.serverTimestamp()

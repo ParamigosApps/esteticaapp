@@ -342,6 +342,17 @@
   position: relative;
 }
 
+.home-hero-image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(250, 244, 255, 0.68));
+  backdrop-filter: blur(3px);
+}
+
 .home-foto {
   width: 100%;
   min-height: 330px;
@@ -413,15 +424,14 @@
 
 .home-img-sec {
   width: 100%;
-  max-width: 255px;
+  max-width: 320px;
   height: auto;
-  max-height: 320px;
+  max-height: 230px;
+  padding: 4px;
   object-fit: contain;
   align-self: flex-start;
   border-radius: 22px;
-  box-shadow: 0 14px 28px rgba(77, 56, 98, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 243, 252, 0.96));
-  padding: 6px;
+  box-shadow: 0 10px 18px rgba(77, 56, 98, 0.08);
 }
 
 .home-descripcion-info {

@@ -68,7 +68,7 @@ export default function CategoriasServiciosPanel() {
 
       if (yaExiste) {
         await swalError({
-          title: "Categoria duplicada",
+          title: "Categoría duplicada",
           text: "Ya existe una categoria con ese nombre.",
         });
         return;
@@ -88,14 +88,14 @@ export default function CategoriasServiciosPanel() {
       setCrearAbierto(false);
 
       await swalSuccess({
-        title: "Categoria creada",
-        text: "La categoria se creo correctamente.",
+        title: "Categoría creada",
+        text: "La categoría se creo correctamente.",
       });
     } catch (error) {
-      console.error("Error creando categoria:", error);
+      console.error("Error creando categoría:", error);
       await swalError({
         title: "No se pudo crear",
-        text: "Ocurrio un error al crear la categoria.",
+        text: "Ocurrio un error al crear la categoría.",
       });
     }
   }
@@ -145,7 +145,9 @@ export default function CategoriasServiciosPanel() {
           );
 
           if (yaExiste) {
-            Swal.showValidationMessage("Ya existe una categoria con ese nombre");
+            Swal.showValidationMessage(
+              "Ya existe una categoria con ese nombre",
+            );
             return false;
           }
 
@@ -166,7 +168,7 @@ export default function CategoriasServiciosPanel() {
       });
 
       await swalSuccess({
-        title: "Categoria actualizada",
+        title: "Categoría actualizada",
         text: "La categoria se actualizo correctamente.",
       });
     } catch (error) {
@@ -186,7 +188,7 @@ export default function CategoriasServiciosPanel() {
         title: `¿${cat.activo ? "Desactivar" : "Activar"} categoria?`,
         html: `
           <div style="text-align:left;font-size:14px;">
-            <div><b>Categoria:</b> ${cat.nombre}</div>
+            <div><b>Categoría:</b> ${cat.nombre}</div>
             <div style="margin-top:8px;">
               Se va a ${accion} esta categoria.
             </div>
@@ -204,11 +206,11 @@ export default function CategoriasServiciosPanel() {
       });
 
       await swalSuccess({
-        title: cat.activo ? "Categoria desactivada" : "Categoria activada",
-        text: `La categoria "${cat.nombre}" fue actualizada.`,
+        title: cat.activo ? "Categoría desactivada" : "Categoría activada",
+        text: `La categoría "${cat.nombre}" fue actualizada.`,
       });
     } catch (error) {
-      console.error("Error cambiando estado categoria:", error);
+      console.error("Error cambiando estado categoría:", error);
       await swalError({
         title: "No se pudo actualizar",
         text: "Ocurrio un error al cambiar el estado de la categoria.",
@@ -222,7 +224,7 @@ export default function CategoriasServiciosPanel() {
         title: "¿Eliminar categoria?",
         html: `
           <div style="text-align:left;font-size:14px;">
-            <div><b>Categoria:</b> ${cat.nombre}</div>
+            <div><b>Categoría:</b> ${cat.nombre}</div>
             <div style="margin-top:8px;color:#b02a37;">
               Esta accion elimina la categoria.
             </div>
@@ -244,11 +246,11 @@ export default function CategoriasServiciosPanel() {
       await deleteDoc(doc(db, "categorias_servicio", cat.id));
 
       await swalSuccess({
-        title: "Categoria eliminada",
-        text: `La categoria "${cat.nombre}" fue eliminada.`,
+        title: "Categoría eliminada",
+        text: `La categoría "${cat.nombre}" fue eliminada.`,
       });
     } catch (error) {
-      console.error("Error eliminando categoria:", error);
+      console.error("Error eliminando categoría:", error);
       await swalError({
         title: "No se pudo eliminar",
         text: "Ocurrio un error al eliminar la categoria.",

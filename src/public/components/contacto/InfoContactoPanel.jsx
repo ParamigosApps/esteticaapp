@@ -188,7 +188,7 @@ export default function InfoContactoPanel() {
 
           <div className="ubicacion-info-card">
             <div className="ubicacion-info-header">
-              <span className="ubicacion-badge">Ubicacion</span>
+              <span className="ubicacion-badge">Ubicación</span>
               <a
                 href={ubicacion.mapsLink}
                 target="_blank"

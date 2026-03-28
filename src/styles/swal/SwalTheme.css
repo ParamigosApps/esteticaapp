@@ -218,6 +218,138 @@
   background: #26212d;
 }
 
+.swal-home-login-image {
+  margin-top: 2px;
+  margin-bottom: 10px;
+  border-radius: 14px !important;
+  border: 1px solid rgba(201, 178, 225, 0.95);
+  box-shadow:
+    0 8px 18px rgba(63, 41, 89, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 2px !important;
+  width: 170px !important;
+  max-width: 170px !important;
+  height: 166px !important;
+}
+
+.swal2-popup.swal-home-login-popup .swal2-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 1px solid rgba(191, 169, 214, 0.88);
+  border-radius: 12px;
+}
+
+.swal-home-login-popup {
+  border-radius: 20px;
+  border: 1px solid rgba(231, 220, 244, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.64));
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  box-shadow:
+    0 24px 56px rgba(44, 31, 61, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  display: grid !important;
+  grid-template-columns: 152px minmax(0, 1fr);
+  grid-template-areas:
+    "image content"
+    "actions actions";
+  column-gap: 14px;
+  align-items: center;
+}
+
+.swal-home-login-title {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  color: #2f2440;
+}
+
+.swal-home-login-html {
+  grid-area: content;
+  margin: 0 !important;
+}
+
+.swal-home-login-copy {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.swal-home-login-heading {
+  margin: 0;
+  color: #2f24408d;
+    font-weight: 700;
+  font-size: clamp(1.55rem, 2.4vw, 1.85rem);
+  line-height: 1.08;
+}
+
+.swal-home-login-kicker {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a35d82;
+}
+
+.swal-home-login-copy p {
+  margin: 0;
+  color: #4d415c;
+  line-height: 1.45;
+  font-size: 1.02rem;
+}
+
+.swal-home-login-actions {
+  grid-area: actions;
+  margin-top: 14px !important;
+  gap: 10px;
+}
+
+.swal-home-login-popup .swal-btn-confirm {
+  background: linear-gradient(180deg, rgba(206, 112, 162, 0.88), rgba(193, 98, 152, 0.9));
+  border-color: rgba(187, 99, 149, 0.72);
+  box-shadow: 0 8px 16px rgba(124, 66, 103, 0.12);
+}
+
+.swal-home-login-popup .swal-btn-confirm:hover {
+  background: linear-gradient(180deg, rgba(199, 106, 156, 0.9), rgba(186, 92, 146, 0.92));
+  transform: translateY(-1px);
+}
+
+.swal-home-login-popup .swal-btn-cancel {
+  background: rgba(255, 255, 255, 0.52);
+  color: #695f78;
+  border-color: rgba(204, 189, 224, 0.72);
+}
+
+.swal-home-login-popup .swal-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.64);
+  transform: translateY(-1px);
+}
+
+.swal2-popup.swal-home-login-popup .swal2-image {
+  grid-area: image;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 640px) {
+  .swal-home-login-popup {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "image"
+      "content"
+      "actions";
+    row-gap: 10px;
+  }
+
+  .swal-home-login-copy {
+    text-align: center;
+  }
+}
+
 .swal-btn-cancel {
   background: var(--btn-soft-bg);
   color: var(--btn-soft-text);

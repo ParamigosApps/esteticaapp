@@ -25,11 +25,18 @@ exports.marcarTurnoAusenteAdmin = onCall(
 
       const turno = turnoSnap.data() || {};
       const estadoTurno = resolveEstadoTurno(turno);
+      const total = Number(turno?.montoTotal ?? turno?.precioTotal ?? 0);
+      const pagado = Number(turno?.montoPagado ?? turno?.pagadoTotal ?? 0);
+      const saldoPendiente = Math.max(0, total - pagado);
 
-      if (estadoTurno !== "confirmado") {
+      const puedeMarcarAusente =
+        estadoTurno === "confirmado" ||
+        (["finalizado", "realizado"].includes(estadoTurno) && saldoPendiente > 0);
+
+      if (!puedeMarcarAusente) {
         throw new HttpsError(
           "failed-precondition",
-          "Solo se puede marcar ausente un turno confirmado",
+          "Solo se puede marcar ausente un turno confirmado o con saldo pendiente",
         );
       }
 

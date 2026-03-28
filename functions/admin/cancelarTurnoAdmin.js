@@ -23,11 +23,17 @@ exports.cancelarTurnoAdmin = onCall({ region: "us-central1" }, async (request) =
 
     const turno = turnoSnap.data() || {};
     const estadoTurno = resolveEstadoTurno(turno);
-
-    if (["cancelado", "rechazado", "finalizado"].includes(estadoTurno)) {
+    if (["cancelado", "rechazado"].includes(estadoTurno)) {
       throw new HttpsError(
         "failed-precondition",
         `No se puede cancelar un turno en estado ${estadoTurno}`,
+      );
+    }
+
+    if (["finalizado", "realizado"].includes(estadoTurno)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No se puede cancelar un turno finalizado o realizado",
       );
     }
 

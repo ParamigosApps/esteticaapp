@@ -10,7 +10,7 @@ const PRIVACY_SECTIONS = [
     title: "2. Para que usamos tus datos",
     paragraphs: [
       "Usamos la informacion para gestionar reservas, confirmar turnos, responder consultas, coordinar cambios o cancelaciones, mejorar la experiencia del sitio y mantener un contacto administrativo u operativo cuando sea necesario.",
-      "Si el servicio incluye pagos o senas online, ciertos datos pueden utilizarse para validar operaciones, prevenir fraudes y dejar constancia de las transacciones relacionadas con tu reserva.",
+      "Si el servicio incluye pagos o señas online, ciertos datos pueden utilizarse para validar operaciones, prevenir fraudes y dejar constancia de las transacciones relacionadas con tu reserva.",
     ],
   },
   {
@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
             de turnos.
           </p>
           <div className="legal-page-meta">
-            <span>Ultima actualizacion: 17/03/2026</span>
+            <span>Ultima actualizacion: 25/03/2026</span>
             <span>Aplicable al uso del sitio y sus servicios digitales</span>
           </div>
         </header>
@@ -87,3 +87,4 @@ export default function PrivacyPolicy() {
     </section>
   );
 }
+

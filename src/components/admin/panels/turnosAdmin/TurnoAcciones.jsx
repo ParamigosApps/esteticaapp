@@ -39,10 +39,21 @@ export default function TurnoAcciones({
   const pagado = Number(turno?.montoPagado ?? 0);
   const saldoPendiente = Math.max(0, total - pagado);
 
+  const permiteCierrePago = ["confirmado", "finalizado", "realizado"].includes(
+    estadoTurno,
+  );
+
   const puedeCompletarPago =
-    estadoTurno === "confirmado" &&
-    estadoPago === "parcial" &&
+    permiteCierrePago &&
+    ["pendiente", "parcial"].includes(estadoPago) &&
     saldoPendiente > 0;
+
+  const puedeCancelarParaCierre =
+    estadoTurno === "confirmado" && puedeCancelarTurno(estadoTurno);
+
+  const puedeMarcarAusenteParaCierre =
+    (puedeMarcarAusente(turno, estadoTurno) && saldoPendiente > 0) ||
+    (["finalizado", "realizado"].includes(estadoTurno) && saldoPendiente > 0);
 
   const puedeMarcarReembolso =
     estadoTurno === "cancelado" &&
@@ -54,6 +65,36 @@ export default function TurnoAcciones({
 
   return (
     <div className="turno-acciones">
+      {puedeCompletarPago && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-success"
+          onClick={() => completarPagoTurno(turno)}
+        >
+          Completar pago
+        </button>
+      )}
+
+      {puedeCancelarParaCierre && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => cancelarTurnoAdmin(turno)}
+        >
+          Cancelar
+        </button>
+      )}
+
+      {puedeMarcarAusenteParaCierre && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-warning"
+          onClick={() => marcarTurnoAusenteAdmin(turno)}
+        >
+          Ausente
+        </button>
+      )}
+
       {puedeAprobarPagoManual && (
         <>
           <button
@@ -84,21 +125,16 @@ export default function TurnoAcciones({
         </button>
       )}
 
-      {!mostrarAccionesOperativas && puedeCompletarPago && (
-        <p>Sin acciones disponibles.</p>
-      )}
+      {!mostrarAccionesOperativas &&
+        !puedeAprobarPagoManual &&
+        !puedeAprobarTurnoYMarcarPago &&
+        !puedeCompletarPago &&
+        !puedeCancelarParaCierre &&
+        !puedeMarcarAusenteParaCierre &&
+        !puedeMarcarReembolso && <p>Sin acciones disponibles.</p>}
 
       {mostrarAccionesOperativas && (
         <>
-          {puedeCompletarPago && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-success"
-              onClick={() => completarPagoTurno(turno)}
-            >
-              Completar pago
-            </button>
-          )}
           {puedeMarcarReembolso && (
             <button
               type="button"
@@ -108,16 +144,6 @@ export default function TurnoAcciones({
               Reembolsado
             </button>
           )}
-          {puedeCancelarTurno(estadoTurno) && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => cancelarTurnoAdmin(turno)}
-            >
-              Cancelar
-            </button>
-          )}
-
           {puedeMarcarRealizado(turno, estadoTurno) && (
             <button
               type="button"
@@ -128,7 +154,8 @@ export default function TurnoAcciones({
             </button>
           )}
 
-          {puedeMarcarAusente(turno, estadoTurno) && (
+          {puedeMarcarAusente(turno, estadoTurno) &&
+          !puedeMarcarAusenteParaCierre ? (
             <button
               type="button"
               className="btn btn-sm btn-outline-warning"
@@ -136,7 +163,7 @@ export default function TurnoAcciones({
             >
               Ausente
             </button>
-          )}
+          ) : null}
 
           {puedeReprogramarTurno(estadoTurno) && (
             <button
