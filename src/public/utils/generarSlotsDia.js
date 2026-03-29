@@ -41,6 +41,20 @@ function mismaFecha(a, b) {
   );
 }
 
+function normalizarFechaNoLaborable(item) {
+  if (typeof item === "string") return item.trim();
+  if (item && typeof item === "object") return String(item.fecha || "").trim();
+  return "";
+}
+
+function esDiaNoLaborable(agenda, fechaIso) {
+  const dias = Array.isArray(agenda?.diasNoLaborables)
+    ? agenda.diasNoLaborables
+    : [];
+
+  return dias.some((item) => normalizarFechaNoLaborable(item) === fechaIso);
+}
+
 function obtenerFranjasMensualesDelDia(servicio, fecha, rangoGabinete) {
   const hoy = new Date();
   const mesBaseOffset =
@@ -159,6 +173,8 @@ export function generarSlotsDia(agenda, servicio, fecha = new Date()) {
   const dia = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
   const diaSemana = dia.getDay();
   const fechaSlot = toISODateLocal(dia);
+
+  if (esDiaNoLaborable(agenda, fechaSlot)) return [];
 
   const rangosDelDia = (agenda.horarios || []).filter(
     (h) => Number(h.diaSemana) === diaSemana,

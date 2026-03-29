@@ -87,7 +87,23 @@ function sumarDiasISO(fechaISO, dias) {
   return base.toISOString().slice(0, 10);
 }
 
+function getLimiteMensualReservableMs(servicio) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+    ? mesBaseOffset + 2
+    : mesBaseOffset + 1;
+  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+  finMes.setHours(23, 59, 59, 999);
+  return finMes.getTime();
+}
+
 function getLimiteReservableMs(servicio) {
+  if (servicio?.agendaTipo === "mensual") {
+    return getLimiteMensualReservableMs(servicio);
+  }
+
   const agendaMaxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
   const diasVentana =
     agendaMaxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : agendaMaxDias;
@@ -355,6 +371,34 @@ function turnoDentroDeHorarioServicio(servicio, fechaISO, inicioMs, finMs) {
   });
 }
 
+function normalizarDiasNoLaborables(items = []) {
+  if (!Array.isArray(items)) return [];
+
+  const vistos = new Set();
+  const resultado = [];
+
+  items.forEach((item) => {
+    const fecha =
+      typeof item === "string"
+        ? item.trim()
+        : String(item?.fecha || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+    if (vistos.has(fecha)) return;
+
+    vistos.add(fecha);
+    resultado.push(fecha);
+  });
+
+  return resultado;
+}
+
+function esDiaNoLaborable(fechaISO, diasNoLaborables = []) {
+  return normalizarDiasNoLaborables(diasNoLaborables).includes(
+    String(fechaISO || "").trim(),
+  );
+}
+
 exports.crearTurnoInteligente = onCall(
   { region: "us-central1", secrets: [WHATSAPP_TOKEN] },
   async (request) => {
@@ -471,6 +515,21 @@ const {
       );
     }
 
+    const horariosConfigSnap = await db
+      .collection("configuracion")
+      .doc("horarios")
+      .get();
+    const diasNoLaborables = horariosConfigSnap.exists
+      ? horariosConfigSnap.data()?.diasNoLaborables || []
+      : [];
+
+    if (esDiaNoLaborable(fecha, diasNoLaborables)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "El dia seleccionado esta marcado como no laborable",
+      );
+    }
+
     const resultado = await db.runTransaction(async (tx) => {
       const inicioNum = Number(horaInicio);
       const finNum = Number(horaFin);
@@ -501,9 +560,14 @@ const {
     }
 
     if (inicioNum > limiteReservableMs) {
+      const limiteTexto = new Date(Number(limiteReservableMs)).toLocaleDateString(
+        "es-AR",
+      );
       throw new HttpsError(
         "failed-precondition",
-        `Este servicio solo permite reservar hasta ${diasVentanaAgenda} dias de anticipacion`,
+        servicio?.agendaTipo === "mensual"
+          ? `Este servicio solo permite reservar hasta el ${limiteTexto}`
+          : `Este servicio solo permite reservar hasta ${diasVentanaAgenda} dias de anticipacion`,
       );
     }
 

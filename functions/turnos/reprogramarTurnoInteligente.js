@@ -5,6 +5,18 @@ const { FieldValue } = require("firebase-admin/firestore");
 const HORA_REPROGRAMACION_MINIMA = 48;
 const MAX_REPROGRAMACIONES_CLIENTE = 1;
 
+function getFechaMaxMensualReservable(servicio) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+    ? mesBaseOffset + 2
+    : mesBaseOffset + 1;
+  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+  finMes.setHours(0, 0, 0, 0);
+  return finMes;
+}
+
 function getMaxReprogramacionesCliente(reservasConfig = {}) {
   return Math.max(
     0,
@@ -113,17 +125,7 @@ function estaDentroVentanaAgenda(servicio, fechaIso) {
   limite.setDate(limite.getDate() + (diasVentana - 1));
 
   if (servicio?.agendaTipo === "mensual") {
-    const mesBaseOffset =
-      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
-    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
-      ? mesBaseOffset + 2
-      : mesBaseOffset + 1;
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
-    finMes.setHours(0, 0, 0, 0);
-
-    if (finMes < limite) {
-      limite.setTime(finMes.getTime());
-    }
+    limite.setTime(getFechaMaxMensualReservable(servicio).getTime());
   }
 
   return fecha >= hoy && fecha <= limite;
@@ -183,6 +185,34 @@ function horarioPermitidoPorServicio(servicio, fechaIso, inicioMs, finMs) {
     if (!franja?.desde || !franja?.hasta) return false;
     return inicioHora >= franja.desde && finHora <= franja.hasta;
   });
+}
+
+function normalizarDiasNoLaborables(items = []) {
+  if (!Array.isArray(items)) return [];
+
+  const vistos = new Set();
+  const resultado = [];
+
+  items.forEach((item) => {
+    const fecha =
+      typeof item === "string"
+        ? item.trim()
+        : String(item?.fecha || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+    if (vistos.has(fecha)) return;
+
+    vistos.add(fecha);
+    resultado.push(fecha);
+  });
+
+  return resultado;
+}
+
+function esDiaNoLaborable(fechaIso, diasNoLaborables = []) {
+  return normalizarDiasNoLaborables(diasNoLaborables).includes(
+    String(fechaIso || "").trim(),
+  );
 }
 
 exports.reprogramarTurnoInteligente = onCall(
@@ -258,6 +288,18 @@ exports.reprogramarTurnoInteligente = onCall(
       throw new HttpsError(
         "failed-precondition",
         "La fecha elegida esta fuera de la ventana de agenda del servicio",
+      );
+    }
+
+    const horariosConfigSnap = await db.collection("configuracion").doc("horarios").get();
+    const diasNoLaborables = horariosConfigSnap.exists
+      ? horariosConfigSnap.data()?.diasNoLaborables || []
+      : [];
+
+    if (esDiaNoLaborable(fecha, diasNoLaborables)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "La fecha elegida esta marcada como no laborable",
       );
     }
 

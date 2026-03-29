@@ -1500,6 +1500,72 @@
   gap: 18px;
 }
 
+.swal2-popup.swal-liquidacion-popup {
+  width: min(520px, calc(100% - 24px));
+  border-radius: 20px;
+  border: 1px solid rgba(208, 193, 224, 0.65);
+  background:
+    radial-gradient(circle at top right, rgba(218, 181, 241, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), #fbf8fd 100%);
+  box-shadow: 0 16px 38px rgba(40, 23, 58, 0.13);
+  padding: 1.2rem 1.2rem 1rem;
+}
+
+.swal-liquidacion-title {
+  color: #2b1d36;
+  letter-spacing: -0.02em;
+  font-size: 1.35rem;
+}
+
+.swal-liquidacion-container {
+  margin: 0.35rem 0 0.9rem;
+}
+
+.swal-liquidacion-html {
+  text-align: left;
+}
+
+.swal-liquidacion-copy {
+  margin: 0 0 10px;
+  color: #5f5270;
+  line-height: 1.5;
+}
+
+.swal-liquidacion-copy strong {
+  color: #2f2140;
+}
+
+.swal-liquidacion-resumen {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(212, 199, 226, 0.55);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+}
+
+.swal-liquidacion-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #5d4f6d;
+}
+
+.swal-liquidacion-row strong {
+  color: #2d203d;
+}
+
+.swal-liquidacion-row-neto {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(218, 205, 233, 0.8);
+}
+
+.swal-liquidacion-row-neto strong {
+  color: #6a3f81;
+}
+
 .liquidaciones-hero {
   display: flex;
   justify-content: space-between;
@@ -3052,6 +3118,34 @@ object-fit:cover;
 .dashboard-util-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+.dashboard-nonworking-list {
+  display: grid;
+  gap: 0;
+}
+
+.dashboard-nonworking-item {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(223, 212, 201, 0.7);
+}
+
+.dashboard-nonworking-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.dashboard-nonworking-date {
+  font-weight: 700;
+  color: #271d17;
+  text-transform: capitalize;
+}
+
+.dashboard-nonworking-motivo {
+  color: #8a7a6e;
+  font-size: 0.82rem;
 }
 
 .dashboard-capacity-grid {

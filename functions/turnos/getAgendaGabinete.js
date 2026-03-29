@@ -90,6 +90,31 @@ function debeBloquearAgenda(turno, ahora) {
   return true
 }
 
+function normalizarDiasNoLaborables(items = []) {
+  if (!Array.isArray(items)) return []
+
+  const vistos = new Set()
+  const resultado = []
+
+  items.forEach(item => {
+    const fecha =
+      typeof item === 'string'
+        ? item.trim()
+        : String(item?.fecha || '').trim()
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return
+    if (vistos.has(fecha)) return
+
+    vistos.add(fecha)
+    resultado.push({
+      fecha,
+      motivo: typeof item === 'object' && item ? String(item?.motivo || '').trim() : '',
+    })
+  })
+
+  return resultado.sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
 exports.getAgendaGabinete = onCall(
   { region: 'us-central1' },
   async request => {
@@ -249,7 +274,12 @@ exports.getAgendaGabinete = onCall(
       }
 
 
-      return { horarios, bloqueos, turnos }
+      const horariosConfigSnap = await db.collection('configuracion').doc('horarios').get()
+      const diasNoLaborables = horariosConfigSnap.exists
+        ? normalizarDiasNoLaborables(horariosConfigSnap.data()?.diasNoLaborables)
+        : []
+
+      return { horarios, bloqueos, turnos, diasNoLaborables }
       
     } catch (error) {
       console.error('❌ getAgendaGabinete error:', error)

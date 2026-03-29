@@ -49,6 +49,29 @@ function coincideTurnosPago(pago = {}, turnoIds = []) {
   return idsPago.every((id) => turnoIds.includes(id));
 }
 
+function buildItemDescription({
+  esPagoPack = false,
+  tipoPago = "sena",
+  turnoBase = {},
+  turnoIds = [],
+}) {
+  const nombreServicio = String(
+    turnoBase?.nombreServicio || turnoBase?.nombre || "Servicio",
+  ).trim();
+  const fecha = String(turnoBase?.fecha || "").trim();
+
+  const partes = [
+    esPagoPack ? "Pack de turnos" : "Turno",
+    tipoPago === "total" ? "pago total" : "seña",
+    `servicio: ${nombreServicio}`,
+  ];
+
+  if (fecha) partes.push(`fecha: ${fecha}`);
+  if (turnoIds.length > 1) partes.push(`cantidad: ${turnoIds.length}`);
+
+  return partes.join(" | ").slice(0, 256);
+}
+
 exports.iniciarPagoTurnoMP = onCall(
   {
     region: "us-central1",
@@ -300,12 +323,22 @@ exports.iniciarPagoTurnoMP = onCall(
     const preferenceBody = {
       items: [
         {
+          id: esPagoPack
+            ? `pack_${turnoBase?.servicioId || "servicio"}_${turnoIds.length}`
+            : `turno_${turnoIds[0]}`,
           title: tituloPago,
+          description: buildItemDescription({
+            esPagoPack,
+            tipoPago,
+            turnoBase,
+            turnoIds,
+          }),
           quantity: 1,
           unit_price: montoAnticipo,
           currency_id: "ARS",
         },
       ],
+      purpose: "wallet_purchase",
       external_reference: pagoRef.id,
       back_urls: {
         success: `${frontUrl}/pago-resultado`,

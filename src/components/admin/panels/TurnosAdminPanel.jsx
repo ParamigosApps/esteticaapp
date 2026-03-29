@@ -99,7 +99,25 @@ function getMonthRange(baseDate, fechaMax = null) {
   };
 }
 
+function getFechaMaxMensualReservable(servicio) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+    ? mesBaseOffset + 2
+    : mesBaseOffset + 1;
+  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+  finMes.setHours(0, 0, 0, 0);
+  return finMes;
+}
+
 function getLimiteReservableMs(servicio) {
+  if (servicio?.agendaTipo === "mensual") {
+    const finMes = getFechaMaxMensualReservable(servicio);
+    finMes.setHours(23, 59, 59, 999);
+    return finMes.getTime();
+  }
+
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
   const diasVentana = maxDias <= 1 ? 90 : maxDias;
   const fechaMax = new Date();
@@ -116,22 +134,11 @@ function getFechaMaxReservable(servicio) {
 }
 
 function getFechaMaxReservableReal(servicio) {
-  const fechaMaxBase = getFechaMaxReservable(servicio);
-
   if (servicio?.agendaTipo === "mensual") {
-    const hoy = new Date();
-    const mesBaseOffset =
-      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
-    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
-      ? mesBaseOffset + 2
-      : mesBaseOffset + 1;
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
-    finMes.setHours(0, 0, 0, 0);
-
-    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+    return getFechaMaxMensualReservable(servicio);
   }
 
-  return fechaMaxBase;
+  return getFechaMaxReservable(servicio);
 }
 
 function getFechaMinReservable(servicio) {

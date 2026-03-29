@@ -573,6 +573,58 @@
   color: #776d84;
 }
 
+.config-business-divider {
+  height: 1px;
+  background: rgba(214, 194, 240, 0.7);
+}
+
+.config-nonworking-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.config-nonworking-add {
+  min-width: 160px;
+}
+
+.config-nonworking-list {
+  display: grid;
+  gap: 8px;
+}
+
+.config-nonworking-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid #eee7f7;
+  background: #fff;
+}
+
+.config-nonworking-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.config-nonworking-copy strong {
+  font-size: 0.9rem;
+  color: #33293e;
+  text-transform: capitalize;
+}
+
+.config-nonworking-copy span {
+  color: #736a81;
+  font-size: 0.82rem;
+}
+
+.config-empty-state-compact {
+  padding: 12px;
+}
+
 .config-map-preview {
   overflow: hidden;
   border-radius: 18px;
@@ -1061,6 +1113,14 @@
 
   .config-hours-inputs {
     justify-content: flex-start;
+  }
+
+  .config-nonworking-form {
+    grid-template-columns: 1fr;
+  }
+
+  .config-nonworking-add {
+    width: 100%;
   }
 }
 

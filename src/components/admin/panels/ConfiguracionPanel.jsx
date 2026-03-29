@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   collection,
   addDoc,
@@ -91,6 +92,49 @@ function normalizeManualReviews(items = []) {
   return next;
 }
 
+function normalizarDiasNoLaborables(items = []) {
+  if (!Array.isArray(items)) return [];
+
+  const vistos = new Set();
+  const resultado = [];
+
+  items.forEach((item) => {
+    const fecha =
+      typeof item === "string" ? item.trim() : String(item?.fecha || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+    if (vistos.has(fecha)) return;
+
+    vistos.add(fecha);
+    resultado.push({
+      fecha,
+      motivo:
+        typeof item === "object" && item
+          ? String(item?.motivo || "").trim()
+          : "",
+    });
+  });
+
+  return resultado.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function normalizarHorariosConfig(data = {}) {
+  const base = {
+    lunes: { abierto: false, desde: "", hasta: "" },
+    martes: { abierto: false, desde: "", hasta: "" },
+    miercoles: { abierto: false, desde: "", hasta: "" },
+    jueves: { abierto: false, desde: "", hasta: "" },
+    viernes: { abierto: false, desde: "", hasta: "" },
+    sabado: { abierto: false, desde: "", hasta: "" },
+    domingo: { abierto: false, desde: "", hasta: "" },
+    diasNoLaborables: [],
+  };
+
+  const next = { ...base, ...(data || {}) };
+  next.diasNoLaborables = normalizarDiasNoLaborables(next.diasNoLaborables);
+  return next;
+}
+
 function esUrlValida(value) {
   const text = toStr(value);
   return /^https?:\/\/.+\..+/i.test(text);
@@ -167,6 +211,8 @@ async function obtenerReservasConfig() {
 }
 
 function Seccion({
+  id,
+  sectionRef,
   title,
   subtitle,
   open,
@@ -178,7 +224,11 @@ function Seccion({
   children,
 }) {
   return (
-    <section className={`config-section-card ${open ? "open" : ""}`}>
+    <section
+      id={id}
+      ref={sectionRef}
+      className={`config-section-card ${open ? "open" : ""}`}
+    >
       <button
         type="button"
         className="config-section-header"
@@ -275,6 +325,7 @@ function confirmDanger(config) {
 
 export default function AdminConfiguracion() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   const [sectionLoading, setSectionLoading] = useState({
     auth: true,
     profesionales: true,
@@ -315,6 +366,7 @@ export default function AdminConfiguracion() {
   const fileInputHomePrincipalRef = useRef(null);
   const fileInputHomeSecundariaRef = useRef(null);
   const fileInputHomeFaviconRef = useRef(null);
+  const seccionUbicacionRef = useRef(null);
 
   const [open, setOpen] = useState({
     redes: false,
@@ -342,15 +394,9 @@ export default function AdminConfiguracion() {
     mapsLink: "",
   });
 
-  const [horarios, setHorarios] = useState({
-    lunes: { abierto: false, desde: "", hasta: "" },
-    martes: { abierto: false, desde: "", hasta: "" },
-    miercoles: { abierto: false, desde: "", hasta: "" },
-    jueves: { abierto: false, desde: "", hasta: "" },
-    viernes: { abierto: false, desde: "", hasta: "" },
-    sabado: { abierto: false, desde: "", hasta: "" },
-    domingo: { abierto: false, desde: "", hasta: "" },
-  });
+  const [horarios, setHorarios] = useState(() => normalizarHorariosConfig());
+  const [fechaNoLaborable, setFechaNoLaborable] = useState("");
+  const [motivoNoLaborable, setMotivoNoLaborable] = useState("");
 
   const [authConfig, setAuthConfig] = useState({
     ...AUTH_CONFIG_BASE,
@@ -482,10 +528,12 @@ export default function AdminConfiguracion() {
           async () => {
             const horariosData = await obtenerHorarios();
             if (horariosData) {
-              setHorarios((prev) => ({
-                ...prev,
-                ...horariosData,
-              }));
+              setHorarios((prev) =>
+                normalizarHorariosConfig({
+                  ...prev,
+                  ...horariosData,
+                }),
+              );
             }
           },
         ],
@@ -564,6 +612,31 @@ export default function AdminConfiguracion() {
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
     window.history.replaceState({}, "", nextUrl);
   }, []);
+
+  useEffect(() => {
+    const hash = String(location?.hash || "")
+      .replace(/^#/, "")
+      .trim()
+      .toLowerCase();
+
+    if (!["ubicacion", "cierres", "dias-no-laborables"].includes(hash)) {
+      return;
+    }
+
+    setOpen((current) => ({
+      ...current,
+      ubicacion: true,
+    }));
+
+    const timer = window.setTimeout(() => {
+      seccionUbicacionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [location?.hash]);
 
   if (loading) {
     return (
@@ -963,8 +1036,11 @@ export default function AdminConfiguracion() {
   }
 
   async function guardarHorarios() {
+    const horariosNormalizados = normalizarHorariosConfig(horarios);
+    setHorarios(horariosNormalizados);
+
     await runWithLoading(
-      () => setDoc(doc(db, "configuracion", "horarios"), horarios),
+      () => setDoc(doc(db, "configuracion", "horarios"), horariosNormalizados),
       {
         title: "Guardando horarios",
         text: "Actualizando disponibilidad del negocio...",
@@ -974,6 +1050,54 @@ export default function AdminConfiguracion() {
       title: "Horarios",
       text: "Horarios actualizados correctamente",
     });
+  }
+
+  function agregarDiaNoLaborable() {
+    const fecha = String(fechaNoLaborable || "").trim();
+    if (!fecha) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      swalError({
+        title: "Fecha invalida",
+        text: "Selecciona una fecha valida para agregar el dia no laborable.",
+      });
+      return;
+    }
+
+    if (diasNoLaborables.some((item) => item.fecha === fecha)) {
+      swalError({
+        title: "Fecha ya cargada",
+        text: "Ese dia no laborable ya esta en la lista.",
+      });
+      return;
+    }
+
+    const motivo = String(motivoNoLaborable || "").trim();
+
+    setHorarios((current) => {
+      const listaActual = normalizarDiasNoLaborables(current?.diasNoLaborables);
+      const yaExiste = listaActual.some((item) => item.fecha === fecha);
+      if (yaExiste) return current;
+
+      return {
+        ...current,
+        diasNoLaborables: [...listaActual, { fecha, motivo }].sort((a, b) =>
+          a.fecha.localeCompare(b.fecha),
+        ),
+      };
+    });
+
+    setFechaNoLaborable("");
+    setMotivoNoLaborable("");
+  }
+
+  function quitarDiaNoLaborable(fecha) {
+    setHorarios((current) => ({
+      ...current,
+      diasNoLaborables: normalizarDiasNoLaborables(
+        current?.diasNoLaborables,
+      ).filter((item) => item.fecha !== fecha),
+    }));
   }
 
   async function guardarHomeVisuales() {
@@ -1117,9 +1241,12 @@ export default function AdminConfiguracion() {
   const redesCargadas = Object.values(social).filter((value) =>
     toStr(value),
   ).length;
-  const diasAbiertos = Object.values(horarios).filter(
-    (dia) => dia?.abierto,
+  const diasAbiertos = DIAS_SEMANA.filter(
+    ({ key }) => horarios?.[key]?.abierto,
   ).length;
+  const diasNoLaborables = normalizarDiasNoLaborables(
+    horarios?.diasNoLaborables,
+  );
   const homeVisualesCompleto = Boolean(
     homeVisuales.imgPrincipalHome &&
     homeVisuales.imgSecundariaHome &&
@@ -2099,8 +2226,10 @@ export default function AdminConfiguracion() {
         </Seccion>
 
         <Seccion
-          title="Informacion del negocio"
-          subtitle="Configura horarios, direccion y mapa del local."
+          id="ubicacion"
+          sectionRef={seccionUbicacionRef}
+          title="Información del negocio"
+          subtitle="Configurá horarios, días no laborables, dirección y mapa del local."
           open={open.ubicacion}
           onToggle={() => toggle("ubicacion")}
           completo={ubicacionCompleta}
@@ -2109,8 +2238,11 @@ export default function AdminConfiguracion() {
           <div className="config-business-grid">
             <div className="config-subcard">
               <div className="config-subcard-header">
-                <h3>Horarios de atencion</h3>
-                <span>{diasAbiertos} dias activos</span>
+                <h3>Horarios de atención</h3>
+                <span>
+                  {diasAbiertos} días activos · {diasNoLaborables.length}{" "}
+                  cierres
+                </span>
               </div>
 
               <div className="config-hours-list">
@@ -2182,6 +2314,95 @@ export default function AdminConfiguracion() {
                   onClick={guardarHorarios}
                 >
                   Guardar horarios
+                </button>
+              </div>
+
+              <div className="config-business-divider" />
+
+              <div className="config-subcard-header">
+                <h3>Dias no laborables</h3>
+                <span>
+                  {diasNoLaborables.length
+                    ? `${diasNoLaborables.length} cargado(s)`
+                    : "Sin fechas"}
+                </span>
+              </div>
+
+              <div className="config-nonworking-form">
+                <label className="config-field">
+                  <span>Fecha</span>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={fechaNoLaborable}
+                    onChange={(event) =>
+                      setFechaNoLaborable(event.target.value)
+                    }
+                  />
+                </label>
+
+                <label className="config-field">
+                  <span>Motivo (opcional)</span>
+                  <input
+                    className="form-control"
+                    placeholder="Ej: Feriado nacional"
+                    value={motivoNoLaborable}
+                    onChange={(event) =>
+                      setMotivoNoLaborable(event.target.value)
+                    }
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="btn swal-btn-confirm config-nonworking-add"
+                  onClick={agregarDiaNoLaborable}
+                  disabled={!fechaNoLaborable}
+                >
+                  Agregar cierre
+                </button>
+              </div>
+
+              {diasNoLaborables.length ? (
+                <div className="config-nonworking-list">
+                  {diasNoLaborables.map((item) => (
+                    <div key={item.fecha} className="config-nonworking-item">
+                      <div className="config-nonworking-copy">
+                        <strong>
+                          {new Date(
+                            `${item.fecha}T00:00:00`,
+                          ).toLocaleDateString("es-AR", {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </strong>
+                        <span>{item.motivo || "Sin motivo"}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn swal-btn-eliminar"
+                        onClick={() => quitarDiaNoLaborable(item.fecha)}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="config-empty-state config-empty-state-compact">
+                  No hay dias no laborables cargados.
+                </div>
+              )}
+
+              <div className="config-actions">
+                <button
+                  className="btn swal-btn-confirm"
+                  onClick={guardarHorarios}
+                >
+                  Guardar horarios y cierres
                 </button>
               </div>
             </div>

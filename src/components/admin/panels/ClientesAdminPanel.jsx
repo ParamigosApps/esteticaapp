@@ -13,6 +13,7 @@ import Swal from "sweetalert2";
 import { db } from "../../../Firebase";
 import { swalError, swalSuccess } from "../../../public/utils/swalUtils.js";
 import { hideLoading, showLoading } from "../../../services/loadingService.js";
+import whatsappIcon from "../../../assets/icons/whatsapp.png";
 
 function getTimestampMs(value) {
   if (!value) return 0;
@@ -54,6 +55,41 @@ function getEstadoTurno(turno) {
 
 function getEstadoPago(pago) {
   return pago?.estadoPago || pago?.estado || "pendiente";
+}
+
+function isPagoContable(pago) {
+  const estado = String(getEstadoPago(pago) || "")
+    .trim()
+    .toLowerCase();
+  return ["aprobado", "abonado", "parcial"].includes(estado);
+}
+
+function isTurnoExpirado(turno) {
+  const estadoTurno = String(getEstadoTurno(turno) || "")
+    .trim()
+    .toLowerCase();
+  const estadoPago = String(getEstadoPago(turno) || "")
+    .trim()
+    .toLowerCase();
+  return estadoTurno === "expirado" || estadoPago === "expirado";
+}
+
+function normalizarTelefonoWhatsapp(value) {
+  const digits = String(value || "").replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("54")) return digits;
+  return `54${digits}`;
+}
+
+function buildWhatsappUrl(cliente) {
+  const telefono = normalizarTelefonoWhatsapp(
+    cliente?.telefono || cliente?.phone || cliente?.celular || "",
+  );
+  if (!telefono) return "";
+
+  const nombre = String(cliente?.nombre || "cliente").trim();
+  const mensaje = `Hola ${nombre}, te escribimos desde Piel y Cejas.`;
+  return `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
 }
 
 function createHistorialForm() {
@@ -203,6 +239,10 @@ export default function ClientesAdminPanel() {
   }, [clienteSeleccionadoId]);
 
   const clientesConResumen = useMemo(() => {
+    const turnosById = Object.fromEntries(
+      turnos.map((turno) => [turno.id, turno]),
+    );
+
     return clientes
       .map((cliente) => {
         const turnosCliente = turnos.filter((turno) => {
@@ -223,7 +263,21 @@ export default function ClientesAdminPanel() {
           );
         });
 
-        const totalPagado = pagosCliente.reduce(
+        const pagosContables = pagosCliente.filter((pago) => {
+          if (!isPagoContable(pago)) return false;
+
+          const turnoId = String(pago?.turnoId || "").trim();
+          if (!turnoId) return true;
+
+          const turnoRelacionado =
+            turnosCliente.find((turno) => turno.id === turnoId) ||
+            turnosById[turnoId];
+
+          if (!turnoRelacionado) return true;
+          return !isTurnoExpirado(turnoRelacionado);
+        });
+
+        const totalPagado = pagosContables.reduce(
           (acc, pago) => acc + Number(pago.monto || 0),
           0,
         );
@@ -288,6 +342,10 @@ export default function ClientesAdminPanel() {
         (cliente) => cliente.id === clienteSeleccionadoId,
       ) || null,
     [clienteSeleccionadoId, clientesConResumen],
+  );
+  const whatsappClienteUrl = useMemo(
+    () => buildWhatsappUrl(clienteSeleccionado),
+    [clienteSeleccionado],
   );
 
   const turnosClienteOrdenados = useMemo(() => {
@@ -580,9 +638,29 @@ export default function ClientesAdminPanel() {
                   </span>
                   <h3>{clienteSeleccionado.nombre || "Sin nombre"}</h3>
                   <p>
-                    {clienteSeleccionado.email || "Sin email"} |{" "}
-                    {clienteSeleccionado.telefono || "Sin telefono"}
+                    {clienteSeleccionado.email || "Sin email"}
                   </p>
+                  <div className="clientes-contact-row">
+                    <span>
+                      {clienteSeleccionado.telefono || "Sin telefono"}
+                    </span>
+                    {whatsappClienteUrl ? (
+                      <a
+                        href={whatsappClienteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="clientes-whatsapp-btn"
+                      >
+                        <img
+                          src={whatsappIcon}
+                          alt=""
+                          aria-hidden="true"
+                          className="clientes-whatsapp-icon"
+                        />
+                        WhatsApp
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="clientes-detail-stats">

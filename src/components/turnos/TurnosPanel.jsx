@@ -71,6 +71,8 @@ function getReservaErrorAlert(err) {
     "No se pueden reservar horarios pasados",
     "Los turnos antes de las 12:00 requieren",
     "El horario seleccionado no",
+    "dia seleccionado esta marcado como no laborable",
+    "fecha elegida esta marcada como no laborable",
     "Horario ocupado",
     "Sin gabinetes activos",
     "Servicio no encontrado",
@@ -123,6 +125,13 @@ function startOfDay(date) {
 function endOfDay(date) {
   const next = new Date(date);
   next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function startOfMonth(date) {
+  const next = new Date(date);
+  next.setDate(1);
+  next.setHours(0, 0, 0, 0);
   return next;
 }
 
@@ -188,7 +197,24 @@ function generarDiasDelMes(baseDate, fechaMax = null, fechaMin = null) {
 
 const AGENDA_24HS_FALLBACK_DIAS = 90;
 
+function getFechaMaxMensualReservable(servicio) {
+  const hoy = new Date();
+  const mesBaseOffset = servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+    ? mesBaseOffset + 2
+    : mesBaseOffset + 1;
+  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+  finMes.setHours(0, 0, 0, 0);
+  return finMes;
+}
+
 function getLimiteReservableMs(servicio) {
+  if (servicio?.agendaTipo === "mensual") {
+    const finMes = getFechaMaxMensualReservable(servicio);
+    finMes.setHours(23, 59, 59, 999);
+    return finMes.getTime();
+  }
+
   const maxDias = Math.max(1, Number(servicio?.agendaMaxDias || 7));
   const diasVentana = maxDias <= 1 ? AGENDA_24HS_FALLBACK_DIAS : maxDias;
   const fechaMax = new Date();
@@ -234,16 +260,7 @@ function getReservasConfigDefault() {
 
 function getFechaMaxReservableReal(servicio, fechaMaxBase) {
   if (servicio?.agendaTipo === "mensual") {
-    const hoy = new Date();
-    const mesBaseOffset =
-      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
-    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
-      ? mesBaseOffset + 2
-      : mesBaseOffset + 1;
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
-    finMes.setHours(0, 0, 0, 0);
-
-    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+    return getFechaMaxMensualReservable(servicio);
   }
 
   return fechaMaxBase;
@@ -268,7 +285,12 @@ function cumpleReglaAnticipacionManana(
   servicio = null,
 ) {
   if (!reservasConfig?.bloquearTurnosMananaSin12h) return true;
-  if (Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1) return true;
+  if (
+    servicio?.agendaTipo !== "mensual" &&
+    Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1
+  ) {
+    return true;
+  }
 
   return (
     Number(inicioMs) - Date.now() >=
@@ -496,6 +518,7 @@ export default function TurnosPanel({ servicio }) {
     precioTotal - valorTotalAbonandoEfectivo,
   );
   const agendaEs24Horas =
+    servicio?.agendaTipo !== "mensual" &&
     Math.max(1, Number(servicio?.agendaMaxDias || 7)) <= 1;
   const limiteReservableMs = getLimiteReservableMs(servicio);
   const fechaMinReservable = getFechaMinReservable(servicio);
@@ -690,7 +713,22 @@ export default function TurnosPanel({ servicio }) {
       reservasConfig,
     );
 
-    if (!primerDisponible) return;
+    if (!primerDisponible) {
+      if (servicio?.agendaTipo !== "mensual") return;
+
+      const mesActual = startOfMonth(fechaSeleccionada);
+      const mesMaximo = startOfMonth(fechaMaxReservable);
+
+      if (mesActual >= mesMaximo) return;
+
+      const proximoMes = new Date(mesActual);
+      proximoMes.setMonth(proximoMes.getMonth() + 1);
+      proximoMes.setHours(0, 0, 0, 0);
+
+      setFechaSeleccionada(proximoMes);
+      setSlotSeleccionado(null);
+      return;
+    }
 
     const diaActualTieneDisponibilidad = diaActual
       ? generarSlotsDia(agenda, servicio, diaActual).some(
@@ -1619,7 +1657,31 @@ Horario: ${horaInicioFormateada} - ${horaFinFormateada}
     1,
   );
 
-  const puedeIrMesAnterior = primerDiaMesAnterior >= primerDiaMesActual;
+  const mesAnteriorTieneDisponibilidad = (() => {
+    if (primerDiaMesAnterior < primerDiaMesActual) return false;
+
+    const diasMesAnterior = generarDiasDelMes(
+      primerDiaMesAnterior,
+      fechaMaxReservable,
+      fechaMinReservable,
+    );
+
+    if (!diasMesAnterior.length) return false;
+
+    return Boolean(
+      buscarPrimerDiaDisponible(
+        diasMesAnterior,
+        agenda,
+        servicio,
+        fechaMaxReservable,
+        limiteReservableMs,
+        reservasConfig,
+      ),
+    );
+  })();
+
+  const puedeIrMesAnterior =
+    primerDiaMesAnterior >= primerDiaMesActual && mesAnteriorTieneDisponibilidad;
   const puedeIrMesSiguiente = primerDiaMesSiguiente <= fechaMaxReservable;
 
   let textBtnTurno = "Confirmar turno";

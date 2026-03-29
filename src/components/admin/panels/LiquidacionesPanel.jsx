@@ -495,11 +495,39 @@ export default function LiquidacionesPanel() {
 
     const result = await Swal.fire({
       title: "Generar liquidacion",
-      text: `Se van a liquidar ${pagosSeleccionados.length} pago(s) por ${formatMoney(totalNetoSeleccionado)} netos.`,
-      icon: "question",
+      html: `
+        <div class="swal-liquidacion-html">
+          <p class="swal-liquidacion-copy">
+            Estas por liquidar <strong>${pagosSeleccionados.length}</strong> pago(s) seleccionados.
+          </p>
+          <div class="swal-liquidacion-resumen">
+            <div class="swal-liquidacion-row">
+              <span>Bruto</span>
+              <strong>${formatMoney(totalSeleccionado)}</strong>
+            </div>
+            <div class="swal-liquidacion-row">
+              <span>Comision pendiente</span>
+              <strong>${formatMoney(totalComisionSeleccionada)}</strong>
+            </div>
+            <div class="swal-liquidacion-row swal-liquidacion-row-neto">
+              <span>Neto a liquidar</span>
+              <strong>${formatMoney(totalNetoSeleccionado)}</strong>
+            </div>
+          </div>
+        </div>
+      `,
       showCancelButton: true,
-      confirmButtonText: "Liquidar",
-      cancelButtonText: "Cancelar",
+      confirmButtonText: "Generar liquidacion",
+      cancelButtonText: "Volver",
+      customClass: {
+        popup: "swal-liquidacion-popup",
+        title: "swal-liquidacion-title",
+        htmlContainer: "swal-liquidacion-container",
+        confirmButton: "swal-btn-confirm",
+        cancelButton: "swal-btn-cancel",
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
     });
 
     if (!result.isConfirmed) return;

@@ -82,6 +82,8 @@ exports.limpiarTurnosExpirados =
 exports.getAgendaGabinete = getAgendaGabinete
 
 exports.notificarAdminNuevoTurno = require("./turnos/notificarAdminNuevoTurno").notificarAdminNuevoTurno;
+exports.notificarClienteTurnoConfirmado =
+  require("./turnos/notificarClienteTurnoConfirmado").notificarClienteTurnoConfirmado;
   // ======================================================
 // ADMIN(CALLABLE)
 // ======================================================

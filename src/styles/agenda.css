@@ -1029,8 +1029,8 @@ body::-webkit-scrollbar-corner,
   padding: 9px 14px;
   margin-bottom: 10px !important;
   border: 1px solid rgba(221, 209, 239, 0.96) !important;
-  border-radius: 999px !important;
-  background: linear-gradient(180deg, #ffffff, #f7f0ff) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffffb7, #f7f0ffa9) !important;
   color: #3d2c51 !important;
   font-size: 0.9rem;
   font-weight: 800 !important;

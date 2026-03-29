@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 import {
   FiAlertCircle,
   FiArrowRight,
@@ -30,6 +30,34 @@ function formatDateLabel(value) {
     day: "numeric",
     month: "long",
   });
+}
+
+function normalizarDiasNoLaborables(items = []) {
+  if (!Array.isArray(items)) return [];
+
+  const vistos = new Set();
+  const resultado = [];
+
+  items.forEach((item) => {
+    const fecha =
+      typeof item === "string"
+        ? item.trim()
+        : String(item?.fecha || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+    if (vistos.has(fecha)) return;
+
+    vistos.add(fecha);
+    resultado.push({
+      fecha,
+      motivo:
+        typeof item === "object" && item
+          ? String(item?.motivo || "").trim()
+          : "",
+    });
+  });
+
+  return resultado.sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
 function formatTime(ms) {
@@ -159,6 +187,7 @@ export default function AdminDashboard() {
   const [servicios, setServicios] = useState([]);
   const [gabinetes, setGabinetes] = useState([]);
   const [pagos, setPagos] = useState([]);
+  const [horariosConfig, setHorariosConfig] = useState(null);
 
   useEffect(
     () =>
@@ -221,6 +250,14 @@ export default function AdminDashboard() {
             ...docItem.data(),
           })),
         );
+      }),
+    [],
+  );
+
+  useEffect(
+    () =>
+      onSnapshot(doc(db, "configuracion", "horarios"), (snap) => {
+        setHorariosConfig(snap.exists() ? snap.data() : null);
       }),
     [],
   );
@@ -386,6 +423,25 @@ export default function AdminDashboard() {
       .slice(0, 4);
   }, [agendaHoy, gabinetes]);
 
+  const diasNoLaborables = useMemo(
+    () => normalizarDiasNoLaborables(horariosConfig?.diasNoLaborables),
+    [horariosConfig],
+  );
+
+  const proximosCierres = useMemo(() => {
+    return diasNoLaborables
+      .filter((item) => item.fecha >= today.iso)
+      .slice(0, 5);
+  }, [diasNoLaborables, today.iso]);
+
+  const cierresProximos30d = useMemo(() => {
+    return diasNoLaborables.filter((item) => {
+      const date = parseIsoDate(item.fecha);
+      if (!date) return false;
+      return date.getTime() >= today.nowMs && date.getTime() <= today.plus21Ms;
+    }).length;
+  }, [diasNoLaborables, today.nowMs, today.plus21Ms]);
+
   const alertas = useMemo(() => {
     const pagosPorValidar = pagos.filter(
       (pago) => getEstadoPago(pago) === "pendiente_aprobacion",
@@ -430,9 +486,16 @@ export default function AdminDashboard() {
         tone: sinAgendaHoy ? "soft" : "ok",
         icon: FiCheckCircle,
       },
+      {
+        label: "Cierres proximos",
+        value: cierresProximos30d,
+        tone: cierresProximos30d > 0 ? "warning" : "ok",
+        icon: FiCalendar,
+      },
     ];
   }, [
     agendaHoy,
+    cierresProximos30d,
     pagos,
     resumen.pendientesAprobacion,
     resumen.pendientesMp,
@@ -638,6 +701,31 @@ export default function AdminDashboard() {
                   <span>{resumen.gabinetesActivos} gabinetes</span>
                 </div>
               </div>
+            </div>
+
+            <div className="dashboard-util-card">
+              <span className="dashboard-util-kicker">Calendario</span>
+              <strong>Dias no laborables</strong>
+              <div className="dashboard-nonworking-list">
+                {proximosCierres.map((item) => (
+                  <div key={item.fecha} className="dashboard-nonworking-item">
+                    <span className="dashboard-nonworking-date">
+                      {formatDateLabel(item.fecha)}
+                    </span>
+                    <small className="dashboard-nonworking-motivo">
+                      {item.motivo || "Sin motivo"}
+                    </small>
+                  </div>
+                ))}
+                {!proximosCierres.length ? (
+                  <div className="dashboard-empty dashboard-empty-inline">
+                    No hay cierres futuros cargados.
+                  </div>
+                ) : null}
+              </div>
+              <Link to="/admin/configuracion#cierres" className="dashboard-link-btn">
+                Editar cierres <FiArrowRight />
+              </Link>
             </div>
           </div>
         </article>

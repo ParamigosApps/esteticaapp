@@ -52,23 +52,24 @@ function getFechaMaxReservable(servicio) {
   return max;
 }
 
+function getFechaMaxMensualReservable(servicio) {
+  const hoy = new Date();
+  const mesBaseOffset =
+    servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
+  const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
+    ? mesBaseOffset + 2
+    : mesBaseOffset + 1;
+  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
+  finMes.setHours(0, 0, 0, 0);
+  return finMes;
+}
+
 function getFechaMaxReservableReal(servicio) {
-  const fechaMaxBase = getFechaMaxReservable(servicio);
-
   if (servicio?.agendaTipo === "mensual") {
-    const hoy = new Date();
-    const mesBaseOffset =
-      servicio?.agendaMensualModo === "mes_siguiente" ? 1 : 0;
-    const mesHasta = servicio?.agendaMensualRepiteMesSiguiente
-      ? mesBaseOffset + 2
-      : mesBaseOffset + 1;
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + mesHasta, 0);
-    finMes.setHours(0, 0, 0, 0);
-
-    return finMes < fechaMaxBase ? finMes : fechaMaxBase;
+    return getFechaMaxMensualReservable(servicio);
   }
 
-  return fechaMaxBase;
+  return getFechaMaxReservable(servicio);
 }
 
 function extraerGabineteIds(servicio) {

@@ -195,6 +195,7 @@ export default function Home() {
     manualReviewsTotal: "",
     manualReviewsItems: [],
   });
+  const categoriasRef = useRef(null);
   const agendaRef = useRef(null);
   const googleReviewsUrl =
     String(homeVisuales.googleReviewsUrl || "").trim() || GOOGLE_REVIEWS_URL;
@@ -226,6 +227,13 @@ export default function Home() {
         block: "start",
       });
     }, 120);
+  }
+
+  function scrollToCategorias() {
+    categoriasRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   useEffect(() => {
@@ -495,7 +503,7 @@ export default function Home() {
 
       <section className="home-mid">
         <div className="home-grid-mid">
-          <div className="categorias-container">
+          <div className="categorias-container" ref={categoriasRef}>
             <div className="home-section-heading">
               <span className="home-section-chip">Explorá</span>
               <h2>Encontrá tu servicio ideal</h2>
@@ -520,11 +528,34 @@ export default function Home() {
               <h2>Reserva tu próximo turno</h2>
             </div>
 
-            <TurnosSection
-              busqueda={busqueda}
-              categoriaSeleccionada={categoriaSeleccionada}
-              setCategoriaSeleccionada={setCategoriaSeleccionada}
-            />
+            {!categoriaSeleccionada && !busqueda.trim() ? (
+              <div className="home-agenda-empty-state">
+                <h3>Selecciona una categoría</h3>
+                <p>
+                  <span className="agenda-empty-copy-desktop">
+                    Elegi una opción del panel izquierdo para ver servicios y
+                    horarios disponibles.
+                  </span>
+                  <span className="agenda-empty-copy-mobile">
+                    Elegí una categoría para ver servicios y horarios
+                    disponibles.
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  className="home-agenda-empty-button"
+                  onClick={scrollToCategorias}
+                >
+                  Ir a categorias
+                </button>
+              </div>
+            ) : (
+              <TurnosSection
+                busqueda={busqueda}
+                categoriaSeleccionada={categoriaSeleccionada}
+                setCategoriaSeleccionada={setCategoriaSeleccionada}
+              />
+            )}
           </div>
         </div>
       </section>

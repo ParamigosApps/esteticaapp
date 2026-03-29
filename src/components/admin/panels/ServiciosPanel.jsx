@@ -203,7 +203,8 @@ function getServicioProfesionalKey({ profesionalId, nombreProfesional }) {
   if (profesionalIdNormalizado) return `id:${profesionalIdNormalizado}`;
 
   const nombreProfesionalNormalizado = normalizar(nombreProfesional || "");
-  if (nombreProfesionalNormalizado) return `nombre:${nombreProfesionalNormalizado}`;
+  if (nombreProfesionalNormalizado)
+    return `nombre:${nombreProfesionalNormalizado}`;
 
   return "sin-profesional";
 }
@@ -1182,7 +1183,10 @@ function AgendaServicioEditor({
         </div>
 
         <div className="field-group service-field-sm">
-          <label>Habilitar agenda desde</label>
+          <label>
+            Habilitar agenda el día (Los clientes podran sacar turnos a partir
+            de este día)
+          </label>
           <input
             type="date"
             className="admin-input"
@@ -1912,8 +1916,7 @@ function ServicioItem({ servicio, servicios, gabinetes, empleados }) {
         </span>
         {servicioMensualSinFechasPendientes(servicio) && (
           <span className="service-alert-text">
-            Este servicio ya no tiene fechas disponibles para este mes. Quieres
-            anadir nuevas fechas?
+            Este servicio ya no tiene fechas disponibles para este mes.
           </span>
         )}
         {servicioMensualSinFechasPendientes(servicio) && !editando && (
