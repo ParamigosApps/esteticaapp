@@ -49,6 +49,186 @@ function coincideTurnosPago(pago = {}, turnoIds = []) {
   return idsPago.every((id) => turnoIds.includes(id));
 }
 
+function toCleanString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function pickFirstNonEmpty(candidates = []) {
+  for (const value of candidates) {
+    const text = toCleanString(value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function parseNombreApellido(value) {
+  const full = toCleanString(value);
+  if (!full) return { name: "", surname: "" };
+
+  const parts = full.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { name: parts[0], surname: "" };
+
+  return {
+    name: parts[0],
+    surname: parts.slice(1).join(" "),
+  };
+}
+
+function normalizeDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizeStatementText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function buildStatementDescriptor({
+  turnoBase = {},
+  activeMpConnection = {},
+  clienteData = {},
+}) {
+  const raw = pickFirstNonEmpty([
+    activeMpConnection?.statementDescriptor,
+    activeMpConnection?.businessName,
+    activeMpConnection?.nombreNegocio,
+    turnoBase?.statementDescriptor,
+    turnoBase?.nombreNegocio,
+    turnoBase?.nombreComercio,
+    turnoBase?.negocioNombre,
+    clienteData?.nombreNegocio,
+    clienteData?.comercio,
+    "MISTURNOSAPP",
+  ]);
+
+  const normalized = normalizeStatementText(raw);
+  if (!normalized) return "MISTURNOSAPP";
+  return normalized.slice(0, 13);
+}
+
+function buildPayerAddress(...sources) {
+  for (const source of sources) {
+    if (!source) continue;
+
+    if (typeof source === "string") {
+      const streetName = toCleanString(source);
+      if (!streetName) continue;
+      return { street_name: streetName };
+    }
+
+    if (typeof source === "object") {
+      const zipCode = pickFirstNonEmpty([
+        source.zip_code,
+        source.zipCode,
+        source.codigoPostal,
+        source.codigo_postal,
+        source.postal_code,
+        source.cp,
+      ]);
+
+      const streetName = pickFirstNonEmpty([
+        source.street_name,
+        source.streetName,
+        source.calle,
+        source.direccion,
+        source.domicilio,
+        source.address,
+      ]);
+
+      const streetNumberRaw = pickFirstNonEmpty([
+        source.street_number,
+        source.streetNumber,
+        source.numero,
+        source.altura,
+      ]);
+      const streetNumber = Number(streetNumberRaw);
+
+      const address = {};
+      if (zipCode) address.zip_code = zipCode;
+      if (streetName) address.street_name = streetName;
+      if (Number.isFinite(streetNumber) && streetNumber > 0) {
+        address.street_number = streetNumber;
+      }
+
+      if (Object.keys(address).length) return address;
+    }
+  }
+
+  return null;
+}
+
+function buildPayer({
+  payerInput = {},
+  authToken = {},
+  turnoBase = {},
+  clienteData = {},
+}) {
+  const nombreCompleto = pickFirstNonEmpty([
+    payerInput?.name,
+    payerInput?.full_name,
+    clienteData?.nombre,
+    clienteData?.nombreCompleto,
+    turnoBase?.nombreCliente,
+    authToken?.name,
+  ]);
+  const parsed = parseNombreApellido(nombreCompleto);
+
+  const payer = {};
+
+  const email = pickFirstNonEmpty([
+    payerInput?.email,
+    clienteData?.email,
+    turnoBase?.emailCliente,
+    turnoBase?.clienteEmail,
+    authToken?.email,
+  ]);
+  if (email) payer.email = email;
+
+  const name = pickFirstNonEmpty([payerInput?.name, parsed.name, authToken?.given_name]);
+  if (name) payer.name = name;
+
+  const surname = pickFirstNonEmpty([
+    payerInput?.surname,
+    parsed.surname,
+    authToken?.family_name,
+  ]);
+  if (surname) payer.surname = surname;
+
+  const phoneDigits = normalizeDigits(
+    pickFirstNonEmpty([
+      payerInput?.phone?.number,
+      payerInput?.phone,
+      clienteData?.telefono,
+      clienteData?.phone,
+      clienteData?.celular,
+      turnoBase?.telefonoCliente,
+      turnoBase?.clienteTelefono,
+      authToken?.phone_number,
+    ]),
+  );
+  if (phoneDigits.length >= 6) {
+    payer.phone = { number: phoneDigits };
+  }
+
+  const address = buildPayerAddress(
+    payerInput?.address,
+    clienteData?.address,
+    clienteData?.direccion,
+    clienteData?.domicilio,
+    turnoBase?.address,
+    turnoBase?.direccion,
+    turnoBase?.domicilio,
+  );
+  if (address) payer.address = address;
+
+  return Object.keys(payer).length ? payer : null;
+}
+
 function buildItemDescription({
   esPagoPack = false,
   tipoPago = "sena",
@@ -82,7 +262,7 @@ exports.iniciarPagoTurnoMP = onCall(
       throw new HttpsError("unauthenticated", "No autenticado");
     }
 
-    const { frontOrigin } = request.data || {};
+    const { frontOrigin, payer: payerInput = {} } = request.data || {};
     const turnoIds = normalizarTurnoIds(request.data || {});
     if (!turnoIds.length) {
       throw new HttpsError("invalid-argument", "turnoId o turnoIds requerido");
@@ -192,6 +372,9 @@ exports.iniciarPagoTurnoMP = onCall(
     if (!mpAccessToken || !frontUrl) {
       throw new HttpsError("internal", "MP no configurado");
     }
+
+    const clienteSnap = await db.collection("usuarios").doc(uid).get();
+    const clienteData = clienteSnap.exists ? clienteSnap.data() || {} : {};
 
     const activeMpConnection = await getActiveMpConnection(db);
     const mpTokenOAuth = String(activeMpConnection?.accessToken || "").trim();
@@ -345,7 +528,20 @@ exports.iniciarPagoTurnoMP = onCall(
         failure: `${frontUrl}/pago-resultado`,
         pending: `${frontUrl}/pago-resultado`,
       },
+      statement_descriptor: buildStatementDescriptor({
+        turnoBase,
+        activeMpConnection,
+        clienteData,
+      }),
     };
+
+    const payer = buildPayer({
+      payerInput,
+      authToken: request.auth?.token || {},
+      turnoBase,
+      clienteData,
+    });
+    if (payer) preferenceBody.payer = payer;
 
     if (usaOauthMp && Number(montoComision || 0) > 0) {
       preferenceBody.marketplace_fee = Number(montoComision || 0);

@@ -959,8 +959,6 @@ export default function MisTurnos() {
               {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
             </span>
             {start ? <span>{formatHora(t.horaInicio)}</span> : null}
-            <span>{ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}</span>
-            <span>{ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}</span>
             <span>Total ${total.toLocaleString("es-AR")}</span>
             <span>Pagado ${pagado.toLocaleString("es-AR")}</span>
           </div>
@@ -977,7 +975,7 @@ export default function MisTurnos() {
             </div>
             {anticipo > 0 && (
               <div className="turno-stat">
-                <span>SeÃ±a</span>
+                <span>Seña</span>
                 <strong>${anticipo.toLocaleString("es-AR")}</strong>
                 <small>Reserva solicitada para este servicio</small>
               </div>

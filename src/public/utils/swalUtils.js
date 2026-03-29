@@ -473,7 +473,7 @@ export function swalResumenTurno({
   const montoExtrasFormateado = formatMoney(montoExtras);
   const precioAnticipoFormateado = formatMoney(precioAnticipo);
 
-  let tituloSwal = esManual ? "Solicitud de turno" : "Confirmacion de turno";
+  let tituloSwal = esManual ? "Solicitud de turno" : "Confirmación de turno";
   return Swal.fire({
     title: `<span class="swal-title-main">${tituloSwal}</span>`,
     width: "480px",
@@ -497,15 +497,7 @@ export function swalResumenTurno({
         <div class="swal-turno-header">
           <div class="swal-servicio">${servicio}</div>
           <div class="swal-profesional">con <b>${profesional}</b></div>
-          ${
-            precioBase != null && precioBase > 0
-              ? `
-              <div class="swal-servicio-meta">
-                Costo del servicio: <strong>$${precioBaseFormateado}</strong>
-              </div>
-              `
-              : ""
-          }
+
         </div>
 
         <div class="swal-turno-body">
