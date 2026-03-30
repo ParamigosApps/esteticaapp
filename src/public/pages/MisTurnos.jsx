@@ -43,12 +43,26 @@ const ESTADO_PAGO_LABEL = {
   reembolsado: "Reembolsado",
 };
 
+function normalizeEstadoTexto(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/Ã±/g, "ñ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isEstadoSenado(value) {
+  return normalizeEstadoTexto(value) === "senado";
+}
+
 function getMaxReprogramacionesUsuario(reservasConfig = {}) {
   return Math.max(0, Number(reservasConfig?.maxReprogramacionesUsuario ?? 1));
 }
 
 function getEstadoTurno(turno) {
   if (turno?.estadoTurno) return turno.estadoTurno;
+  if (isEstadoSenado(turno?.estado)) return "confirmado";
 
   switch (turno?.estado) {
     case "pendiente_pago":
@@ -56,7 +70,6 @@ function getEstadoTurno(turno) {
       return "pendiente";
     case "pendiente_aprobacion":
       return "pendiente_aprobacion";
-    case "seÃ±ado":
     case "confirmado":
       return "confirmado";
     case "cancelado":
@@ -73,6 +86,7 @@ function getEstadoTurno(turno) {
 
 function getEstadoPago(turno) {
   if (turno?.estadoPago) return turno.estadoPago;
+  if (isEstadoSenado(turno?.estado)) return "parcial";
 
   switch (turno?.estado) {
     case "pendiente_pago":
@@ -80,8 +94,6 @@ function getEstadoPago(turno) {
       return "pendiente";
     case "pendiente_aprobacion":
       return "pendiente_aprobacion";
-    case "seÃ±ado":
-      return "parcial";
     case "confirmado": {
       const total = Number(
         turno?.montoTotal ?? turno?.precioTotal ?? turno?.total ?? 0,
@@ -110,7 +122,7 @@ function getMontos(turno) {
     turno?.montoAnticipo ??
       turno?.montoSena ??
       turno?.["seña"] ??
-      turno?.["seÃ±a"] ??
+      turno?.["se"] ??
       turno?.sena ??
       0,
   );
@@ -118,7 +130,7 @@ function getMontos(turno) {
   let pagado = Number(turno?.montoPagado ?? turno?.pagadoTotal ?? 0);
 
   if (!pagado) {
-    if (turno?.estado === "seÃ±ado") {
+    if (isEstadoSenado(turno?.estado)) {
       pagado = anticipo;
     } else if (getEstadoPago(turno) === "abonado" && total > 0) {
       pagado = total;
@@ -505,6 +517,7 @@ export default function MisTurnos() {
         return updateDoc(doc(db, "turnos", item.id), {
           estadoTurno: "cancelado",
           canceladoAt: serverTimestamp(),
+          canceladoEn: serverTimestamp(),
           canceladoPor: "cliente",
           motivoCancelacion: "cancelacion_cliente",
           anticipoPerdido: anticipoTurno > 0,
@@ -958,6 +971,8 @@ export default function MisTurnos() {
               {t.fecha ? formatFechaISO(t.fecha) : "Fecha sin definir"}
             </span>
             {start ? <span>{formatHora(t.horaInicio)}</span> : null}
+            <span>{ESTADO_TURNO_LABEL[estadoTurno] || estadoTurno || "-"}</span>
+            <span>{ESTADO_PAGO_LABEL[estadoPago] || estadoPago || "-"}</span>
             <span>Total ${total.toLocaleString("es-AR")}</span>
             <span>Pagado ${pagado.toLocaleString("es-AR")}</span>
           </div>
