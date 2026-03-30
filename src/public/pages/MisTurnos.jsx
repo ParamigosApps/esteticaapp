@@ -505,7 +505,6 @@ export default function MisTurnos() {
         return updateDoc(doc(db, "turnos", item.id), {
           estadoTurno: "cancelado",
           canceladoAt: serverTimestamp(),
-          canceladoEn: serverTimestamp(),
           canceladoPor: "cliente",
           motivoCancelacion: "cancelacion_cliente",
           anticipoPerdido: anticipoTurno > 0,

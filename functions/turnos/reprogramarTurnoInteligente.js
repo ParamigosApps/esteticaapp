@@ -404,7 +404,6 @@ exports.reprogramarTurnoInteligente = onCall(
         nombreGabinete: gabineteElegido.nombreGabinete || gabineteElegido.nombre || "",
         reprogramado: true,
         reprogramadoAt: FieldValue.serverTimestamp(),
-        reprogramadoEn: FieldValue.serverTimestamp(),
         reprogramadoPor: "cliente",
         motivoReprogramacion: "reprogramacion_cliente",
         reprogramacionesCount: FieldValue.increment(1),

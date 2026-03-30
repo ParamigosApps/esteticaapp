@@ -37,7 +37,6 @@ exports.marcarTurnoRealizadoAdmin = onCall(
         estadoTurno: "finalizado",
         estado: "finalizado",
         finalizadoAt: FieldValue.serverTimestamp(),
-        finalizadoEn: FieldValue.serverTimestamp(),
         finalizadoPor: "admin",
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: request.auth.uid,

@@ -10,6 +10,15 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D+/g, "");
 }
 
+function resolveLegacyEventTimestamp(turno = {}, eventName = "") {
+  const safeName = String(eventName || "").trim();
+  if (!safeName) return null;
+
+  const atKey = `${safeName}At`;
+  const enKey = `${safeName}En`;
+  return turno?.[atKey] || turno?.[enKey] || null;
+}
+
 function buildTurnoBaseCompat({
   clienteId,
   nombreCliente,
@@ -104,22 +113,18 @@ function buildTurnoBaseCompat({
     canceladoPor: null,
     motivoCancelacion: null,
     canceladoAt: null,
-    canceladoEn: null,
 
     ausentePor: null,
     motivoAusencia: null,
     ausenteAt: null,
-    ausenteEn: null,
 
     reprogramado: false,
     reprogramadoPor: null,
     motivoReprogramacion: null,
     reprogramadoAt: null,
-    reprogramadoEn: null,
 
     finalizadoAutomatico: false,
     finalizadoAt: null,
-    finalizadoEn: null,
     finalizadoPor: null,
 
     createdAt: FieldValue.serverTimestamp(),
@@ -133,4 +138,5 @@ module.exports = {
   buildTurnoBaseCompat,
   normalizeText,
   normalizePhone,
+  resolveLegacyEventTimestamp,
 };

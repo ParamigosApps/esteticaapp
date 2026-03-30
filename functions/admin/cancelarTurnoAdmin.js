@@ -42,7 +42,6 @@ exports.cancelarTurnoAdmin = onCall({ region: "us-central1" }, async (request) =
       canceladoPor: "admin",
       motivoCancelacion,
       canceladoAt: FieldValue.serverTimestamp(),
-      canceladoEn: FieldValue.serverTimestamp(),
       venceEn: null,
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: request.auth.uid,

@@ -45,7 +45,6 @@ exports.marcarTurnoAusenteAdmin = onCall(
         ausentePor: "admin",
         motivoAusencia,
         ausenteAt: FieldValue.serverTimestamp(),
-        ausenteEn: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: request.auth.uid,
       });

@@ -44,7 +44,6 @@ exports.cancelarTurnoProfesional = onCall(
         canceladoPor: "profesional",
         motivoCancelacion,
         canceladoAt: FieldValue.serverTimestamp(),
-        canceladoEn: FieldValue.serverTimestamp(),
         venceEn: null,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: request.auth.uid,

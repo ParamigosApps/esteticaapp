@@ -285,7 +285,6 @@ exports.reprogramarTurnoAdmin = onCall({ region: "us-central1" }, async (request
       nombreGabinete: gabineteElegido.nombreGabinete || gabineteElegido.nombre || "",
       reprogramado: true,
       reprogramadoAt: FieldValue.serverTimestamp(),
-      reprogramadoEn: FieldValue.serverTimestamp(),
       reprogramadoPor: "admin",
       motivoReprogramacion,
       reprogramacionesCount: FieldValue.increment(1),
