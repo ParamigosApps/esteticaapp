@@ -65,10 +65,23 @@ function formatHour(ts) {
   });
 }
 
-function formatFechaHora(fecha, horaInicio, horaFin) {
-  const fechaObj = fecha ? new Date(`${fecha}T00:00:00`) : null;
-  const fechaValida = fechaObj && !Number.isNaN(fechaObj.getTime());
+function formatFecha(fechaIso) {
+  const [year, month, day] = String(fechaIso || "").split("-").map(Number);
+  if (!year || !month || !day) return "-";
 
+  const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  if (Number.isNaN(parsed.getTime())) return "-";
+
+  return parsed.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatFechaHora(fecha, horaInicio, horaFin) {
   const horaInicioTexto = formatHour(horaInicio);
   const horaFinTexto = formatHour(horaFin);
 
@@ -80,15 +93,7 @@ function formatFechaHora(fecha, horaInicio, horaFin) {
         : "-";
 
   return {
-    fechaTexto: fechaValida
-      ? fechaObj.toLocaleDateString("es-AR", {
-          weekday: "long",
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          timeZone: BUSINESS_TIME_ZONE,
-        })
-      : "-",
+    fechaTexto: formatFecha(fecha),
     horaTexto: rangoHorario,
   };
 }

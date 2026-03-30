@@ -24,16 +24,19 @@ function formatMoney(value) {
   return Number(value || 0).toLocaleString("es-AR");
 }
 
-function formatFecha(fecha) {
-  if (!fecha) return "-";
-  const parsed = new Date(`${fecha}T00:00:00`);
+function formatFecha(fechaIso) {
+  const [year, month, day] = String(fechaIso || "").split("-").map(Number);
+  if (!year || !month || !day) return "-";
+
+  const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   if (Number.isNaN(parsed.getTime())) return "-";
+
   return parsed.toLocaleDateString("es-AR", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
-    timeZone: BUSINESS_TIME_ZONE,
+    timeZone: "UTC",
   });
 }
 
